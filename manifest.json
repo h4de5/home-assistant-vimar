@@ -1,0 +1,8 @@
+{
+  "domain": "vimar_platform",
+  "name": "Vimar Platform",
+  "documentation": "https://github.com/h4de5/VimarWebserverApi/",
+  "dependencies": [],
+  "codeowners": ["@h4de5"],
+  "requirements": ["requests"]
+}
