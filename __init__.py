@@ -34,6 +34,24 @@ _LOGGER = logging.getLogger(__name__)
 #     })])
 # }, extra=vol.ALLOW_EXTRA)
 
+# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+#     vol.Required(CONF_HOST): cv.string,
+#     vol.Required(CONF_USERNAME, default='admin'): cv.string,
+#     vol.Required(CONF_PASSWORD): cv.string
+# })
+
+# CONFIG_SCHEMA = CONFIG_SCHEMA.extend({
+#     vol.Required(CONF_HOST): cv.string,
+#     vol.Required(CONF_USERNAME, default='admin'): cv.string,
+#     vol.Required(CONF_PASSWORD): cv.string
+# })
+
+
+# Import the device class from the component that you want to support
+# DEVICE_SCHEMA = vol.Schema({
+#     vol.Required(CONF_NAME): cv.string
+# })
+
 @asyncio.coroutine
 def async_setup(hass, config):
 # def setup(hass, config):
@@ -77,6 +95,8 @@ def async_setup(hass, config):
     #     return False
 
     hass.helpers.discovery.load_platform('light', DOMAIN, {}, config)
+    hass.helpers.discovery.load_platform('cover', DOMAIN, {}, config)
+    hass.helpers.discovery.load_platform('switch', DOMAIN, {}, config)
 
     # Return boolean to indicate that initialization was successfully.
     return True

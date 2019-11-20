@@ -8,33 +8,11 @@ import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
 import asyncio
-#import queue
-#import threading
-#import socket
-import time
-# import logging
+
 # import variables set in __init__.py
 # from . import vimarconnection
 # from . import vimarlink
 from . import DOMAIN
-
-# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-#     vol.Required(CONF_HOST): cv.string,
-#     vol.Required(CONF_USERNAME, default='admin'): cv.string,
-#     vol.Required(CONF_PASSWORD): cv.string
-# })
-
-# CONFIG_SCHEMA = CONFIG_SCHEMA.extend({
-#     vol.Required(CONF_HOST): cv.string,
-#     vol.Required(CONF_USERNAME, default='admin'): cv.string,
-#     vol.Required(CONF_PASSWORD): cv.string
-# })
-
-
-# Import the device class from the component that you want to support
-# DEVICE_SCHEMA = vol.Schema({
-#     vol.Required(CONF_NAME): cv.string
-# })
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,21 +28,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     # _LOGGER.info("Vimar Plattform Config: ")
     # _LOGGER.info(config)
-    _LOGGER.info("discovery_info")
-    _LOGGER.info(discovery_info)
+    # _LOGGER.info("discovery_info")
+    # _LOGGER.info(discovery_info)
     # _LOGGER.info(hass.config)
     # this will give you overall hass config, not configuration.yml
     # hassconfig = hass.config.as_dict()
 
     # vimarconfig = config
-
-    # _LOGGER.info(vimarconfig)
-
-    # host = vimarconfig.get(CONF_HOST)
-    # username = vimarconfig.get(CONF_USERNAME)
-    # password = vimarconfig.get(CONF_PASSWORD)
-
-    # vimarconnection = vimarlink.VimarLink(host, username, password)
 
     # # Verify that passed in configuration works
     # if not vimarconnection.is_valid_login():
@@ -86,19 +56,23 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         #     name = device_config['name']
         #     lights.append(VimarLight(name, device_id, vimarconnection))
         for device_id, device in devices.items():
-            lights.append(VimarLight(device, device_id, vimarconnection))
+            if (device['object_name'].find("ROLLLADEN") == -1 and 
+                device['object_name'].find("STECKDOSE") == -1 and 
+                device['object_name'].find("FERNBEDINUNG") == -1):
+                lights.append(VimarLight(device, device_id, vimarconnection))
 
 
     # fallback
-    if len(lights) == 0:
-        # Config is empty so generate a default set of switches
-        for room in range(1, 2):
-            for device in range(1, 2):
-                name = "Room " + str(room) + " Device " + str(device)
-                device_id = "R" + str(room) + "D" + str(device)
-                lights.append(VimarLight({'object_name': name}, device_id, link))
+    # if len(lights) == 0:
+    #     # Config is empty so generate a default set of switches
+    #     for room in range(1, 2):
+    #         for device in range(1, 2):
+    #             name = "Room " + str(room) + " Device " + str(device)
+    #             device_id = "R" + str(room) + "D" + str(device)
+    #             lights.append(VimarLight({'object_name': name}, device_id, link))
 
-    async_add_entities(lights)
+    if len(lights) != 0:
+        async_add_entities(lights)
     _LOGGER.info("Vimar Light complete!")
 
 
@@ -112,11 +86,13 @@ def recalculate_brightness(brightness):
     return round((brightness * 255) / 100)
 # end dev recalculate_brightness
 
-
 class VimarLight(Light):
-    """ Provides a Vimar light. """
+    """ Provides a Vimar lights. """
+
+    ICON = "mdi:ceiling-light"
 
     def __init__(self, device, device_id, vimarconnection):
+        """Initialize the light."""
         self._device = device
         self._name = self._device['object_name']
         self._device_id = device_id
@@ -128,7 +104,10 @@ class VimarLight(Light):
     @property
     def supported_features(self):
         """Flag supported features."""
-        return SUPPORT_BRIGHTNESS
+        if 'status' in self._device:
+            if 'value' in self._device['status']:
+                return SUPPORT_BRIGHTNESS
+        return 0
 
     @property
     def should_poll(self):
@@ -147,7 +126,7 @@ class VimarLight(Light):
         
     @property
     def name(self):
-        """ Returns the name of the LightWave light. """
+        """ Returns the name of the light. """
         return self._name
 
     @property
@@ -159,6 +138,19 @@ class VimarLight(Light):
     def is_on(self):
         """ True if the LightWave light is on. """
         return self._state
+
+    @property
+    def icon(self):
+        """Icon to use in the frontend, if any."""
+        if self._name.find("VENTILATOR") != -1:
+            return "mdi:fan"
+        elif self._name.find("DIMMER") != -1:
+            return "mdi:speedometer"
+        elif self._name.find("LAMPE") != -1:
+            return "mdi:lightbulb"
+        return self.ICON
+
+        # return self.ICON
 
     def reset_status(self):
         """ set status from _device to class variables  """
@@ -174,7 +166,7 @@ class VimarLight(Light):
         if 'status' in self._device:
             if 'on/off' in self._device['status']:
                 self._state = True
-                self._vimarconnection.updateStatus(self._device['status']['on/off']['status_id'], '1')
+                self._vimarconnection.updateStatus(self._device['status']['on/off']['status_id'], 1)
                 
         if ATTR_BRIGHTNESS in kwargs:
             if 'status' in self._device:
@@ -183,26 +175,14 @@ class VimarLight(Light):
                     brightness_value = calculate_brightness(self._brightness)
                     self._vimarconnection.updateStatus(self._device['status']['value']['status_id'], brightness_value)
 
-        # if ATTR_BRIGHTNESS in kwargs:
-        #     self._brightness = kwargs[ATTR_BRIGHTNESS]
-        #     brightness_value = calculate_brightness(self._brightness)
-        #     # F1 = Light on and F0 = light off. FdP[0..32] is brightness. 32 is
-        #     # full. We want that when turning the light on.
-        #     msg = '321,!%sFdP%d|Lights %d|%s' % (
-        #         self._device_id, brightness_value, brightness_value, self._name)
-        # else:
-        #     msg = '321,!%sFdP32|Turn On|%s' % (self._device_id, self._name)
-
-        # self._vimarconnection.send_message(msg)
         self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """ Turn the Vimar light off. """
-
         if 'status' in self._device:
             if 'on/off' in self._device['status']:
                 self._state = False
-                self._vimarconnection.updateStatus(self._device['status']['on/off']['status_id'], '0')
+                self._vimarconnection.updateStatus(self._device['status']['on/off']['status_id'], 0)
 
         self.async_schedule_update_ha_state()
 

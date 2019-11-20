@@ -3,7 +3,7 @@
 import logging
 import voluptuous as vol
 # import asyncio
-import time
+# import time
 import logging
 # for communicating with vimar webserver
 import requests
@@ -11,7 +11,13 @@ from requests.exceptions import HTTPError
 import xml.etree.cElementTree as xmlTree
 # from . import DOMAIN
 
+#import queue
+#import threading
+#import socket
+
 _LOGGER = logging.getLogger(__name__)
+
+
 
 class VimarLink():
 
@@ -66,7 +72,7 @@ class VimarLink():
         return (VimarLink.session_id is not None)
 
     def updateStatus(self, object_id, status):
-        post = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws"><payload>%s</payload><hashcode>NO-HASHCODE</hashcode><optionals>NO-OPTIONALS</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>10</waittime><idobject>%s</idobject><operation>SETVALUE</operation></service-runonelement></soapenv:Body></soapenv:Envelope>
+        post = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws"><payload>%d</payload><hashcode>NO-HASHCODE</hashcode><optionals>NO-OPTIONALS</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>10</waittime><idobject>%s</idobject><operation>SETVALUE</operation></service-runonelement></soapenv:Body></soapenv:Envelope>
 		""" % (status, VimarLink.session_id, object_id)
 
         response = self.requestVimar(post)
@@ -80,7 +86,7 @@ class VimarLink():
 
                 return parsed_data
             
-        _LOGGER.warning("Empty payload from Status")
+        # _LOGGER.warning("Empty payload from Status")
         return None
 
 
@@ -146,7 +152,7 @@ FROM DPADD_OBJECT_RELATION r2
 INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.OPTIONALP IS NOT NULL
-WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION" AND o2.NAME LIKE "ROLL%%"
+WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o3.ID, o3.NAME, o3.CURRENT_VALUE, o3.OPTIONALP;""" % (VimarLink.maingroup_ids)
 
         payload = self.requestVimarSQL(select)
@@ -175,8 +181,8 @@ GROUP BY o2.ID, o2.NAME, o3.ID, o3.NAME, o3.CURRENT_VALUE, o3.OPTIONALP;""" % (V
                             'status_range': device['status_range'],
                         }
 
-            _LOGGER.info("getDevices")
-            _LOGGER.info(devices)
+            # _LOGGER.info("getDevices")
+            # _LOGGER.info(devices)
             
             return devices
         else:
