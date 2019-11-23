@@ -180,6 +180,18 @@ def parse_device_type(device):
     # mdi:lamp
     # mdi:border-all mdi:border-outside
     # mdi:lock mdi:lock-open-outline
+
+    # mdi-lightbulb
+    # mdi-lightbulb-on
+    # mdi-lightbulb-on-outline
+    # mdi-lightbulb-outline
+    # mdi-ceiling-light
+    # mdi-sunglasses
+    # mdi-fan
+    # mdi-power-plug
+    # mdi-power-plug-off 
+    # mdi-speedometer - DIMMER
+    # mdi-timelapse - DIMMER
     
     if device["object_type"] == "CH_Main_Automation":
         if device["object_name"].find("VENTILATOR") != -1:

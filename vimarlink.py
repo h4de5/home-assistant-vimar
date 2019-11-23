@@ -319,8 +319,10 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 # should be MAIN_GROUPS = '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
 
                 return parsed_data
-            
-        _LOGGER.warning("Empty payload from SQL")
+            else:
+                _LOGGER.warning("Empty payload from SQL")
+        else:
+            _LOGGER.warning("Empty response from SQL")
         return None
     
     # def _parse_sql_payload(self, string):
@@ -352,32 +354,36 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
 
     def _parse_sql_payload(self, string):
-        lines = string.split('\n')
-        return_list = []
-        keys = []
-        for line in lines:
-            if line:
-                prefix, values = line.split(':', 1)
-                # prefix = prefix.split('#', 1)[1].strip()
-                prefix = prefix.strip()
-                values = values.strip()[1:-1].split('\',\'')
+        try:
+            lines = string.split('\n')
+            return_list = []
+            keys = []
+            for line in lines:
+                if line:
+                    prefix, values = line.split(':', 1)
+                    # prefix = prefix.split('#', 1)[1].strip()
+                    prefix = prefix.strip()
+                    values = values.strip()[1:-1].split('\',\'')
 
-                if prefix == 'Response':
-                    pass
-                elif prefix == 'NextRows':
-                    pass
-                else:
-                    idx = 0
-                    row_dict = {}
-                    for value in values:
-                        if prefix == 'Row000001':
-                            keys.append(value)
-                        else:
-                            row_dict[keys[idx]] = value
-                            idx += 1
+                    if prefix == 'Response':
+                        pass
+                    elif prefix == 'NextRows':
+                        pass
+                    else:
+                        idx = 0
+                        row_dict = {}
+                        for value in values:
+                            if prefix == 'Row000001':
+                                keys.append(value)
+                            else:
+                                row_dict[keys[idx]] = value
+                                idx += 1
 
-                        if len(row_dict):
-                            return_list.append(row_dict)
+                            if len(row_dict):
+                                return_list.append(row_dict)
+        except Exception as err:
+            _LOGGER.error("Error parsing SQL payload: "+ repr(err)  + " payload: "+ string)
+            return []
 
         # _LOGGER.info("parseSQLPayload")
         # _LOGGER.info(return_list)

@@ -16,20 +16,7 @@ from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-ICONS = {"SML": "mdi:run", "RWL": "mdi:ceiling-light", "ZGP": "mdi:lamp"}
-
-# mdi-lightbulb
-# mdi-lightbulb-on
-# mdi-lightbulb-on-outline
-# mdi-lightbulb-outline
-# mdi-ceiling-light
-# mdi-sunglasses
-# mdi-fan
-# mdi-power-plug
-# mdi-power-plug-off 
-# mdi-speedometer - DIMMER
-# mdi-timelapse - DIMMER
-
+# see: https://developers.home-assistant.io/docs/en/entity_cover.html
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Cover platform."""
@@ -97,6 +84,7 @@ class VimarCover(CoverDevice):
         """Initialize the cover."""
         self._device = device
         self._name = self._device['object_name']
+        self._name = self._name.replace('ROLLLADEN', 'ROLLO')
         # change case
         self._name = self._name.title()
         self._device_id = device_id
@@ -203,7 +191,7 @@ class VimarCover(CoverDevice):
             if 'stop up/stop down' in self._device['status']:
                 self._state = 1
                 # self._vimarconnection.set_device_status(self._device['status']['stop up/stop down']['status_id'], 1)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 0)
+                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 1)
                 self.async_schedule_update_ha_state()
 
     ####### private helper methods
