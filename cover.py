@@ -2,15 +2,13 @@
 # credits to https://community.home-assistant.io/t/create-new-cover-component-not-working/50361/5
 
 from homeassistant.components.cover import (
-    CoverDevice, PLATFORM_SCHEMA, SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
+    CoverDevice, SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
 from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
     ATTR_CURRENT_TILT_POSITION,
     ATTR_POSITION,
     ATTR_TILT_POSITION,
 )
-from homeassistant.const import (
-    CONF_COVERS, CONF_DEVICE, STATE_CLOSED, STATE_OPEN, STATE_UNKNOWN)
 import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
@@ -59,13 +57,15 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     #     return False
 
     # _LOGGER.info(config)
-    vimarconnection = hass.data[DOMAIN]
+    vimarconnection = hass.data[DOMAIN]['connection']
     
-    # load Main Groups
-    vimarconnection.getMainGroups()
+    # # load Main Groups
+    # vimarconnection.getMainGroups()
 
-    # load devices
-    devices = vimarconnection.getDevices()
+    # # load devices
+    # devices = vimarconnection.getDevices()
+    # devices = hass.data[DOMAIN]['devices']
+    devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
 
     if len(devices) != 0:
         # for device_id, device_config in config.get(CONF_DEVICES, {}).items():
@@ -73,9 +73,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         #     name = device_config['name']
         #     covers.append(VimarCover(name, device_id, vimarconnection))
         for device_id, device in devices.items():
-            if (device['object_name'].find("ROLLLADEN") != -1 or 
-                device['object_name'].find("FERNBEDIENUNG") != -1):
-                covers.append(VimarCover(device, device_id, vimarconnection))
+            covers.append(VimarCover(device, device_id, vimarconnection))
 
 
     # fallback
@@ -99,6 +97,8 @@ class VimarCover(CoverDevice):
         """Initialize the cover."""
         self._device = device
         self._name = self._device['object_name']
+        # change case
+        self._name = self._name.title()
         self._device_id = device_id
         # _state = False .. 0, stop has not been pressed
         # _state = True .. 1, stop has been pressed
@@ -106,35 +106,46 @@ class VimarCover(CoverDevice):
         # _direction = 0 .. upwards
         # _direction = 1 .. downards
         self._direction = 0
-        self.reset_status()
+        self._reset_status()
         self._vimarconnection = vimarconnection
+
+    ####### default properties
+
+    @property
+    def should_poll(self):
+        """ polling is needed for a Vimar device. """
+        return True
 
     @property
     def name(self):
-        """Return the name of the cover."""
+        """ Returns the name of the device. """
         return self._name
 
+    @property
+    def icon(self):
+        """Icon to use in the frontend, if any."""
+        if 'icon' in self._device and self._device['icon']:
+            return self._device['icon']
+        # return self.ICON
+        return ("mdi:window-open","mdi:window-closed")[self.is_closed]
+
+    @property
+    def device_class(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        return self._device['device_class']
+
+    @property
+    def unique_id(self):
+        """Return the ID of this device."""
+        return self._device_id
+    
     @property
     def available(self):
         """Return True if entity is available."""
         return True
 
-    @property
-    def should_poll(self):
-        """ polling needed for a Vimar cover. """
-        return True
 
-    def update(self):
-        """Fetch new state data for this cover.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        # self._light.update()
-        # self._state = self._light.is_on()
-        # self._brightness = self._light.brightness
-        self._device = self._vimarconnection.getDevice(self._device_id)
-        self.reset_status()
-        
-################
+    ####### cover properties
 
     @property
     def is_closed(self):
@@ -148,53 +159,61 @@ class VimarCover(CoverDevice):
         else:
             return False
 
-    # @property
-    async def async_close_cover(self, **kwargs):
-        """Close the cover."""
-        if 'status' in self._device:
-            if 'up/down' in self._device['status']:
-                self._direction = 1
-                self._vimarconnection.updateStatus(self._device['status']['up/down']['status_id'], 1)
-
-    async def async_open_cover(self, **kwargs):
-        """Open the cover."""
-        if 'status' in self._device:
-            if 'up/down' in self._device['status']:
-                self._direction = 0
-                self._vimarconnection.updateStatus(self._device['status']['up/down']['status_id'], 0)
-
-    async def async_stop_cover(self, **kwargs):
-        """Stop the cover."""
-        if 'status' in self._device:
-            if 'stop up/stop down' in self._device['status']:
-                self._state = 1
-                self._vimarconnection.updateStatus(self._device['status']['stop up/stop down']['status_id'], 1)
-        
-    # @property
-    # def device_class(self):
-    #     """Return the class of this device, from component DEVICE_CLASSES."""
-    #     return 'garage'
-
     @property
     def supported_features(self):
         """Flag supported features."""
         return SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
 
-    # @property
-    # def icon(self):
-    #     """Icon to use in the frontend, if any."""
-    #     data = self._data.get(self._hue_id)
-    #     if data:
-    #         icon = ICONS.get(data["model"])
-    #         if icon:
-    #             return icon
-    #     return self.ICON
+    ####### async getter and setter
 
-    def reset_status(self):
+    # def update(self):
+    async def async_update(self):
+        """Fetch new state data for this cover.
+        This is the only method that should fetch new data for Home Assistant.
+        """
+        # self._light.update()
+        # self._state = self._light.is_on()
+        # self._brightness = self._light.brightness
+        # self._device = self._vimarconnection.getDevice(self._device_id)
+        # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+        self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
+        self._reset_status()
+
+    async def async_close_cover(self, **kwargs):
+        """Close the cover."""
+        if 'status' in self._device and self._device['status']:
+            if 'up/down' in self._device['status']:
+                self._direction = 1
+                # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 1)
+                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 1)
+        self.async_schedule_update_ha_state()
+
+    async def async_open_cover(self, **kwargs):
+        """Open the cover."""
+        if 'status' in self._device and self._device['status']:
+            if 'up/down' in self._device['status']:
+                self._direction = 0
+                # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 0)
+                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 0)
+                self.async_schedule_update_ha_state()
+
+    async def async_stop_cover(self, **kwargs):
+        """Stop the cover."""
+        if 'status' in self._device and self._device['status']:
+            if 'stop up/stop down' in self._device['status']:
+                self._state = 1
+                # self._vimarconnection.set_device_status(self._device['status']['stop up/stop down']['status_id'], 1)
+                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 0)
+                self.async_schedule_update_ha_state()
+
+    ####### private helper methods
+
+    def _reset_status(self):
         """ set status from _device to class variables  """
-        if 'status' in self._device:
+        if 'status' in self._device and self._device['status']:
             if 'stop up/stop down' in self._device['status']:
                 self._state = (False, True)[self._device['status']['stop up/stop down']['status_value'] != '0']
             if 'up/down' in self._device['status']:
                 self._direction = int(self._device['status']['up/down']['status_value'])
 
+# end class VimarCover

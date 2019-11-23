@@ -17,39 +17,35 @@ import xml.etree.cElementTree as xmlTree
 
 _LOGGER = logging.getLogger(__name__)
 
-
-
 class VimarLink():
 
     # the_queue = queue.Queue()
     # thread = None
-    host = ''
-    username = ''
-    password = ''
+    
 
     # private
-    session_id = None
-    maingroup_ids = None
+    _host = ''
+    _username = ''
+    _password = ''
+    _session_id = None
+    _maingroup_ids = None
 
     def __init__(self, host=None, username=None, password=None):
-        _LOGGER.info("Vimar link started")
+        _LOGGER.info("Vimar link initialized")
 
         if host is not None:
-            VimarLink.host = host
+            VimarLink._host = host
         if username is not None:
-            VimarLink.username = username
+            VimarLink._username = username
         if password is not None:
-            VimarLink.password = password
-
+            VimarLink._password = password
 
     def login(self):
-        loginurl = "https://%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (VimarLink.host, VimarLink.username, VimarLink.password)
-
-        result = self.request(loginurl)
+        loginurl = "https://%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (VimarLink._host, VimarLink._username, VimarLink._password)
+        result = self._request(loginurl)
 
         if result is not None:
-            _LOGGER.info("Vimar login result: " + result)
-            xml = self.parseXML(result)
+            xml = self._parse_xml(result)
             logincode = xml.find('result')
             loginmessage= xml.find('message')
             if logincode is not None and logincode.text != "0":
@@ -58,30 +54,30 @@ class VimarLink():
                 else:
                     _LOGGER.error("Error during login: " + logincode.text)
             else:
+                _LOGGER.info("Vimar login successfull")
                 loginsession = xml.find('sessionid')
-                _LOGGER.info("Got a new Session id: " + loginsession.text)
-
-                VimarLink.session_id = loginsession.text
+                _LOGGER.debug("Got a new Vimar Session id: " + loginsession.text)
+                VimarLink._session_id = loginsession.text
 
         return result
 
-    def is_valid_login(self):
-        if (VimarLink.session_id is None):
+    def check_login(self):
+        if (VimarLink._session_id is None):
             self.login()
 
-        return (VimarLink.session_id is not None)
+        return (VimarLink._session_id is not None)
 
-    def updateStatus(self, object_id, status):
+    def set_device_status(self, object_id, status):
         post = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws"><payload>%d</payload><hashcode>NO-HASHCODE</hashcode><optionals>NO-OPTIONALS</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>10</waittime><idobject>%s</idobject><operation>SETVALUE</operation></service-runonelement></soapenv:Body></soapenv:Envelope>
-		""" % (status, VimarLink.session_id, object_id)
+		""" % (status, VimarLink._session_id, object_id)
 
-        response = self.requestVimar(post)
+        response = self._request_vimar(post)
         if response is not None:
             payload = response.find('.//payload')
             if payload is not None:
-                parsed_data = self.parseSQLPayload(payload.text)
+                parsed_data = self._parse_sql_payload(payload.text)
 
-                _LOGGER.info("updateStatus")
+                _LOGGER.info("set_device_status")
                 _LOGGER.info(parsed_data)
 
                 return parsed_data
@@ -90,21 +86,63 @@ class VimarLink():
         return None
 
 
-    def getDevice(self, object_id):
+    def get_device_status(self, object_id, status_id = None):
+
+        status_list = {}
+
+#, o3.OPTIONALP AS status_range
+        select = """SELECT o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
+FROM DPADD_OBJECT_RELATION r3
+INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
+WHERE r3.PARENTOBJ_ID IN (%s) AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
+ORDER BY o3.ID;""" % (object_id)
+
+        payload = self._request_vimar_sql(select)
+        if payload is not None:
+            # there will be multible times the same device
+            # each having a different status part (on/off + dimming etc.)
+            for device in payload:
+                if status_list == {}:
+                    status_list = {
+                        device['status_name']: {
+                            'status_id': device['status_id'],
+                            'status_value': device['status_value'],
+                            # 'status_range': device['status_range'],
+                        }
+                    }
+                else:
+                    if device['status_name'] != '':
+                        status_list[device['status_name']] = {
+                            'status_id': device['status_id'],
+                            'status_value': device['status_value'],
+                            # 'status_range': device['status_range'],
+                        }
+
+            # _LOGGER.info("getDevice")
+            # _LOGGER.info(single_device)
+            
+            return status_list
+        else:
+            return {}
+
+        return {}
+
+    def get_device(self, object_id):
 
         single_device = {}
 
-        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name,
-o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value, o3.OPTIONALP AS status_range
+#, o3.OPTIONALP AS status_range
+        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
+o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
-INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
+INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene") 
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
-INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.OPTIONALP IS NOT NULL
-WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
-GROUP BY o2.ID, o2.NAME, o3.ID, o3.NAME, o3.CURRENT_VALUE, o3.OPTIONALP
-ORDER BY o2.NAME;""" % (object_id)
+INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
+WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION" 
+GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
+ORDER BY o2.NAME, o3.ID;""" % (object_id)
 
-        payload = self.requestVimarSQL(select)
+        payload = self._request_vimar_sql(select)
         if payload is not None:
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
@@ -114,11 +152,12 @@ ORDER BY o2.NAME;""" % (object_id)
                         'room_ids': device['room_ids'].split(','),
                         'object_id': device['object_id'],
                         'object_name': device['object_name'],
+                        'object_type': device['object_type'],
                         'status': {
                             device['status_name']: {
                                 'status_id': device['status_id'],
                                 'status_value': device['status_value'],
-                                'status_range': device['status_range'],
+                                # 'status_range': device['status_range'],
                             }
                         }
                     }
@@ -127,7 +166,7 @@ ORDER BY o2.NAME;""" % (object_id)
                         single_device['status'][device['status_name']] = {
                             'status_id': device['status_id'],
                             'status_value': device['status_value'],
-                            'status_range': device['status_range'],
+                            # 'status_range': device['status_range'],
                         }
 
             # _LOGGER.info("getDevice")
@@ -139,23 +178,70 @@ ORDER BY o2.NAME;""" % (object_id)
 
         return None
 
-    def getDevices(self):
+# Device example:
+#   'room_id' => string '439' (length=3)
+#   'object_id' => string '768' (length=3)
+#   'object_name' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
+#   'ID' => string '768' (length=3)
+#   'NAME' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
+#   'DESCRIPTION' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
+#   'TYPE' => string 'BYMEIDX' (length=7)
+#   'MIN_VALUE' => string '434' (length=3)
+#   'MAX_VALUE' => string '391' (length=3)
+#   'CURRENT_VALUE' => string '' (length=0)
+#   'STATUS_ID' => string '-1' (length=2)
+#   'RENDERING_ID' => string '141' (length=3)
+#   'IMAGE_PATH' => string 'on_off/ICN_DV_LuceGenerale_on.png' (length=33)
+#   'IS_STOPPABLE' => string '0' (length=1)
+#   'MSP' => string '158' (length=3)
+#   'OPTIONALP' => string 'index_id=158|category=1' (length=23)
+#   'PHPCLASS' => string 'dpadVimarBymeIdx' (length=16)
+#   'COMMUNICATIONSECTION_ID' => string '6' (length=1)
+#   'IS_BOOLEAN' => string '0' (length=1)
+#   'WITH_PERMISSION' => string '1' (length=1)
+#   'TRACK_FLAG' => string '0' (length=1)
+#   'IS_REMOTABLE' => string '0' (length=1)
+#   'REMOTABLE_FILTER' => string '*' (length=1)
+#   'OWNED_BY' => string 'LOCAL' (length=5)
+#   'HAS_GRANT' => string '0' (length=1)
+#   'GRANT_HASHCODE' => string '' (length=0)
+#   'AUTOMATIC_REFRESH_FLAG' => string '0' (length=1)
+#   'TRACK_FLAG_ONREAD' => string '0' (length=1)
+#   'IS_DISCOVERABLE' => string '1' (length=1)
 
-        if VimarLink.maingroup_ids is None:
+#   'VALUES_TYPE' => string 'CH_Dimmer_Automation' (length=20)
+#   'ENABLE_FLAG' => string '1' (length=1)
+#   'IS_READABLE' => string '1' (length=1)
+#   'IS_WRITABLE' => string '1' (length=1)
+#   'IS_VISIBLE' => string '1' (length=1)
+
+    def get_devices(self):
+
+        _LOGGER.info("getDevices started")
+
+        if VimarLink._maingroup_ids is None:
             return None
 
         devices = {}
 
-        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name,
-o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value, o3.OPTIONALP AS status_range
-FROM DPADD_OBJECT_RELATION r2
-INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
-INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
-INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.OPTIONALP IS NOT NULL
-WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
-GROUP BY o2.ID, o2.NAME, o3.ID, o3.NAME, o3.CURRENT_VALUE, o3.OPTIONALP;""" % (VimarLink.maingroup_ids)
+        # o3.OPTIONALP AS status_range
+        # AND o3.OPTIONALP IS NOT NULL
+        # 
+        #  
+        # AND
+        # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE = "1" AND o2.IS_VISIBLE = "1"
 
-        payload = self.requestVimarSQL(select)
+        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
+o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
+FROM DPADD_OBJECT_RELATION r2
+INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene") 
+INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
+INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
+WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION" 
+GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
+ORDER BY o2.NAME, o3.ID;""" % (VimarLink._maingroup_ids)
+
+        payload = self._request_vimar_sql(select)
         if payload is not None:
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
@@ -165,11 +251,12 @@ GROUP BY o2.ID, o2.NAME, o3.ID, o3.NAME, o3.CURRENT_VALUE, o3.OPTIONALP;""" % (V
                         'room_ids': device['room_ids'].split(','),
                         'object_id': device['object_id'],
                         'object_name': device['object_name'],
+                        'object_type': device['object_type'],
                         'status': {
                             device['status_name']: {
                                 'status_id': device['status_id'],
                                 'status_value': device['status_value'],
-                                'status_range': device['status_range'],
+                                # 'status_range': device['status_range'],
                             }
                         }
                     }
@@ -178,9 +265,11 @@ GROUP BY o2.ID, o2.NAME, o3.ID, o3.NAME, o3.CURRENT_VALUE, o3.OPTIONALP;""" % (V
                         devices[device['object_id']]['status'][device['status_name']] = {
                             'status_id': device['status_id'],
                             'status_value': device['status_value'],
-                            'status_range': device['status_range'],
+                            # 'status_range': device['status_range'],
                         }
 
+            
+            _LOGGER.info("getDevices ends")
             # _LOGGER.info("getDevices")
             # _LOGGER.info(devices)
             
@@ -190,38 +279,38 @@ GROUP BY o2.ID, o2.NAME, o3.ID, o3.NAME, o3.CURRENT_VALUE, o3.OPTIONALP;""" % (V
 
         return None
 
-    def getMainGroups(self):
-        if VimarLink.maingroup_ids is not None:
-            return VimarLink.maingroup_ids
+    def get_main_groups(self):
+        if VimarLink._maingroup_ids is not None:
+            return VimarLink._maingroup_ids
 
         select = """SELECT GROUP_CONCAT(o1.id) as MAIN_GROUPS FROM DPADD_OBJECT o0
 INNER JOIN DPADD_OBJECT_RELATION r1 ON o0.ID = r1.PARENTOBJ_ID AND r1.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 INNER JOIN DPADD_OBJECT o1 ON r1.CHILDOBJ_ID = o1.ID AND o1.type = "GROUP"
 WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
-        payload = self.requestVimarSQL(select)
+        payload = self._request_vimar_sql(select)
         if payload is not None:
-            VimarLink.maingroup_ids = payload[0]['MAIN_GROUPS']
-            return VimarLink.maingroup_ids
+            VimarLink._maingroup_ids = payload[0]['MAIN_GROUPS']
+            return VimarLink._maingroup_ids
         else:
             return None
     
-    def requestVimarSQL(self, select):
+    def _request_vimar_sql(self, select):
 
         select = select.replace('\r\n', ' ').replace('\n', ' ').replace('"', '&apos;').replace('\'', '&apos;')
 
-        post = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-databasesocketoperation xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>5</waittime><function>DML-SQL</function><type>SELECT</type><statement>%s</statement><statement-len>%d</statement-len></service-databasesocketoperation></soapenv:Body></soapenv:Envelope>' % (VimarLink.session_id, select, len(select))
+        post = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-databasesocketoperation xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>5</waittime><function>DML-SQL</function><type>SELECT</type><statement>%s</statement><statement-len>%d</statement-len></service-databasesocketoperation></soapenv:Body></soapenv:Envelope>' % (VimarLink._session_id, select, len(select))
 
-        # _LOGGER.info("in requestVimarSQL")
+        # _LOGGER.info("in _request_vimar_sql")
         # _LOGGER.info(post)
-        response = self.requestVimar(post)
+        response = self._request_vimar(post)
         # _LOGGER.info("response: ")
         # _LOGGER.info(response)
         if response is not None:
             payload = response.find('.//payload')
             if payload is not None:
                 # _LOGGER.info("Got a new payload: " + payload.text)
-                parsed_data = self.parseSQLPayload(payload.text)
+                parsed_data = self._parse_sql_payload(payload.text)
                 # TODO: we need to move parseSQLPayload over to pyton,
                 # Response: DBMG-000
                 # NextRows: 2
@@ -234,7 +323,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         _LOGGER.warning("Empty payload from SQL")
         return None
     
-    # def parseSQLPayload(self, string):
+    # def _parse_sql_payload(self, string):
     #     lines = string.split('\n')
     #     return_dict = {}
     #     keys = []
@@ -262,7 +351,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
     #     return return_dict
 
 
-    def parseSQLPayload(self, string):
+    def _parse_sql_payload(self, string):
         lines = string.split('\n')
         return_list = []
         keys = []
@@ -294,8 +383,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         # _LOGGER.info(return_list)
         return return_list
 
-    def requestVimar(self, post):
-        url = 'https://%s/cgi-bin/dpadws' % VimarLink.host
+    def _request_vimar(self, post):
+        url = 'https://%s/cgi-bin/dpadws' % VimarLink._host
         headers = {
 			'SOAPAction': 'dbSoapRequest',
 			'SOAPServer': '',
@@ -305,11 +394,11 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 			# otherwise header and payload is send in two requests if payload is bigger then 1024byte
 			'Expect': ''
         }
-        # _LOGGER.info("in requestVimar")
+        # _LOGGER.info("in _request_vimar")
         # _LOGGER.info(post)
-        response = self.request(url, post, headers)
+        response = self._request(url, post, headers)
         if response is not None:
-            responsexml = self.parseXML(response)
+            responsexml = self._parse_xml(response)
             # _LOGGER.info("responsexml: ")
             # _LOGGER.info(responsexml)
 
@@ -317,16 +406,16 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         else:
             return None
     
-    def parseXML(self, xml):
+    def _parse_xml(self, xml):
         try:
             root = xmlTree.fromstring(xml)
         except Exception as err:
-            _LOGGER.error("Error parsing XML: " + xml + " - " + err)
+            _LOGGER.error("Error parsing XML: " + xml + " - " + repr(err))
         else:
             return root
         return None
 
-    def request(self, url, post = None, headers = None, timeout = 5, checkSSL = False):
+    def _request(self, url, post = None, headers = None, timeout = 5, checkSSL = False):
         test = []
 
         # _LOGGER.info("request to " + url)
@@ -353,9 +442,11 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             
 
         except HTTPError as http_err:
-            _LOGGER.error(f'HTTP error occurred: {http_err}') # Python 3.6
+            # _LOGGER.error(f'HTTP error occurred: {http_err}') # Python 3.6
+            _LOGGER.error('HTTP error occurred: '+ str(http_err)) 
         except Exception as err:
-            _LOGGER.error(f'Other error occurred: {err}') # Python 3.6
+            # _LOGGER.error(f'Other error occurred: {err}') # Python 3.6
+            _LOGGER.error('Other error occurred: '+ repr(err))
         else:
             # _LOGGER.info('request Successful!')
             # _LOGGER.info('RAW Response: ')

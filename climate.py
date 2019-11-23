@@ -1,7 +1,12 @@
-"""Platform for light integration."""
-# credits to https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
+"""Platform for climate integration."""
+# credits to https://github.com/GeoffAtHome/climatewaverf-home-assistant-climates/blob/master/climatewave.py
 
-from homeassistant.components.light import (Light, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+from homeassistant.components.climate import ClimateDevice
+from homeassistant.components.climate.const import (
+    SUPPORT_TARGET_TEMPERATURE,
+    SUPPORT_ON_OFF, STATE_HEAT)
+from homeassistant.const import (ATTR_TEMPERATURE,
+    STATE_OFF, TEMP_CELSIUS)
 import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
@@ -15,14 +20,14 @@ from . import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Vimar Light platform."""
+    """Set up the Vimar Climate platform."""
 
     # We only want this platform to be set up via discovery.
     if discovery_info is None:
         return
 
-    _LOGGER.info("Vimar Light started!")
-    lights = []
+    _LOGGER.info("Vimar Climate started!")
+    climates = []
 
     # _LOGGER.info("Vimar Plattform Config: ")
     # # _LOGGER.info(config)
@@ -54,23 +59,23 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         # for device_id, device_config in config.get(CONF_DEVICES, {}).items():
         # for device_id, device_config in devices.items():
         #     name = device_config['name']
-        #     lights.append(VimarLight(name, device_id, vimarconnection))
+        #     climates.append(VimarClimate(name, device_id, vimarconnection))
         for device_id, device in devices.items():
-            lights.append(VimarLight(device, device_id, vimarconnection))
+            climates.append(VimarClimate(device, device_id, vimarconnection))
 
 
     # fallback
-    # if len(lights) == 0:
+    # if len(climates) == 0:
     #     # Config is empty so generate a default set of switches
     #     for room in range(1, 2):
     #         for device in range(1, 2):
     #             name = "Room " + str(room) + " Device " + str(device)
     #             device_id = "R" + str(room) + "D" + str(device)
-    #             lights.append(VimarLight({'object_name': name}, device_id, link))
+    #             climates.append(VimarClimate({'object_name': name}, device_id, link))
 
-    if len(lights) != 0:
-        async_add_entities(lights)
-    _LOGGER.info("Vimar Light complete!")
+    if len(climates) != 0:
+        async_add_entities(climates)
+    _LOGGER.info("Vimar Climate complete!")
 
 
 def calculate_brightness(brightness):
@@ -85,13 +90,13 @@ def recalculate_brightness(brightness):
 
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 
-class VimarLight(Light):
-    """ Provides a Vimar lights. """
+class VimarClimate(Climate):
+    """ Provides a Vimar climates. """
 
-    ICON = "mdi:ceiling-light"
+    ICON = "mdi:ceiling-climate"
 
     def __init__(self, device, device_id, vimarconnection):
-        """Initialize the light."""
+        """Initialize the climate."""
         self._device = device
         self._name = self._device['object_name']
         # change case
@@ -115,11 +120,6 @@ class VimarLight(Light):
         return self._name
 
     @property
-    def color(self):
-        """ Returns the name of the device. """
-        return "red"
-
-    @property
     def icon(self):
         """Icon to use in the frontend, if any."""
         if 'icon' in self._device and self._device['icon']:
@@ -141,7 +141,7 @@ class VimarLight(Light):
         """Return True if entity is available."""
         return True
 
-    ####### light properties
+    ####### climate properties
     
     @property
     def is_on(self):
@@ -150,7 +150,7 @@ class VimarLight(Light):
 
     @property
     def brightness(self):
-        """ Brightness of this light between 0..255. """
+        """ Brightness of this climate between 0..255. """
         return self._brightness
 
     @property
@@ -168,19 +168,19 @@ class VimarLight(Light):
     # @Throttle(MIN_TIME_BETWEEN_UPDATES)
     
     async def async_update(self):
-        """Fetch new state data for this light.
+        """Fetch new state data for this climate.
         This is the only method that should fetch new data for Home Assistant.
         """
-        # self._light.update()
-        # self._state = self._light.is_on()
-        # self._brightness = self._light.brightness
+        # self._climate.update()
+        # self._state = self._climate.is_on()
+        # self._brightness = self._climate.brightness
         # self._device = self._vimarconnection.getDevice(self._device_id)
         # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
         self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
         self._reset_status()
 
     async def async_turn_on(self, **kwargs):
-        """ Turn the Vimar light on. """
+        """ Turn the Vimar climate on. """
 
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
@@ -200,7 +200,7 @@ class VimarLight(Light):
         self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs):
-        """ Turn the Vimar light off. """
+        """ Turn the Vimar climate off. """
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = False
@@ -221,4 +221,4 @@ class VimarLight(Light):
                 self._brightness = recalculate_brightness(int(self._device['status']['value']['status_value']))
 
         
-# end class VimarLight
+# end class VimarClimate

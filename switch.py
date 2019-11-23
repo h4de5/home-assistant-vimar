@@ -1,7 +1,6 @@
 """Platform for switch integration."""
 from homeassistant.helpers.entity import ToggleEntity
 from homeassistant.components import switch
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
@@ -40,13 +39,15 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     #     return False
 
     # _LOGGER.info(config)
-    vimarconnection = hass.data[DOMAIN]
+    vimarconnection = hass.data[DOMAIN]['connection']
     
-    # load Main Groups
-    vimarconnection.getMainGroups()
+    # # load Main Groups
+    # vimarconnection.getMainGroups()
 
-    # load devices
-    devices = vimarconnection.getDevices()
+    # # load devices
+    # devices = vimarconnection.getDevices()
+    # devices = hass.data[DOMAIN]['devices']
+    devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
 
     if len(devices) != 0:
         # for device_id, device_config in config.get(CONF_DEVICES, {}).items():
@@ -54,8 +55,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         #     name = device_config['name']
         #     switches.append(VimarSwitch(name, device_id, vimarconnection))
         for device_id, device in devices.items():
-            if device['object_name'].find("STECKDOSE") != -1:
-                switches.append(VimarSwitch(device, device_id, vimarconnection))
+            switches.append(VimarSwitch(device, device_id, vimarconnection))
 
 
     # fallback
@@ -72,20 +72,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("Vimar Switch complete!")
 
 
-def calculate_brightness(brightness):
-    """Scale brightness from 0..255 to 0..100"""
-    return round((brightness * 100) / 255)
-# end dev calculate_brightness
-
-def recalculate_brightness(brightness):
-    """Scale brightness from 0..100 to 0..255"""
-    return round((brightness * 255) / 100)
-# end dev recalculate_brightness
-
-
-
-
-
 class VimarSwitch(ToggleEntity):
     """ Provides a Vimar switches. """
 
@@ -95,69 +81,90 @@ class VimarSwitch(ToggleEntity):
         """Initialize the switch."""
         self._device = device
         self._name = self._device['object_name']
+        # change case
+        self._name = self._name.title()
         self._device_id = device_id
         self._state = False
-        self.reset_status()
+        self._reset_status()
         self._vimarconnection = vimarconnection
 
-    # @property
-    # def supported_features(self):
-    #     """Flag supported features."""
-    #     if 'status' in self._device:
-    #         if 'value' in self._device['status']:
-    #             return SUPPORT_BRIGHTNESS
-    #     return None
+    ####### default properties
 
     @property
     def should_poll(self):
-        """ polling needed for a Vimar switch. """
+        """ polling is needed for a Vimar device. """
         return True
 
-    def update(self):
-        """Fetch new state data for this switch.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        self._device = self._vimarconnection.getDevice(self._device_id)
-        self.reset_status()
-        
     @property
     def name(self):
-        """ Returns the name of the switch. """
+        """ Returns the name of the device. """
         return self._name
-
-    @property
-    def is_on(self):
-        """ True if the SwitchWave switch is on. """
-        return self._state
 
     @property
     def icon(self):
         """Icon to use in the frontend, if any."""
-        # return ICON
+        if 'icon' in self._device and self._device['icon']:
+            return self._device['icon']
         return self.ICON
 
-    def reset_status(self):
-        """ set status from _device to class variables  """
-        if 'status' in self._device:
-            if 'on/off' in self._device['status']:
-                self._state = (False, True)[self._device['status']['on/off']['status_value'] != '0']
-            
+    @property
+    def device_class(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        return self._device['device_class']
+
+    @property
+    def unique_id(self):
+        """Return the ID of this device."""
+        return self._device_id
+    
+    @property
+    def available(self):
+        """Return True if entity is available."""
+        return True
+
+    ####### switch properties
+
+    @property
+    def is_on(self):
+        """ True if the device is on. """
+        return self._state
+
+    ####### async getter and setter
+
+    # def update(self):
+    async def async_update(self):
+        """Fetch new state data for this switch.
+        This is the only method that should fetch new data for Home Assistant.
+        """
+        # self._device = self._vimarconnection.getDevice(self._device_id)
+        # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+        self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
+        self._reset_status()            
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar switch on. """
-        if 'status' in self._device:
+        if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = True
-                self._vimarconnection.updateStatus(self._device['status']['on/off']['status_id'], 1)
+                # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
+                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
         self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """ Turn the Vimar switch off. """
-        if 'status' in self._device:
+        if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = False
-                self._vimarconnection.updateStatus(self._device['status']['on/off']['status_id'], 0)
-
+                # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
+                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
         self.async_schedule_update_ha_state()
 
-        
+    ####### private helper methods
+
+    def _reset_status(self):
+        """ set status from _device to class variables  """
+        if 'status' in self._device and self._device['status']:
+            if 'on/off' in self._device['status']:
+                self._state = (False, True)[self._device['status']['on/off']['status_value'] != '0']
+
+# end class VimarSwitch
