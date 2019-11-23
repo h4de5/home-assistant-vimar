@@ -138,26 +138,31 @@ class VimarSwitch(ToggleEntity):
         """
         # self._device = self._vimarconnection.getDevice(self._device_id)
         # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+        old_status = self._device['status']
         self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
-        self._reset_status()            
+        self._reset_status()
+        if old_status != self._device['status']:
+            self.async_schedule_update_ha_state()
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar switch on. """
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = True
+                self._device['status']['on/off']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
-        self.async_schedule_update_ha_state()
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
+                self.async_schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """ Turn the Vimar switch off. """
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = False
+                self._device['status']['on/off']['status_value'] = '0'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
-        self.async_schedule_update_ha_state()
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
+                self.async_schedule_update_ha_state()
 
     ####### private helper methods
 
@@ -166,5 +171,6 @@ class VimarSwitch(ToggleEntity):
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = (False, True)[self._device['status']['on/off']['status_value'] != '0']
+            
 
 # end class VimarSwitch

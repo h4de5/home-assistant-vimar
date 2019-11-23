@@ -176,8 +176,11 @@ class VimarLight(Light):
         # self._brightness = self._light.brightness
         # self._device = self._vimarconnection.getDevice(self._device_id)
         # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+        old_status = self._device['status']
         self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
         self._reset_status()
+        if old_status != self._device['status']:
+            self.async_schedule_update_ha_state()
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar light on. """
@@ -185,17 +188,19 @@ class VimarLight(Light):
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = True
+                self._device['status']['on/off']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
                 # await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
                 
         if ATTR_BRIGHTNESS in kwargs:
             if 'status' in self._device and self._device['status']:
                 if 'value' in self._device['status']:
                     self._brightness = kwargs[ATTR_BRIGHTNESS]
                     brightness_value = calculate_brightness(self._brightness)
+                    self._device['status']['value']['status_value'] = brightness_value
                     # self._vimarconnection.set_device_status(self._device['status']['value']['status_id'], brightness_value)
-                    self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['value']['status_id'], brightness_value)
+                    await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['value']['status_id'], brightness_value)
 
         self.async_schedule_update_ha_state()
 
@@ -204,10 +209,11 @@ class VimarLight(Light):
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = False
+                self._device['status']['on/off']['status_value'] = '0'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
 
-        self.async_schedule_update_ha_state()
+                self.async_schedule_update_ha_state()
 
 
     ####### private helper methods
@@ -219,6 +225,7 @@ class VimarLight(Light):
                 self._state = (False, True)[self._device['status']['on/off']['status_value'] != '0']
             if 'value' in self._device['status']:
                 self._brightness = recalculate_brightness(int(self._device['status']['value']['status_value']))
+            
 
         
 # end class VimarLight

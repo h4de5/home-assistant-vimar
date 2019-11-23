@@ -164,25 +164,30 @@ class VimarCover(CoverDevice):
         # self._brightness = self._light.brightness
         # self._device = self._vimarconnection.getDevice(self._device_id)
         # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+        old_status = self._device['status']
         self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
         self._reset_status()
+        if old_status != self._device['status']:
+            self.async_schedule_update_ha_state()
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
         if 'status' in self._device and self._device['status']:
             if 'up/down' in self._device['status']:
                 self._direction = 1
+                self._device['status']['up/down']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 1)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 1)
-        self.async_schedule_update_ha_state()
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 1)
+                self.async_schedule_update_ha_state()
 
     async def async_open_cover(self, **kwargs):
         """Open the cover."""
         if 'status' in self._device and self._device['status']:
             if 'up/down' in self._device['status']:
                 self._direction = 0
+                self._device['status']['up/down']['status_value'] = '0'
                 # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 0)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 0)
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 0)
                 self.async_schedule_update_ha_state()
 
     async def async_stop_cover(self, **kwargs):
@@ -190,8 +195,9 @@ class VimarCover(CoverDevice):
         if 'status' in self._device and self._device['status']:
             if 'stop up/stop down' in self._device['status']:
                 self._state = 1
+                self._device['status']['stop up/stop down']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['stop up/stop down']['status_id'], 1)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 1)
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 1)
                 self.async_schedule_update_ha_state()
 
     ####### private helper methods
@@ -203,5 +209,6 @@ class VimarCover(CoverDevice):
                 self._state = (False, True)[self._device['status']['stop up/stop down']['status_value'] != '0']
             if 'up/down' in self._device['status']:
                 self._direction = int(self._device['status']['up/down']['status_value'])
+            
 
 # end class VimarCover
