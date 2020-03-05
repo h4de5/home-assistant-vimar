@@ -323,6 +323,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 _LOGGER.warning("Empty payload from SQL")
         else:
             _LOGGER.warning("Empty response from SQL")
+            _LOGGER.info("Errorous SQL: " + select)
         return None
     
     # def _parse_sql_payload(self, string):
@@ -422,16 +423,18 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         return None
 
     def _request(self, url, post = None, headers = None, timeout = 5, checkSSL = False):
-        test = []
+        
 
         # _LOGGER.info("request to " + url)
 
         try:
+            timeouts = (5, 10)
 
             if post is None:
                 response = requests.get(url,
                     headers= headers,
-                    verify= checkSSL)
+                    verify= checkSSL,
+                    timeout= timeouts)
             else:
                 # _LOGGER.info("sending post: ")
                 # _LOGGER.info(post)
@@ -441,7 +444,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 response = requests.post(url,
                     data= post,
                     headers= headers,
-                    verify= checkSSL)
+                    verify= checkSSL,
+                    timeout= timeouts)
 
             # If the response was successful, no Exception will be raised
             response.raise_for_status()

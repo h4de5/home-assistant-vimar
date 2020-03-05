@@ -1,6 +1,9 @@
 """Platform for switch integration."""
 from homeassistant.helpers.entity import ToggleEntity
 from homeassistant.components import switch
+from datetime import timedelta
+from time import gmtime, strftime, localtime, mktime
+from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
@@ -12,6 +15,9 @@ import asyncio
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+SCAN_INTERVAL = timedelta(seconds=20)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Switch platform."""
@@ -132,10 +138,12 @@ class VimarSwitch(ToggleEntity):
     ####### async getter and setter
 
     # def update(self):
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
         """Fetch new state data for this switch.
         This is the only method that should fetch new data for Home Assistant.
         """
+        starttime = localtime()
         # self._device = self._vimarconnection.getDevice(self._device_id)
         # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
         old_status = self._device['status']
@@ -143,6 +151,8 @@ class VimarSwitch(ToggleEntity):
         self._reset_status()
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
+
+        _LOGGER.info("Vimar Switch update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar switch on. """

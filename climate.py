@@ -7,6 +7,9 @@ from homeassistant.components.climate.const import (
     SUPPORT_ON_OFF, STATE_HEAT)
 from homeassistant.const import (ATTR_TEMPERATURE,
     STATE_OFF, TEMP_CELSIUS)
+from datetime import timedelta
+from time import gmtime, strftime, localtime, mktime
+from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
@@ -18,6 +21,9 @@ import asyncio
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+SCAN_INTERVAL = timedelta(seconds=60)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2) 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Climate platform."""
@@ -164,13 +170,14 @@ class VimarClimate(Climate):
     ####### async getter and setter
     
     # def update(self):
-    # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
-    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    
+    # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py  
+    # see: https://github.com/home-assistant/home-assistant/blob/master/homeassistant/components/dweet/__init__.py
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
         """Fetch new state data for this climate.
         This is the only method that should fetch new data for Home Assistant.
         """
+        starttime = localtime()
         # self._climate.update()
         # self._state = self._climate.is_on()
         # self._brightness = self._climate.brightness
@@ -178,6 +185,8 @@ class VimarClimate(Climate):
         # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
         self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
         self._reset_status()
+
+        _LOGGER.info("Vimar Climate update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar climate on. """

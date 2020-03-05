@@ -1,5 +1,6 @@
 """Vimar Platform integration."""
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
+from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import logging
 import asyncio
@@ -132,6 +133,12 @@ async def async_setup(hass, config):
     hass.data[DOMAIN]["lights"] = lights
     hass.data[DOMAIN]["covers"] = covers
     hass.data[DOMAIN]["switches"] = switches
+
+
+    # there should not be too many requests per second 
+    # limit scan_interval depending on items
+    scan_interval = max(3, int(len(devices) / 500 * 60))
+    hass.data[DOMAIN]["scan_interval"] = timedelta(seconds=scan_interval)
 
     # if len(devices) != 0:
     #     # for device_id, device_config in config.get(CONF_DEVICES, {}).items():

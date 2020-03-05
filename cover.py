@@ -9,12 +9,18 @@ from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
 )
+from datetime import timedelta
+from time import gmtime, strftime, localtime, mktime
+from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+SCAN_INTERVAL = timedelta(seconds=30)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
 
 # see: https://developers.home-assistant.io/docs/en/entity_cover.html
 
@@ -155,10 +161,12 @@ class VimarCover(CoverDevice):
     ####### async getter and setter
 
     # def update(self):
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
         """Fetch new state data for this cover.
         This is the only method that should fetch new data for Home Assistant.
         """
+        starttime = localtime()
         # self._light.update()
         # self._state = self._light.is_on()
         # self._brightness = self._light.brightness
@@ -169,6 +177,7 @@ class VimarCover(CoverDevice):
         self._reset_status()
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
+        _LOGGER.info("Vimar Cover update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""

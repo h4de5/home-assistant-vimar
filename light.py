@@ -2,6 +2,9 @@
 # credits to https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
 
 from homeassistant.components.light import (Light, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+from datetime import timedelta
+from time import gmtime, strftime, localtime, mktime
+from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
 import voluptuous as vol
@@ -13,6 +16,9 @@ import asyncio
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+SCAN_INTERVAL = timedelta(seconds=30)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Light platform."""
@@ -166,11 +172,13 @@ class VimarLight(Light):
     # def update(self):
     # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
     # @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
         """Fetch new state data for this light.
         This is the only method that should fetch new data for Home Assistant.
         """
+        starttime = localtime()
+        # strftime("%Y-%m-%d %H:%M:%S",
         # self._light.update()
         # self._state = self._light.is_on()
         # self._brightness = self._light.brightness
@@ -181,6 +189,8 @@ class VimarLight(Light):
         self._reset_status()
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
+
+        _LOGGER.info("Vimar Light update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar light on. """
