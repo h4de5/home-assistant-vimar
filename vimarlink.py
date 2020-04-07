@@ -1,53 +1,58 @@
 """Platform for light integration."""
 
 import logging
-import voluptuous as vol
 # import asyncio
 # import time
-import logging
 # for communicating with vimar webserver
 import requests
 from requests.exceptions import HTTPError
 import xml.etree.cElementTree as xmlTree
 # from . import DOMAIN
 
-#import queue
-#import threading
-#import socket
+# import queue
+# import threading
+# import socket
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class VimarLink():
 
     # the_queue = queue.Queue()
     # thread = None
-    
 
     # private
     _host = ''
+    _schema = ''
+    _port = 443
     _username = ''
     _password = ''
     _session_id = None
     _maingroup_ids = None
 
-    def __init__(self, host=None, username=None, password=None):
+    def __init__(self, schema=None, host=None, port=None, username=None, password=None):
         _LOGGER.info("Vimar link initialized")
 
+        if schema is not None:
+            VimarLink._schema = schema
         if host is not None:
             VimarLink._host = host
+        if port is not None:
+            VimarLink._port = port
         if username is not None:
             VimarLink._username = username
         if password is not None:
             VimarLink._password = password
 
     def login(self):
-        loginurl = "https://%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (VimarLink._host, VimarLink._username, VimarLink._password)
+        loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
+            VimarLink._schema, VimarLink._host, VimarLink._port, VimarLink._username, VimarLink._password)
         result = self._request(loginurl)
 
         if result is not None:
             xml = self._parse_xml(result)
             logincode = xml.find('result')
-            loginmessage= xml.find('message')
+            loginmessage = xml.find('message')
             if logincode is not None and logincode.text != "0":
                 if loginmessage is not None:
                     _LOGGER.error("Error during login: " + loginmessage.text)
@@ -56,9 +61,9 @@ class VimarLink():
             else:
                 _LOGGER.info("Vimar login successfull")
                 loginsession = xml.find('sessionid')
-                _LOGGER.debug("Got a new Vimar Session id: " + loginsession.text)
+                _LOGGER.debug("Got a new Vimar Session id: " +
+                              loginsession.text)
                 VimarLink._session_id = loginsession.text
-
         return result
 
     def check_login(self):
@@ -81,16 +86,15 @@ class VimarLink():
                 _LOGGER.info(parsed_data)
 
                 return parsed_data
-            
+
         # _LOGGER.warning("Empty payload from Status")
         return None
 
-
-    def get_device_status(self, object_id, status_id = None):
+    def get_device_status(self, object_id, status_id=None):
 
         status_list = {}
 
-#, o3.OPTIONALP AS status_range
+# , o3.OPTIONALP AS status_range
         select = """SELECT o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r3
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
@@ -120,7 +124,7 @@ ORDER BY o3.ID;""" % (object_id)
 
             # _LOGGER.info("getDevice")
             # _LOGGER.info(single_device)
-            
+
             return status_list
         else:
             return {}
@@ -131,7 +135,7 @@ ORDER BY o3.ID;""" % (object_id)
 
         single_device = {}
 
-#, o3.OPTIONALP AS status_range
+# , o3.OPTIONALP AS status_range
         select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
 o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
@@ -171,7 +175,7 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
 
             # _LOGGER.info("getDevice")
             # _LOGGER.info(single_device)
-            
+
             return single_device
         else:
             return None
@@ -226,8 +230,8 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
 
         # o3.OPTIONALP AS status_range
         # AND o3.OPTIONALP IS NOT NULL
-        # 
-        #  
+        #
+        #
         # AND
         # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE = "1" AND o2.IS_VISIBLE = "1"
 
@@ -268,11 +272,10 @@ ORDER BY o2.NAME, o3.ID;""" % (VimarLink._maingroup_ids)
                             # 'status_range': device['status_range'],
                         }
 
-            
             _LOGGER.info("getDevices ends")
             # _LOGGER.info("getDevices")
             # _LOGGER.info(devices)
-            
+
             return devices
         else:
             return None
@@ -294,12 +297,14 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return VimarLink._maingroup_ids
         else:
             return None
-    
+
     def _request_vimar_sql(self, select):
 
-        select = select.replace('\r\n', ' ').replace('\n', ' ').replace('"', '&apos;').replace('\'', '&apos;')
+        select = select.replace('\r\n', ' ').replace(
+            '\n', ' ').replace('"', '&apos;').replace('\'', '&apos;')
 
-        post = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-databasesocketoperation xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>5</waittime><function>DML-SQL</function><type>SELECT</type><statement>%s</statement><statement-len>%d</statement-len></service-databasesocketoperation></soapenv:Body></soapenv:Envelope>' % (VimarLink._session_id, select, len(select))
+        post = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-databasesocketoperation xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>5</waittime><function>DML-SQL</function><type>SELECT</type><statement>%s</statement><statement-len>%d</statement-len></service-databasesocketoperation></soapenv:Body></soapenv:Envelope>' % (
+            VimarLink._session_id, select, len(select))
 
         # _LOGGER.info("in _request_vimar_sql")
         # _LOGGER.info(post)
@@ -325,7 +330,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             _LOGGER.warning("Empty response from SQL")
             _LOGGER.info("Errorous SQL: " + select)
         return None
-    
+
     # def _parse_sql_payload(self, string):
     #     lines = string.split('\n')
     #     return_dict = {}
@@ -335,7 +340,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
     #             prefix, values = line.split(':', 1)
     #             prefix = prefix.split('#', 1)[1].strip()
     #             values = values.strip()[1:-1].split('\',\'')
-                
+
     #             if prefix == 'Response':
     #                 pass
     #             elif prefix == 'NextRows':
@@ -352,7 +357,6 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
     #     print("magic_function1: ", return_dict)
     #     return return_dict
-
 
     def _parse_sql_payload(self, string):
         try:
@@ -383,7 +387,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                             if len(row_dict):
                                 return_list.append(row_dict)
         except Exception as err:
-            _LOGGER.error("Error parsing SQL payload: "+ repr(err)  + " payload: "+ string)
+            _LOGGER.error("Error parsing SQL payload: " +
+                          repr(err) + " payload: " + string)
             return []
 
         # _LOGGER.info("parseSQLPayload")
@@ -391,15 +396,17 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         return return_list
 
     def _request_vimar(self, post):
-        url = 'https://%s/cgi-bin/dpadws' % VimarLink._host
+        url = '%s://%s:%s/cgi-bin/dpadws' % (
+            VimarLink._schema, VimarLink._host, VimarLink._port)
         headers = {
-			'SOAPAction': 'dbSoapRequest',
-			'SOAPServer': '',
-			#'X-Requested-With' => 'XMLHttpRequest',
-			'Content-Type': 'text/xml; charset="UTF-8"',
-			# needs to be set to overcome: 'Expect' => '100-continue' header
-			# otherwise header and payload is send in two requests if payload is bigger then 1024byte
-			'Expect': ''
+            'SOAPAction': 'dbSoapRequest',
+            'SOAPServer': '',
+            # 'X-Requested-With' => 'XMLHttpRequest',
+            'Content-Type': 'text/xml; charset="UTF-8"',
+            # needs to be set to overcome:
+            # 'Expect' => '100-continue'
+            # otherwise header and payload is send in two requests if payload is bigger then 1024byte
+            'Expect': ''
         }
         # _LOGGER.info("in _request_vimar")
         # _LOGGER.info(post)
@@ -412,7 +419,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return responsexml
         else:
             return None
-    
+
     def _parse_xml(self, xml):
         try:
             root = xmlTree.fromstring(xml)
@@ -422,19 +429,16 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return root
         return None
 
-    def _request(self, url, post = None, headers = None, timeout = 5, checkSSL = False):
-        
-
+    def _request(self, url, post=None, headers=None, timeout=5, checkSSL=False):
         # _LOGGER.info("request to " + url)
-
         try:
             timeouts = (5, 10)
 
             if post is None:
                 response = requests.get(url,
-                    headers= headers,
-                    verify= checkSSL,
-                    timeout= timeouts)
+                                        headers=headers,
+                                        verify=checkSSL,
+                                        timeout=timeouts)
             else:
                 # _LOGGER.info("sending post: ")
                 # _LOGGER.info(post)
@@ -442,21 +446,20 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 # _LOGGER.info(checkSSL)
 
                 response = requests.post(url,
-                    data= post,
-                    headers= headers,
-                    verify= checkSSL,
-                    timeout= timeouts)
+                                         data=post,
+                                         headers=headers,
+                                         verify=checkSSL,
+                                         timeout=timeouts)
 
             # If the response was successful, no Exception will be raised
             response.raise_for_status()
-            
 
         except HTTPError as http_err:
             # _LOGGER.error(f'HTTP error occurred: {http_err}') # Python 3.6
-            _LOGGER.error('HTTP error occurred: '+ str(http_err)) 
+            _LOGGER.error('HTTP error occurred: ' + str(http_err))
         except Exception as err:
             # _LOGGER.error(f'Other error occurred: {err}') # Python 3.6
-            _LOGGER.error('Other error occurred: '+ repr(err))
+            _LOGGER.error('Other error occurred: ' + repr(err))
         else:
             # _LOGGER.info('request Successful!')
             # _LOGGER.info('RAW Response: ')

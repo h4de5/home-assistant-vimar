@@ -1,4 +1,5 @@
 """Platform for switch integration."""
+
 from homeassistant.helpers.entity import ToggleEntity
 from homeassistant.components import switch
 from datetime import timedelta
@@ -6,19 +7,22 @@ from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
-import voluptuous as vol
 import asyncio
 
 # import variables set in __init__.py
 # from . import vimarconnection
 # from . import vimarlink
-from . import DOMAIN
+from .const import DOMAIN
+from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=20)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
+PARALLEL_UPDATES = True
 
+
+@asyncio.coroutine
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Switch platform."""
 
@@ -46,7 +50,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     # _LOGGER.info(config)
     vimarconnection = hass.data[DOMAIN]['connection']
-    
+
     # # load Main Groups
     # vimarconnection.getMainGroups()
 
@@ -62,7 +66,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         #     switches.append(VimarSwitch(name, device_id, vimarconnection))
         for device_id, device in devices.items():
             switches.append(VimarSwitch(device, device_id, vimarconnection))
-
 
     # fallback
     # if len(switches) == 0:
@@ -86,15 +89,13 @@ class VimarSwitch(ToggleEntity):
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the switch."""
         self._device = device
-        self._name = self._device['object_name']
-        # change case
-        self._name = self._name.title()
+        self._name = format_name(self._device['object_name'])
         self._device_id = device_id
         self._state = False
         self._reset_status()
         self._vimarconnection = vimarconnection
 
-    ####### default properties
+    # default properties
 
     @property
     def should_poll(self):
@@ -122,20 +123,20 @@ class VimarSwitch(ToggleEntity):
     def unique_id(self):
         """Return the ID of this device."""
         return self._device_id
-    
+
     @property
     def available(self):
         """Return True if entity is available."""
         return True
 
-    ####### switch properties
+    # switch properties
 
     @property
     def is_on(self):
         """ True if the device is on. """
         return self._state
 
-    ####### async getter and setter
+    # async getter and setter
 
     # def update(self):
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
@@ -151,8 +152,8 @@ class VimarSwitch(ToggleEntity):
         self._reset_status()
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
-
-        _LOGGER.info("Vimar Switch update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
+        _LOGGER.debug("Vimar Switch update finished after " +
+                      str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar switch on. """
@@ -174,13 +175,19 @@ class VimarSwitch(ToggleEntity):
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
                 self.async_schedule_update_ha_state()
 
-    ####### private helper methods
+    # private helper methods
 
     def _reset_status(self):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
-                self._state = (False, True)[self._device['status']['on/off']['status_value'] != '0']
-            
+                self._state = (False, True)[
+                    self._device['status']['on/off']['status_value'] != '0']
+
+    def format_name(self, name):
+        name = name.replace('VENTILATOR', '')
+        name = name.replace('STECKDOSE', '')
+        # change case
+        return name.title()
 
 # end class VimarSwitch

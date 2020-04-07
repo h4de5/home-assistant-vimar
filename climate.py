@@ -5,25 +5,27 @@ from homeassistant.components.climate import ClimateDevice
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_ON_OFF, STATE_HEAT)
-from homeassistant.const import (ATTR_TEMPERATURE,
-    STATE_OFF, TEMP_CELSIUS)
+from homeassistant.const import (
+    ATTR_TEMPERATURE, STATE_OFF, TEMP_CELSIUS)
 from datetime import timedelta
 from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
-import voluptuous as vol
 import asyncio
 
 # import variables set in __init__.py
 # from . import vimarconnection
 # from . import vimarlink
-from . import DOMAIN
+from .const import DOMAIN
+from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=60)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2) 
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
+PARALLEL_UPDATES = True
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Climate platform."""
@@ -52,7 +54,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     # _LOGGER.info(config)
     vimarconnection = hass.data[DOMAIN]['connection']
-    
+
     # # load Main Groups
     # vimarconnection.getMainGroups()
 
@@ -68,7 +70,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         #     climates.append(VimarClimate(name, device_id, vimarconnection))
         for device_id, device in devices.items():
             climates.append(VimarClimate(device, device_id, vimarconnection))
-
 
     # fallback
     # if len(climates) == 0:
@@ -89,6 +90,7 @@ def calculate_brightness(brightness):
     return round((brightness * 100) / 255)
 # end dev calculate_brightness
 
+
 def recalculate_brightness(brightness):
     """Scale brightness from 0..100 to 0..255"""
     return round((brightness * 255) / 100)
@@ -96,7 +98,8 @@ def recalculate_brightness(brightness):
 
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 
-class VimarClimate(Climate):
+
+class VimarClimate(ClimateDevice):
     """ Provides a Vimar climates. """
 
     ICON = "mdi:ceiling-climate"
@@ -104,16 +107,14 @@ class VimarClimate(Climate):
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the climate."""
         self._device = device
-        self._name = self._device['object_name']
-        # change case
-        self._name = self._name.title()
+        self._name = format_name(self._device['object_name'])
         self._device_id = device_id
         self._state = False
         self._brightness = 255
         self._reset_status()
         self._vimarconnection = vimarconnection
 
-    ####### default properties
+    # default properties
 
     @property
     def should_poll(self):
@@ -141,14 +142,14 @@ class VimarClimate(Climate):
     def unique_id(self):
         """Return the ID of this device."""
         return self._device_id
-    
+
     @property
     def available(self):
         """Return True if entity is available."""
         return True
 
-    ####### climate properties
-    
+    # climate properties
+
     @property
     def is_on(self):
         """ True if the device is on. """
@@ -167,10 +168,10 @@ class VimarClimate(Climate):
                 return SUPPORT_BRIGHTNESS
         return 0
 
-    ####### async getter and setter
-    
+    # async getter and setter
+
     # def update(self):
-    # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py  
+    # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
     # see: https://github.com/home-assistant/home-assistant/blob/master/homeassistant/components/dweet/__init__.py
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
@@ -186,7 +187,8 @@ class VimarClimate(Climate):
         self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
         self._reset_status()
 
-        _LOGGER.info("Vimar Climate update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
+        _LOGGER.info("Vimar Climate update finished after " +
+                     str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar climate on. """
@@ -196,15 +198,17 @@ class VimarClimate(Climate):
                 self._state = True
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
                 # await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
-                
+                self.hass.async_add_executor_job(
+                    self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
+
         if ATTR_BRIGHTNESS in kwargs:
             if 'status' in self._device and self._device['status']:
                 if 'value' in self._device['status']:
                     self._brightness = kwargs[ATTR_BRIGHTNESS]
                     brightness_value = calculate_brightness(self._brightness)
                     # self._vimarconnection.set_device_status(self._device['status']['value']['status_id'], brightness_value)
-                    self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['value']['status_id'], brightness_value)
+                    self.hass.async_add_executor_job(
+                        self._vimarconnection.set_device_status, self._device['status']['value']['status_id'], brightness_value)
 
         self.async_schedule_update_ha_state()
 
@@ -214,20 +218,24 @@ class VimarClimate(Climate):
             if 'on/off' in self._device['status']:
                 self._state = False
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
-                self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
+                self.hass.async_add_executor_job(
+                    self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
 
         self.async_schedule_update_ha_state()
-
-
-    ####### private helper methods
+    # private helper methods
 
     def _reset_status(self):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
-                self._state = (False, True)[self._device['status']['on/off']['status_value'] != '0']
+                self._state = (False, True)[
+                    self._device['status']['on/off']['status_value'] != '0']
             if 'value' in self._device['status']:
-                self._brightness = recalculate_brightness(int(self._device['status']['value']['status_value']))
+                self._brightness = recalculate_brightness(
+                    int(self._device['status']['value']['status_value']))
 
-        
+    def format_name(self, name):
+        # change case
+        return name.title()
+
 # end class VimarClimate

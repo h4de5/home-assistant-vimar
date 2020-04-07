@@ -7,22 +7,24 @@ from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
     ATTR_CURRENT_TILT_POSITION,
     ATTR_POSITION,
-    ATTR_TILT_POSITION,
-)
+    ATTR_TILT_POSITION)
 from datetime import timedelta
 from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
-import voluptuous as vol
-from . import DOMAIN
+
+from .const import DOMAIN
+from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
+PARALLEL_UPDATES = True
 
 # see: https://developers.home-assistant.io/docs/en/entity_cover.html
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Cover platform."""
@@ -51,7 +53,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     # _LOGGER.info(config)
     vimarconnection = hass.data[DOMAIN]['connection']
-    
+
     # # load Main Groups
     # vimarconnection.getMainGroups()
 
@@ -68,7 +70,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         for device_id, device in devices.items():
             covers.append(VimarCover(device, device_id, vimarconnection))
 
-
     # fallback
     # if len(lights) == 0:
     #     # Config is empty so generate a default set of switches
@@ -82,6 +83,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         async_add_entities(covers)
     _LOGGER.info("Vimar Cover complete!")
 
+
 class VimarCover(CoverDevice):
     """ Provides a Vimar cover. """
 
@@ -89,10 +91,7 @@ class VimarCover(CoverDevice):
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the cover."""
         self._device = device
-        self._name = self._device['object_name']
-        self._name = self._name.replace('ROLLLADEN', 'ROLLO')
-        # change case
-        self._name = self._name.title()
+        self._name = format_name(self._device['object_name'])
         self._device_id = device_id
         # _state = False .. 0, stop has not been pressed
         # _state = True .. 1, stop has been pressed
@@ -103,7 +102,7 @@ class VimarCover(CoverDevice):
         self._reset_status()
         self._vimarconnection = vimarconnection
 
-    ####### default properties
+    # default properties
 
     @property
     def should_poll(self):
@@ -121,7 +120,7 @@ class VimarCover(CoverDevice):
         if 'icon' in self._device and self._device['icon']:
             return self._device['icon']
         # return self.ICON
-        return ("mdi:window-open","mdi:window-closed")[self.is_closed]
+        return ("mdi:window-open", "mdi:window-closed")[self.is_closed]
 
     @property
     def device_class(self):
@@ -132,21 +131,19 @@ class VimarCover(CoverDevice):
     def unique_id(self):
         """Return the ID of this device."""
         return self._device_id
-    
+
     @property
     def available(self):
         """Return True if entity is available."""
         return True
-
-
-    ####### cover properties
+    # cover properties
 
     @property
     def is_closed(self):
         """Return if the cover is closed."""
-        # if _state (stopped) is 1, than stopped was pressed, therefor it should be open
-        # if its 0, and direction 1, than it was going downwards and it was not stopped, therefor closed
-        if self._state :
+        # if _state (stopped) is 1, than stopped was pressed, therefor it cannot be completely closed
+        # if its 0, and direction 1, than it was going downwards and it was never stopped, therefor it is closed now
+        if self._state:
             return False
         elif self._direction:
             return True
@@ -154,11 +151,21 @@ class VimarCover(CoverDevice):
             return False
 
     @property
+    def is_closing(self):
+        if not self._state and self._direction == 1:
+            return True
+
+    @property
+    def is_opening(self):
+        if not self._state and self._direction == 0:
+            return True
+
+    @property
     def supported_features(self):
         """Flag supported features."""
         return SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
 
-    ####### async getter and setter
+    # async getter and setter
 
     # def update(self):
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
@@ -177,7 +184,8 @@ class VimarCover(CoverDevice):
         self._reset_status()
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
-        _LOGGER.info("Vimar Cover update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
+        _LOGGER.debug("Vimar Cover update finished after " +
+                      str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
@@ -209,15 +217,22 @@ class VimarCover(CoverDevice):
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 1)
                 self.async_schedule_update_ha_state()
 
-    ####### private helper methods
+    # private helper methods
 
     def _reset_status(self):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
             if 'stop up/stop down' in self._device['status']:
-                self._state = (False, True)[self._device['status']['stop up/stop down']['status_value'] != '0']
+                self._state = (False, True)[
+                    self._device['status']['stop up/stop down']['status_value'] != '0']
             if 'up/down' in self._device['status']:
-                self._direction = int(self._device['status']['up/down']['status_value'])
-            
+                self._direction = int(
+                    self._device['status']['up/down']['status_value'])
+
+    def format_name(self, name):
+        name = name.replace('ROLLLADEN', 'ROLLO')
+        name = name.replace('F-FERNBEDIENUNG', 'FENSTER')
+        # change case
+        return name.title()
 
 # end class VimarCover

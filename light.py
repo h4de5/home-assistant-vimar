@@ -1,24 +1,27 @@
 """Platform for light integration."""
 # credits to https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
 
-from homeassistant.components.light import (Light, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+from homeassistant.components.light import (
+    Light, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
 from datetime import timedelta
 from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
-import voluptuous as vol
 import asyncio
 
 # import variables set in __init__.py
 # from . import vimarconnection
 # from . import vimarlink
-from . import DOMAIN
+from .const import DOMAIN
+from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
+PARALLEL_UPDATES = True
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Light platform."""
@@ -47,7 +50,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     # _LOGGER.info(config)
     vimarconnection = hass.data[DOMAIN]['connection']
-    
+
     # # load Main Groups
     # vimarconnection.getMainGroups()
 
@@ -64,7 +67,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         for device_id, device in devices.items():
             lights.append(VimarLight(device, device_id, vimarconnection))
 
-
     # fallback
     # if len(lights) == 0:
     #     # Config is empty so generate a default set of switches
@@ -75,6 +77,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     #             lights.append(VimarLight({'object_name': name}, device_id, link))
 
     if len(lights) != 0:
+        # If your entities need to fetch data before being written to Home Assistant for the first time, pass True to the add_entities method: add_entities([MyEntity()], True).
         async_add_entities(lights)
     _LOGGER.info("Vimar Light complete!")
 
@@ -84,6 +87,7 @@ def calculate_brightness(brightness):
     return round((brightness * 100) / 255)
 # end dev calculate_brightness
 
+
 def recalculate_brightness(brightness):
     """Scale brightness from 0..100 to 0..255"""
     return round((brightness * 255) / 100)
@@ -91,24 +95,26 @@ def recalculate_brightness(brightness):
 
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 
+
 class VimarLight(Light):
     """ Provides a Vimar lights. """
 
     ICON = "mdi:ceiling-light"
 
+    # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
+    assumed_state = False
+
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the light."""
         self._device = device
-        self._name = self._device['object_name']
-        # change case
-        self._name = self._name.title()
+        self._name = format_name(self._device['object_name'])
         self._device_id = device_id
         self._state = False
         self._brightness = 255
         self._reset_status()
         self._vimarconnection = vimarconnection
 
-    ####### default properties
+    # default properties
 
     @property
     def should_poll(self):
@@ -141,14 +147,14 @@ class VimarLight(Light):
     def unique_id(self):
         """Return the ID of this device."""
         return self._device_id
-    
+
     @property
     def available(self):
         """Return True if entity is available."""
         return True
 
-    ####### light properties
-    
+    # light properties
+
     @property
     def is_on(self):
         """ True if the device is on. """
@@ -167,8 +173,8 @@ class VimarLight(Light):
                 return SUPPORT_BRIGHTNESS
         return 0
 
-    ####### async getter and setter
-    
+    # async getter and setter
+
     # def update(self):
     # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
     # @Throttle(MIN_TIME_BETWEEN_UPDATES)
@@ -189,8 +195,8 @@ class VimarLight(Light):
         self._reset_status()
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
-
-        _LOGGER.info("Vimar Light update finished after "+ str(mktime(localtime()) - mktime(starttime)) + "s "+ self._name)
+        _LOGGER.debug("Vimar Light update finished after " +
+                      str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar light on. """
@@ -202,7 +208,7 @@ class VimarLight(Light):
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
                 # await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
-                
+
         if ATTR_BRIGHTNESS in kwargs:
             if 'status' in self._device and self._device['status']:
                 if 'value' in self._device['status']:
@@ -225,17 +231,23 @@ class VimarLight(Light):
 
                 self.async_schedule_update_ha_state()
 
+    async def async_added_to_hass(self, **kwargs):
+        return 0
 
-    ####### private helper methods
+    async def async_will_remove_from_hass(self, **kwargs):
+        return 0
+
+    # private helper methods
 
     def _reset_status(self):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
-                self._state = (False, True)[self._device['status']['on/off']['status_value'] != '0']
+                self._state = (False, True)[
+                    self._device['status']['on/off']['status_value'] != '0']
             if 'value' in self._device['status']:
-                self._brightness = recalculate_brightness(int(self._device['status']['value']['status_value']))
-            
+                self._brightness = recalculate_brightness(
+                    int(self._device['status']['value']['status_value']))
 
-        
+
 # end class VimarLight
