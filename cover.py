@@ -110,6 +110,12 @@ class VimarCover(CoverDevice):
         return True
 
     @property
+    def assumed_state(self):
+        """ Return True if the state is based on our assumption instead of reading it from the device."""
+        """ this will ignore is_closed state ? """
+        return True
+
+    @property
     def name(self):
         """ Returns the name of the device. """
         return self._name

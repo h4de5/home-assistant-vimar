@@ -29,8 +29,9 @@ class VimarLink():
     _password = ''
     _session_id = None
     _maingroup_ids = None
+    _certificate = None
 
-    def __init__(self, schema=None, host=None, port=None, username=None, password=None):
+    def __init__(self, schema=None, host=None, port=None, username=None, password=None, certificate=None):
         _LOGGER.info("Vimar link initialized")
 
         if schema is not None:
@@ -43,10 +44,35 @@ class VimarLink():
             VimarLink._username = username
         if password is not None:
             VimarLink._password = password
+        if certificate is not None:
+            VimarLink._certificate = certificate
+
+    def installCertificate(self):
+        # temporarily disable certificate requests
+        if len(self._certificate) != 0:
+            tempCertificate = self._certificate
+            self._certificate = ''
+
+            certificateUrl = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
+                VimarLink._schema, VimarLink._host, VimarLink._port)
+            certificateFile = self._request(certificateUrl)
+
+            # get it back
+            self._certificate = tempCertificate
+
+            file = open(self._certificate, "w")
+            file.write(certificateFile)
+            file.close()
+
+            _LOGGER.info("Downloaded Vimar CA certificate to: " +
+                         self._certificate)
+
+        return True
 
     def login(self):
         loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
             VimarLink._schema, VimarLink._host, VimarLink._port, VimarLink._username, VimarLink._password)
+
         result = self._request(loginurl)
 
         if result is not None:
@@ -139,10 +165,10 @@ ORDER BY o3.ID;""" % (object_id)
         select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
 o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
-INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene") 
+INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
-WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION" 
+WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
 ORDER BY o2.NAME, o3.ID;""" % (object_id)
 
@@ -238,10 +264,10 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
         select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
 o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
-INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene") 
+INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
-WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION" 
+WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
 ORDER BY o2.NAME, o3.ID;""" % (VimarLink._maingroup_ids)
 
@@ -433,6 +459,9 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         # _LOGGER.info("request to " + url)
         try:
             timeouts = (5, 10)
+
+            if self._certificate != None:
+                checkSSL = self._certificate
 
             if post is None:
                 response = requests.get(url,

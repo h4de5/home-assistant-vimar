@@ -11,10 +11,11 @@ from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import logging
 import asyncio
+import os
 import voluptuous as vol
 from . import vimarlink
 from .const import (
-    DOMAIN, CONF_SCHEMA, DEFAULT_USERNAME, DEFAULT_SCHEMA, DEFAULT_PORT
+    DOMAIN, CONF_SCHEMA, CONF_CERTIFICATE, DEFAULT_USERNAME, DEFAULT_SCHEMA, DEFAULT_PORT
 )
 
 # from . import vimarlink
@@ -30,6 +31,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
+        vol.Optional(CONF_CERTIFICATE): cv.string,
+
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -87,10 +90,17 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     port = vimarconfig.get(CONF_PORT)
     username = vimarconfig.get(CONF_USERNAME)
     password = vimarconfig.get(CONF_PASSWORD)
+    certificate = vimarconfig.get(CONF_CERTIFICATE)
 
     # initialize a new VimarLink object
     vimarconnection = vimarlink.VimarLink(
-        schema, host, port, username, password)
+        schema, host, port, username, password, certificate)
+
+    # if certificate is set, but file is not there - download it from the webserver
+    if len(certificate) != 0 and os.path.isfile(certificate) == False:
+        _LOGGER.error("Could not connect to Vimar Webserver " + host)
+        if vimarconnection.installCertificate() == False:
+            raise PlatformNotReady
 
     # Verify that passed in configuration works
     # starting it outside MainThread
