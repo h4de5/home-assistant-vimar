@@ -44,7 +44,7 @@ example configuration to put into `configuration.yaml`:
       port: 443
       certificate: file-name-to-vimar-ca-certificate.pem
 
-`username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use normal http calls on port 80 to the given IP. The `certificate` can be just a writeable file-path. If there is no file there, the integration will download the current CA certificate from the local vimar webserver and save it under the given file name for sub sequent calls. (e.g. `certificate: /config/vimar-ca.crt`)
+`username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use normal http calls on port 80 to the given IP. The `certificate` can be just a writeable file-path. If there is no file there, the integration will download the current CA certificate from the local vimar webserver and save it under the given file name for sub sequent calls. (e.g. `certificate: /config/vimar-ca.pem`)
 
 ## limitations
 
