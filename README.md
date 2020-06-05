@@ -46,6 +46,11 @@ example configuration to put into `configuration.yaml`:
 
 `username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use normal http calls on port 80 to the given IP. The `certificate` can be just a writeable file-path. If there is no file there, the integration will download the current CA certificate from the local vimar webserver and save it under the given file name for sub sequent calls. (e.g. `certificate: /config/vimar-ca.crt`)
 
+The hostname or the IP has to match the settings screen on the vimar web server:
+
+![image](https://user-images.githubusercontent.com/6115324/83895464-04a0e980-a753-11ea-8c6c-a55dffba5b83.png)
+
+
 ## limitations
 
 The integration can currently list and control all lights, shades, fans and switches. Climates and other devices are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
