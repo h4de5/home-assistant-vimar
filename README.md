@@ -20,17 +20,17 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
 
 1. locate the path to your home-assistant configuration (usually the place that holds your configuration.yaml)
 2. create a the following directory within your home-assistant config folder:
-   > `mkdir custom_components`
+   `mkdir custom_components`
 3. go there
-   > `cd custom_components`
+   `cd custom_components`
 4. clone this repository
-   > `git clone git@github.com:h4de5/home-assistant-vimar.git vimar_platform`
+   `git clone git@github.com:h4de5/home-assistant-vimar.git vimar_platform`
 
 You will end up with something like this:
 
-> on docker/hassio: `/config/custom_components/vimar_platform/`
+* on docker/hassio: `/config/custom_components/vimar_platform/`
 
-> on hassbian/virtualenv: `/home/homeassistant/.homeassistant/custom_components/vimar_platform/`
+* on hassbian/virtualenv: `/home/homeassistant/.homeassistant/custom_components/vimar_platform/`
 
 ### configuration
 
