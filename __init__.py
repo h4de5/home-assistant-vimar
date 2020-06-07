@@ -303,6 +303,9 @@ def format_name(name):
             for i in range(2, len(parts)):
                 level_name += " " + parts[i]
         else:
+            _LOGGER.warning(
+                "Found a device with an uncommon naming schema: " + name)
+
             device_type = parts[0]
             entity_number = ''
             room_name = 'ALL'
