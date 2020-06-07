@@ -252,6 +252,10 @@ def parse_device_type(device):
             device_type = "switches"
             device_class = "plug"
             icon = "mdi:power-plug"
+        elif device["object_name"].find("PULSANTE") != -1:
+            device_type = "switches"
+            device_class = "plug"
+            icon = "mdi:power-plug"
         # else:
         #     device_type = "lights"
         #     icon = "mdi:ceiling-light"
