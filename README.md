@@ -24,8 +24,6 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
 3. go there
    `cd custom_components`
 4. clone this repository
-   `git clone git@github.com:h4de5/home-assistant-vimar.git vimar_platform`
-   or
    `git clone https://github.com/h4de5/home-assistant-vimar.git vimar_platform`
 
 You will end up with something like this:
@@ -68,7 +66,7 @@ enable more logging for vimar_platform:
         
 have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where you `configuration.yaml` is located.
 
-      Loaded vimar_platform from custom_components.vimar_platform
+      INFO (SyncWorker_2) [homeassistant.loader] Loaded vimar_platform from custom_components.vimar_platform
       
    or
    
