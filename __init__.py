@@ -4,7 +4,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME)
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.components.cover import (
     DEVICE_CLASS_SHUTTER, DEVICE_CLASS_WINDOW, DEVICE_CLASS_SHADE)
 from datetime import timedelta
@@ -31,8 +30,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
-        vol.Optional(CONF_CERTIFICATE): cv.string,
-
+        vol.Optional(CONF_CERTIFICATE): cv.string
     })
 }, extra=vol.ALLOW_EXTRA)
 
