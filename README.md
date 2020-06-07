@@ -56,26 +56,24 @@ The integration can currently list and control all lights, shades, fans and swit
 
 ## troubleshooting
 
-enable more logging for vimar_platform:
+**When you install, update or uninstall the integration, you need to restart Home Assistant.**
+
+Enable more logging for vimar_platform - add to your `configuration.yaml`:
 
     logger:
       default: warning
       logs:
         custom_components.vimar_platform: info
 
-have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where you `configuration.yaml` is located.
-
-      INFO (SyncWorker_2) [homeassistant.loader] Loaded vimar_platform from custom_components.vimar_platform
-
-or
+have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where your `configuration.yaml` is located.
 
       WARNING (MainThread) [homeassistant.loader] You are using a custom integration for vimar_platform which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant.
 
-> the Vimar platform code and the configuration was found. The warning is been shown for all custom components.
+> the Vimar platform code and the configuration was found. The warning is been shown for all custom components. This is GOOD!
 
       ERROR (MainThread) [custom_components.vimar_platform] Could not connect to Vimar Webserver home-assistant
 
-> Vimar By-me Webserver was not found under the given adress.
+> Vimar By-me Webserver was not found under the given address.
 
       ERROR (MainThread) [homeassistant.setup] Setup failed for vimar_platform: Integration not found
 
