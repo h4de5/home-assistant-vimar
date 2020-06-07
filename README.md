@@ -19,7 +19,7 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
 ### installation
 
 1. locate the path to your home-assistant configuration (usually the place that holds your configuration.yaml)
-2. create a the following directory within your home-assistant config folder:
+2. create the following directory within your home-assistant config folder:
    `mkdir custom_components`
 3. go there
    `cd custom_components`
