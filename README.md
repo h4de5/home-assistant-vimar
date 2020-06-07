@@ -25,6 +25,8 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
    `cd custom_components`
 4. clone this repository
    `git clone git@github.com:h4de5/home-assistant-vimar.git vimar_platform`
+   or
+   `git clone https://github.com/h4de5/home-assistant-vimar.git vimar_platform`
 
 You will end up with something like this:
 
@@ -63,3 +65,23 @@ enable more logging for vimar_platform:
       default: warning
       logs:
         custom_components.vimar_platform: info
+        
+have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where you `configuration.yaml` is located.
+
+      Loaded vimar_platform from custom_components.vimar_platform
+      
+   or
+   
+      WARNING (MainThread) [homeassistant.loader] You are using a custom integration for vimar_platform which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant.
+      
+> the Vimar platform code and the configuration was found. The warning is been shown for all custom components.
+   
+      ERROR (MainThread) [custom_components.vimar_platform] Could not connect to Vimar Webserver home-assistant
+
+> Vimar By-me Webserver was not found under the given adress.
+
+      ERROR (MainThread) [homeassistant.setup] Setup failed for vimar_platform: Integration not found
+      
+> You have put the content of this repository into the wrong directory - see above for an example.
+   
+   
