@@ -24,8 +24,6 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
 3. go there
    `cd custom_components`
 4. clone this repository
-   `git clone git@github.com:h4de5/home-assistant-vimar.git vimar_platform`
-   or
    `git clone https://github.com/h4de5/home-assistant-vimar.git vimar_platform`
 
 You will end up with something like this:
