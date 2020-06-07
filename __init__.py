@@ -260,7 +260,7 @@ def parse_device_type(device):
         #     device_type = "lights"
         #     icon = "mdi:ceiling-light"
 
-    elif device["object_type"] == "CH_Dimmer_Automation":
+    elif device["object_type"] == "CH_Dimmer_Automation" or device["object_type"] == "CH_Dimmer_RGB" or device["object_type"] == "CH_Dimmer_White" or device["object_type"] == "CH_Dimmer_Hue":
         device_type = "lights"
         icon = "mdi:speedometer"  # mdi:rotate-right
     elif device["object_type"] == "CH_ShutterWithoutPosition_Automation":
@@ -276,7 +276,7 @@ def parse_device_type(device):
         device_type = "climates"
     else:
         _LOGGER.warning(
-            "Unknown object_type returned from the web server: " + device["object_type"])
+            "Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"])
 
     return device_type, device_class, icon
 
