@@ -2,7 +2,7 @@
 # credits to https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
 
 from homeassistant.components.light import (
-    Light, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+    LightEntity, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
 from datetime import timedelta
 from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
@@ -96,7 +96,8 @@ def recalculate_brightness(brightness):
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 
 
-class VimarLight(Light):
+# class VimarLight(Light):
+class VimarLight(LightEntity):
     """ Provides a Vimar lights. """
 
     ICON = "mdi:ceiling-light"

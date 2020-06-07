@@ -2,7 +2,7 @@
 # credits to https://community.home-assistant.io/t/create-new-cover-component-not-working/50361/5
 
 from homeassistant.components.cover import (
-    CoverDevice, SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
+    CoverEntity, SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
 from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
     ATTR_CURRENT_TILT_POSITION,
@@ -83,8 +83,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         async_add_entities(covers)
     _LOGGER.info("Vimar Cover complete!")
 
+# CoverDevice is deprecated, modify VimarCover to extend CoverEntity
+# class VimarCover(CoverDevice):
 
-class VimarCover(CoverDevice):
+
+class VimarCover(CoverEntity):
     """ Provides a Vimar cover. """
 
     # pylint: disable=no-self-use

@@ -272,6 +272,9 @@ def parse_device_type(device):
             device_type = "covers"
     elif device["object_type"] == "CH_Clima":
         device_type = "climates"
+    else:
+        _LOGGER.warning(
+            "Unknown object_type returned from the web server: " + device["object_type"])
 
     return device_type, device_class, icon
 
@@ -291,16 +294,27 @@ def format_name(name):
 
             for i in range(4, len(parts)):
                 level_name += " " + parts[i]
+        elif len(parts) >= 2:
+            device_type = parts[0]
+            entity_number = ''
+            room_name = 'ALL'
+            level_name = parts[1]
+
+            for i in range(2, len(parts)):
+                level_name += " " + parts[i]
         else:
             device_type = parts[0]
             entity_number = ''
-            room_name = 'ALLE'
-            level_name = parts[1]
+            room_name = 'ALL'
+            level_name = 'LEVEL'
 
             for i in range(2, len(parts)):
                 level_name += " " + parts[i]
 
     # device_type, entity_number, room_name, *level_name = name.split(' ')
+
+    device_type = device_type.replace('LUCE', '')
+    device_type = device_type.replace('TAPPARELLA', '')
 
     device_type = device_type.replace('LICHT', '')
     device_type = device_type.replace('ROLLLADEN', '')
