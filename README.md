@@ -28,9 +28,9 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
 
 You will end up with something like this:
 
-* on docker/hassio: `/config/custom_components/vimar_platform/`
+- on docker/hassio: `/config/custom_components/vimar_platform/`
 
-* on hassbian/virtualenv: `/home/homeassistant/.homeassistant/custom_components/vimar_platform/`
+- on hassbian/virtualenv: `/home/homeassistant/.homeassistant/custom_components/vimar_platform/`
 
 ### configuration
 
@@ -50,7 +50,6 @@ The hostname or the IP has to match the settings screen on the vimar web server:
 
 ![image](https://user-images.githubusercontent.com/6115324/83895464-04a0e980-a753-11ea-8c6c-a55dffba5b83.png)
 
-
 ## limitations
 
 The integration can currently list and control all lights, shades, fans and switches. Climates and other devices are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
@@ -63,23 +62,21 @@ enable more logging for vimar_platform:
       default: warning
       logs:
         custom_components.vimar_platform: info
-        
+
 have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where you `configuration.yaml` is located.
 
       INFO (SyncWorker_2) [homeassistant.loader] Loaded vimar_platform from custom_components.vimar_platform
-      
-   or
-   
+
+or
+
       WARNING (MainThread) [homeassistant.loader] You are using a custom integration for vimar_platform which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant.
-      
+
 > the Vimar platform code and the configuration was found. The warning is been shown for all custom components.
-   
+
       ERROR (MainThread) [custom_components.vimar_platform] Could not connect to Vimar Webserver home-assistant
 
 > Vimar By-me Webserver was not found under the given adress.
 
       ERROR (MainThread) [homeassistant.setup] Setup failed for vimar_platform: Integration not found
-      
+
 > You have put the content of this repository into the wrong directory - see above for an example.
-   
-   
