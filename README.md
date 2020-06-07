@@ -66,7 +66,7 @@ enable more logging for vimar_platform:
         
 have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where you `configuration.yaml` is located.
 
-      Loaded vimar_platform from custom_components.vimar_platform
+      INFO (SyncWorker_2) [homeassistant.loader] Loaded vimar_platform from custom_components.vimar_platform
       
    or
    
