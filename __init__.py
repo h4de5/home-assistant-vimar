@@ -96,7 +96,9 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     # if certificate is set, but file is not there - download it from the webserver
     if schema == "https" and certificate != None and len(certificate) != 0 and os.path.isfile(certificate) == False:
-        if vimarconnection.installCertificate() == False:
+        valid_certificate = await hass.async_add_executor_job(vimarconnection.installCertificate)
+        if valid_certificate == False:
+            _LOGGER.error("Could not download certificate to " + certificate)
             raise PlatformNotReady
 
     # Verify that passed in configuration works

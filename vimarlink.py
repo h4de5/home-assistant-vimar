@@ -57,12 +57,20 @@ class VimarLink():
                 VimarLink._schema, VimarLink._host, VimarLink._port)
             certificateFile = self._request(certificateUrl)
 
+            if certificateFile == None:
+                _LOGGER.error("Certificate download failed")
+                return False
+
             # get it back
             self._certificate = tempCertificate
 
-            file = open(self._certificate, "w")
-            file.write(certificateFile)
-            file.close()
+            try:
+                file = open(self._certificate, "w")
+                file.write(certificateFile)
+                file.close()
+            except:
+                _LOGGER.error("Saving certificate failed")
+                return False
 
             _LOGGER.info("Downloaded Vimar CA certificate to: " +
                          self._certificate)
