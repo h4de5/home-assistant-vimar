@@ -424,6 +424,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
     def _request_vimar(self, post):
         url = '%s://%s:%s/cgi-bin/dpadws' % (
             VimarLink._schema, VimarLink._host, VimarLink._port)
+
+        # _LOGGER.error("calling url: " + url)
         headers = {
             'SOAPAction': 'dbSoapRequest',
             'SOAPServer': '',

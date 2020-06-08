@@ -14,7 +14,7 @@ import os
 import voluptuous as vol
 from . import vimarlink
 from .const import (
-    DOMAIN, CONF_SCHEMA, CONF_CERTIFICATE, DEFAULT_USERNAME, DEFAULT_SCHEMA, DEFAULT_PORT
+    DOMAIN, CONF_SCHEMA, CONF_CERTIFICATE, DEFAULT_USERNAME, DEFAULT_SCHEMA, DEFAULT_PORT, DEFAULT_CERTIFICATE
 )
 
 # from . import vimarlink
@@ -30,7 +30,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
-        vol.Optional(CONF_CERTIFICATE): cv.string
+        vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): cv.string
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -95,8 +95,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
         schema, host, port, username, password, certificate)
 
     # if certificate is set, but file is not there - download it from the webserver
-    if len(certificate) != 0 and os.path.isfile(certificate) == False:
-        _LOGGER.error("Could not connect to Vimar Webserver " + host)
+    if schema == "https" and certificate != None and len(certificate) != 0 and os.path.isfile(certificate) == False:
         if vimarconnection.installCertificate() == False:
             raise PlatformNotReady
 
