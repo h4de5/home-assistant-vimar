@@ -30,7 +30,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
-        vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): cv.string
+        vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None)
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -95,11 +95,16 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
         schema, host, port, username, password, certificate)
 
     # if certificate is set, but file is not there - download it from the webserver
-    if schema == "https" and certificate != None and len(certificate) != 0 and os.path.isfile(certificate) == False:
-        valid_certificate = await hass.async_add_executor_job(vimarconnection.installCertificate)
-        if valid_certificate == False:
-            _LOGGER.error("Could not download certificate to " + certificate)
-            raise PlatformNotReady
+    if schema == "https" and certificate != None and len(certificate) != 0:
+        if os.path.isfile(certificate) == False:
+            valid_certificate = await hass.async_add_executor_job(vimarconnection.installCertificate)
+            if valid_certificate == False:
+                _LOGGER.error(
+                    "Could not download certificate to " + certificate)
+                raise PlatformNotReady
+        else:
+            _LOGGER.info(
+                "Vimar CA Certificate is already in place: " + certificate)
 
     # Verify that passed in configuration works
     # starting it outside MainThread

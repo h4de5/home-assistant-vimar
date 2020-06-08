@@ -468,10 +468,13 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
     def _request(self, url, post=None, headers=None, timeout=5, checkSSL=False):
         # _LOGGER.info("request to " + url)
         try:
-            timeouts = (5, 10)
+            # connection, read timeout
+            timeouts = (3, 6)
 
             if self._certificate != None:
                 checkSSL = self._certificate
+            else:
+                _LOGGER.info("Request ignores ssl certificate")
 
             if post is None:
                 response = requests.get(url,
