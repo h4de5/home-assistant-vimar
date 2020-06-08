@@ -51,7 +51,7 @@ class VimarLink():
         # temporarily disable certificate requests
         if len(self._certificate) != 0:
             tempCertificate = self._certificate
-            self._certificate = ''
+            self._certificate = None
 
             certificateUrl = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
                 VimarLink._schema, VimarLink._host, VimarLink._port)
@@ -507,6 +507,10 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return response.text
 
         return None
+
+    # read out schedule: <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-vimarclimateeventgettimeschedule xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>5e8a5aa99db78</sessionid><waittime>300</waittime><idobject>939</idobject><mode>CLIMATE</mode><type>WEEKLY</type><weekday>2</weekday><season>0</season></service-vimarclimateeventgettimeschedule></soapenv:Body></soapenv:Envelope>
+    # read out all climate details: SELECT * FROM DPADD_OBJECT_RELATION WHERE PARENTOBJ_ID IN (939) OR CHILDOBJ_ID IN (939) ORDER BY ORDER_NUM,ID ;
+    # read out climate values t1,t2,t3: SELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN (9187,9188,9189);
 
     # methods for async sending and thread
     # problem: how do i get the response...
