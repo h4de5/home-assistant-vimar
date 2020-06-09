@@ -474,7 +474,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             if self._certificate != None:
                 checkSSL = self._certificate
             else:
-                _LOGGER.info("Request ignores ssl certificate")
+                _LOGGER.debug("Request ignores ssl certificate")
 
             if post is None:
                 response = requests.get(url,

@@ -2,7 +2,11 @@
 # credits to https://community.home-assistant.io/t/create-new-cover-component-not-working/50361/5
 
 from homeassistant.components.cover import (
-    CoverEntity, SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
+    SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
+try:
+    from homeassistant.components.cover import CoverEntity
+except ImportError:
+    from homeassistant.components.cover import CoverDevice as CoverEntity
 from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
     ATTR_CURRENT_TILT_POSITION,

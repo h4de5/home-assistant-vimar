@@ -2,7 +2,11 @@
 # credits to https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
 
 from homeassistant.components.light import (
-    LightEntity, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+    ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+try:
+    from homeassistant.components.light import LightEntity
+except ImportError:
+    from homeassistant.components.light import Light as LightEntity
 from datetime import timedelta
 from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
