@@ -14,7 +14,8 @@ import os
 import voluptuous as vol
 from . import vimarlink
 from .const import (
-    DOMAIN, CONF_SCHEMA, CONF_CERTIFICATE, DEFAULT_USERNAME, DEFAULT_SCHEMA, DEFAULT_PORT, DEFAULT_CERTIFICATE
+    DOMAIN, CONF_SCHEMA, CONF_CERTIFICATE, DEFAULT_USERNAME, DEFAULT_SCHEMA, DEFAULT_PORT, DEFAULT_CERTIFICATE,
+    DEVICE_TYPE_LIGHTS, DEVICE_TYPE_COVERS, DEVICE_TYPE_SWITCHES, DEVICE_TYPE_CLIMATES, DEVICE_TYPE_FANS, DEVICE_TYPE_OTHERS
 )
 
 # from . import vimarlink
@@ -136,6 +137,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     covers = {}
     switches = {}
     climates = {}
+    fans = {}
     others = {}
 
     if len(devices) != 0:
@@ -145,14 +147,16 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             device["device_type"] = device_type
             device["device_class"] = device_class
             device["icon"] = icon
-            if device_type == "lights":
+            if device_type == DEVICE_TYPE_LIGHTS:
                 lights[device_id] = device
-            elif device_type == "covers":
+            elif device_type == DEVICE_TYPE_COVERS:
                 covers[device_id] = device
-            elif device_type == "switches":
+            elif device_type == DEVICE_TYPE_SWITCHES:
                 switches[device_id] = device
-            elif device_type == "climates":
+            elif device_type == DEVICE_TYPE_CLIMATES:
                 climates[device_id] = device
+            elif device_type == DEVICE_TYPE_FANS:
+                fans[device_id] = device
             else:
                 others[device_id] = device
 
@@ -188,13 +192,20 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     if lights and len(lights) > 0:
         hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "light", DOMAIN, {"hass_data_key": "lights"}, config))
+            "light", DOMAIN, {"hass_data_key": DEVICE_TYPE_LIGHTS}, config))
     if covers and len(covers) > 0:
         hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "cover", DOMAIN, {"hass_data_key": "covers"}, config))
+            "cover", DOMAIN, {"hass_data_key": DEVICE_TYPE_COVERS}, config))
     if switches and len(switches) > 0:
         hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "switch", DOMAIN, {"hass_data_key": "switches"}, config))
+            "switch", DOMAIN, {"hass_data_key": DEVICE_TYPE_SWITCHES}, config))
+
+    # if climates and len(climates) > 0:
+    #     hass.async_create_task(hass.helpers.discovery.async_load_platform(
+    #         "climate", DOMAIN, {"hass_data_key": DEVICE_TYPE_CLIMATES}, config))
+    # if fans and len(fans) > 0:
+    #     hass.async_create_task(hass.helpers.discovery.async_load_platform(
+    #         "fan", DOMAIN, {"hass_data_key": DEVICE_TYPE_FANS}, config))
 
     # hass.helpers.discovery.load_platform("light", DOMAIN, {}, config)
     # hass.helpers.discovery.load_platform("cover", DOMAIN, {}, config)
@@ -221,7 +232,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
 
 def parse_device_type(device):
-    device_type = "others"
+    device_type = DEVICE_TYPE_OTHERS
     # see: https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class
     device_class = None
     # see: https://materialdesignicons.com/cdn/2.0.46/
@@ -244,42 +255,49 @@ def parse_device_type(device):
     # mdi-speedometer - DIMMER
     # mdi-timelapse - DIMMER
 
+    # DEVICE_TYPE_LIGHTS, DEVICE_TYPE_COVERS, DEVICE_TYPE_SWITCHES, DEVICE_TYPE_CLIMATES, DEVICE_TYPE_FANS
+
     if device["object_type"] == "CH_Main_Automation":
-        if device["object_name"].find("VENTILATOR") != -1:
-            device_type = "switches"
+        if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
+            device_type = DEVICE_TYPE_SWITCHES
             icon = "mdi:fan"
         elif device["object_name"].find("LAMPE") != -1:
-            device_type = "lights"
+            device_type = DEVICE_TYPE_LIGHTS
             icon = "mdi:lightbulb"
         elif device["object_name"].find("LICHT") != -1:
-            device_type = "lights"
+            device_type = DEVICE_TYPE_LIGHTS
             icon = "mdi:ceiling-light"
         elif device["object_name"].find("STECKDOSE") != -1:
-            device_type = "switches"
+            device_type = DEVICE_TYPE_SWITCHES
             device_class = "plug"
             icon = "mdi:power-plug"
         elif device["object_name"].find("PULSANTE") != -1:
-            device_type = "switches"
+            device_type = DEVICE_TYPE_SWITCHES
             device_class = "plug"
             icon = "mdi:power-plug"
-        # else:
-        #     device_type = "lights"
-        #     icon = "mdi:ceiling-light"
+        else:
+            # fallback to lights
+            device_type = DEVICE_TYPE_LIGHTS
+            icon = "mdi:ceiling-light"
 
-    elif device["object_type"] == "CH_Dimmer_Automation" or device["object_type"] == "CH_Dimmer_RGB" or device["object_type"] == "CH_Dimmer_White" or device["object_type"] == "CH_Dimmer_Hue":
-        device_type = "lights"
+    elif device["object_type"] in ["CH_Dimmer_Automation", "CH_Dimmer_RGB", "CH_Dimmer_White", "CH_Dimmer_Hue"]:
+        device_type = DEVICE_TYPE_LIGHTS
         icon = "mdi:speedometer"  # mdi:rotate-right
-    elif device["object_type"] == "CH_ShutterWithoutPosition_Automation":
+
+    elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation"]:
         if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             device_class = DEVICE_CLASS_WINDOW
-            device_type = "covers"
+            device_type = DEVICE_TYPE_COVERS
         else:
             # could be: shade, blind, window
             # see: https://www.home-assistant.io/integrations/cover/
             device_class = DEVICE_CLASS_SHUTTER
-            device_type = "covers"
-    elif device["object_type"] == "CH_Clima":
-        device_type = "climates"
+            device_type = DEVICE_TYPE_COVERS
+    elif device["object_type"] in ["CH_Clima"]:
+        device_type = DEVICE_TYPE_CLIMATES
+    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_HVAC_NoZonaNeutra", "CH_Scene"]:
+        _LOGGER.debug(
+            "Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"])
     else:
         _LOGGER.warning(
             "Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"])
@@ -330,6 +348,7 @@ def format_name(name):
     device_type = device_type.replace('LICHT', '')
     device_type = device_type.replace('ROLLLADEN', '')
     device_type = device_type.replace('F-FERNBEDIENUNG', 'FENSTER')
+    device_type = device_type.replace('VENTILATORE', '')
     device_type = device_type.replace('VENTILATOR', '')
     device_type = device_type.replace('STECKDOSE', '')
 

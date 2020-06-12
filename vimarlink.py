@@ -111,7 +111,7 @@ class VimarLink():
 		""" % (status, VimarLink._session_id, object_id)
 
         response = self._request_vimar(post)
-        if response is not None:
+        if response is not None and response is not False:
             payload = response.find('.//payload')
             if payload is not None:
                 parsed_data = self._parse_sql_payload(payload.text)
@@ -306,7 +306,8 @@ ORDER BY o2.NAME, o3.ID;""" % (VimarLink._maingroup_ids)
                             # 'status_range': device['status_range'],
                         }
 
-            _LOGGER.info("getDevices ends")
+            _LOGGER.info("getDevices ends - found " +
+                         str(len(devices)) + " devices")
             # _LOGGER.info("getDevices")
             # _LOGGER.info(devices)
 
@@ -345,7 +346,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         response = self._request_vimar(post)
         # _LOGGER.info("response: ")
         # _LOGGER.info(response)
-        if response is not None:
+        if response is not None and response is not False:
             payload = response.find('.//payload')
             if payload is not None:
                 # _LOGGER.info("Got a new payload: " + payload.text)
@@ -360,7 +361,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 return parsed_data
             else:
                 _LOGGER.warning("Empty payload from SQL")
-        else:
+                return None
+        elif response is None:
             _LOGGER.warning("Empty response from SQL")
             _LOGGER.info("Errorous SQL: " + select)
         return None
@@ -447,14 +449,14 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         # _LOGGER.info("in _request_vimar")
         # _LOGGER.info(post)
         response = self._request(url, post, headers)
-        if response is not None:
+        if response is not None and response is not False:
             responsexml = self._parse_xml(response)
             # _LOGGER.info("responsexml: ")
             # _LOGGER.info(responsexml)
 
             return responsexml
         else:
-            return None
+            return response
 
     def _parse_xml(self, xml):
         try:
@@ -499,9 +501,11 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         except HTTPError as http_err:
             # _LOGGER.error(f'HTTP error occurred: {http_err}') # Python 3.6
             _LOGGER.error('HTTP error occurred: ' + str(http_err))
+            return False
         except Exception as err:
             # _LOGGER.error(f'Other error occurred: {err}') # Python 3.6
             _LOGGER.error('Other error occurred: ' + repr(err))
+            return False
         else:
             # _LOGGER.info('request Successful!')
             # _LOGGER.info('RAW Response: ')

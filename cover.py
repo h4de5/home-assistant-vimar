@@ -197,8 +197,8 @@ class VimarCover(CoverEntity):
         self._reset_status()
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
-        _LOGGER.debug("Vimar Cover update finished after " +
-                      str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+        # _LOGGER.debug("Vimar Cover update finished after " +
+        #               str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
