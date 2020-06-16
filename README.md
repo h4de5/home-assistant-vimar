@@ -60,6 +60,7 @@ You can manualy download the CA certificate from the webserver (see settings > n
 
 if the above settings do not work for you and you keep getting errors like 
 > SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")
+
 you can try to force ignoring any ssl errors during communicating to the webserver by keeping the path to the certificate empty.
 
     vimar_platform:
