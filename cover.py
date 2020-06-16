@@ -97,7 +97,7 @@ class VimarCover(CoverEntity):
     # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
     """ Return True if the state is based on our assumption instead of reading it from the device."""
     """ this will ignore is_closed state ? """
-    assumed_state = False
+    assumed_state = True
 
     """ set entity_id, object_id manually due to possible duplicates """
     entity_id = "cover." + "unset"
@@ -172,11 +172,13 @@ class VimarCover(CoverEntity):
 
     @property
     def is_closing(self):
+        # _state is not 1 (not stopped) and direction = 1 (down) - closing
         if not self._state and self._direction == 1:
             return True
 
     @property
     def is_opening(self):
+        # _state is not 1 (not stopped) and direction = 0 (up) - opening
         if not self._state and self._direction == 0:
             return True
 
@@ -212,6 +214,7 @@ class VimarCover(CoverEntity):
         if 'status' in self._device and self._device['status']:
             if 'up/down' in self._device['status']:
                 self._direction = 1
+                self._state = 0
                 self._device['status']['up/down']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 1)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 1)
@@ -222,6 +225,7 @@ class VimarCover(CoverEntity):
         if 'status' in self._device and self._device['status']:
             if 'up/down' in self._device['status']:
                 self._direction = 0
+                self._state = 0
                 self._device['status']['up/down']['status_value'] = '0'
                 # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 0)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 0)
@@ -232,6 +236,7 @@ class VimarCover(CoverEntity):
         if 'status' in self._device and self._device['status']:
             if 'stop up/stop down' in self._device['status']:
                 self._state = 1
+                self.assumed_state = True
                 self._device['status']['stop up/stop down']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['stop up/stop down']['status_id'], 1)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 1)
@@ -248,7 +253,7 @@ class VimarCover(CoverEntity):
             if 'up/down' in self._device['status']:
                 self._direction = int(
                     self._device['status']['up/down']['status_value'])
-                self.assumed_state = False
+                # self.assumed_state = False
 
     def format_name(self, name):
         name = name.replace('ROLLLADEN', 'ROLLO')
