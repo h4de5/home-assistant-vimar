@@ -86,6 +86,9 @@ class VimarSwitch(ToggleEntity):
 
     ICON = "mdi:power-plug"
 
+    """ set entity_id, object_id manually due to possible duplicates """
+    entity_id = "switch." + "unset"
+
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the switch."""
         self._device = device
@@ -94,6 +97,8 @@ class VimarSwitch(ToggleEntity):
         self._state = False
         self._reset_status()
         self._vimarconnection = vimarconnection
+
+        self.entity_id = "switch." + self._name.lower() + "_" + self._device_id
 
     # default properties
 
@@ -144,7 +149,7 @@ class VimarSwitch(ToggleEntity):
         """Fetch new state data for this switch.
         This is the only method that should fetch new data for Home Assistant.
         """
-        starttime = localtime()
+        # starttime = localtime()
         # self._device = self._vimarconnection.getDevice(self._device_id)
         # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
         old_status = self._device['status']

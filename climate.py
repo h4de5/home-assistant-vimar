@@ -104,6 +104,9 @@ class VimarClimate(ClimateDevice):
 
     ICON = "mdi:ceiling-climate"
 
+    """ set entity_id, object_id manually due to possible duplicates """
+    entity_id = "climate." + "unset"
+
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the climate."""
         self._device = device
@@ -113,6 +116,8 @@ class VimarClimate(ClimateDevice):
         self._brightness = 255
         self._reset_status()
         self._vimarconnection = vimarconnection
+
+        self.entity_id = "climate." + self._name.lower() + "_" + self._device_id
 
     # default properties
 

@@ -13,12 +13,14 @@ from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
 import asyncio
+import re
 
 # import variables set in __init__.py
 # from . import vimarconnection
 # from . import vimarlink
 from .const import DOMAIN
 from . import format_name
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,6 +112,9 @@ class VimarLight(LightEntity):
     """ Return True if the state is based on our assumption instead of reading it from the device."""
     assumed_state = False
 
+    """ set entity_id, object_id manually due to possible duplicates """
+    entity_id = "light." + "unset"
+
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the light."""
         self._device = device
@@ -119,6 +124,11 @@ class VimarLight(LightEntity):
         self._brightness = 255
         self._reset_status()
         self._vimarconnection = vimarconnection
+
+        # self.entity_id = "light." + self._device_id + "_" + \
+        #     re.sub("[^0-9a-z_]+", "_", self._name.lower())
+
+        self.entity_id = "light." + self._name.lower() + "_" + self._device_id
 
         # _LOGGER.info(
         #     "init new light: " + device_id + "/" + self._name + " => " + device["object_type"] + " / " + (self._device['device_class'] if self._device['device_class'] else "-") + "/" + device["object_name"])
@@ -147,6 +157,11 @@ class VimarLight(LightEntity):
             return self._device['icon']
         return self.ICON
 
+    # @property
+    # def entity_picture(self):
+    #     """Return the entity picture to use in the frontend, if any."""
+    #     return None
+
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
@@ -155,7 +170,15 @@ class VimarLight(LightEntity):
     @property
     def unique_id(self):
         """Return the ID of this device."""
+
+        # _LOGGER.info("get unique id: " + self._device_id)
+
         return self._device_id
+
+    # @property
+    # def entity_id(self):
+    #     """Return the ID of this device."""
+    #     return DOMAIN + "." + self._device_id + "_" + re.sub("[^0-9a-z\_]+", "_", self._name.lower())
 
     @property
     def available(self):
@@ -192,7 +215,7 @@ class VimarLight(LightEntity):
         """Fetch new state data for this light.
         This is the only method that should fetch new data for Home Assistant.
         """
-        starttime = localtime()
+        # starttime = localtime()
         # strftime("%Y-%m-%d %H:%M:%S",
         # self._light.update()
         # self._state = self._light.is_on()

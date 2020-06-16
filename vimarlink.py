@@ -7,6 +7,8 @@ import logging
 import requests
 from requests.exceptions import HTTPError
 import xml.etree.cElementTree as xmlTree
+import sys
+from xml.etree import ElementTree
 # from . import DOMAIN
 
 # import queue
@@ -112,13 +114,15 @@ class VimarLink():
 
         response = self._request_vimar(post)
         if response is not None and response is not False:
+
             payload = response.find('.//payload')
+
+            # usually set_status should not return a payload
             if payload is not None:
+                _LOGGER.warning(
+                    "set_device_status returned a payload: " + payload.text + " from post request: " + post)
                 parsed_data = self._parse_sql_payload(payload.text)
-
-                _LOGGER.info("set_device_status")
-                _LOGGER.info(parsed_data)
-
+                # _LOGGER.info("parsed payload: "+ parsed_data)
                 return parsed_data
 
         # _LOGGER.warning("Empty payload from Status")
@@ -352,12 +356,10 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             if payload is not None:
                 # _LOGGER.info("Got a new payload: " + payload.text)
                 parsed_data = self._parse_sql_payload(payload.text)
-                # TODO: we need to move parseSQLPayload over to pyton,
-                # Response: DBMG-000
-                # NextRows: 2
-                # Row000001: 'MAIN_GROUPS'
-                # Row000002: '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
-                # should be MAIN_GROUPS = '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
+
+                if parsed_data == None:
+                    _LOGGER.warning("Received invalid data from SQL: " +
+                                    ElementTree.tostring(response, encoding='unicode') + " from post: " + post)
 
                 return parsed_data
             else:
@@ -368,65 +370,53 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             _LOGGER.info("Errorous SQL: " + select)
         return None
 
-    # def _parse_sql_payload(self, string):
-    #     lines = string.split('\n')
-    #     return_dict = {}
-    #     keys = []
-    #     for line in lines:
-    #         if line:
-    #             prefix, values = line.split(':', 1)
-    #             prefix = prefix.split('#', 1)[1].strip()
-    #             values = values.strip()[1:-1].split('\',\'')
-
-    #             if prefix == 'Response':
-    #                 pass
-    #             elif prefix == 'NextRows':
-    #                 pass
-    #             else:
-    #                 idx = 0
-    #                 for value in values:
-    #                 if prefix == 'Row000001':
-    #                     keys.append(value)
-    #                     return_dict[value] = []
-    #                 else:
-    #                     return_dict[keys[idx]].append(value)
-    #                 idx += 1
-
-    #     print("magic_function1: ", return_dict)
-    #     return return_dict
-
     def _parse_sql_payload(self, string):
+        # DONE: we need to move parseSQLPayload over to pyton
+        # Example payload string:
+        # Response: DBMG-000
+        # NextRows: 2
+        # Row000001: 'MAIN_GROUPS'
+        # Row000002: '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
+        # should be MAIN_GROUPS = '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
+
+        return_list = []
+
         try:
             lines = string.split('\n')
-            return_list = []
             keys = []
             for line in lines:
                 if line:
+                    # split prefix from values
                     prefix, values = line.split(':', 1)
                     # prefix = prefix.split('#', 1)[1].strip()
                     prefix = prefix.strip()
-                    values = values.strip()[1:-1].split('\',\'')
 
-                    if prefix == 'Response':
-                        pass
-                    elif prefix == 'NextRows':
+                    # skip unused prefixes
+                    if prefix == 'Response' or prefix == 'NextRows':
                         pass
                     else:
+                        # remove outer quotes, split each quoted string
+                        values = values.strip()[1:-1].split('\',\'')
+
                         idx = 0
                         row_dict = {}
                         for value in values:
+                            # line with Row000001 holds the name of the fields
                             if prefix == 'Row000001':
                                 keys.append(value)
                             else:
+                                # all other rows have values
                                 row_dict[keys[idx]] = value
                                 idx += 1
 
                             if len(row_dict):
                                 return_list.append(row_dict)
         except Exception as err:
-            _LOGGER.error("Error parsing SQL payload: " +
-                          repr(err) + " payload: " + string)
-            return []
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+
+            _LOGGER.error("Error parsing SQL: " +
+                          repr(err) + " in line: " + exc_tb.tb_lineno + " - payload: " + string)
+            return None
 
         # _LOGGER.info("parseSQLPayload")
         # _LOGGER.info(return_list)

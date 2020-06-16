@@ -99,6 +99,9 @@ class VimarCover(CoverEntity):
     """ this will ignore is_closed state ? """
     assumed_state = False
 
+    """ set entity_id, object_id manually due to possible duplicates """
+    entity_id = "cover." + "unset"
+
     # pylint: disable=no-self-use
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the cover."""
@@ -113,6 +116,8 @@ class VimarCover(CoverEntity):
         self._direction = 0
         self._reset_status()
         self._vimarconnection = vimarconnection
+
+        self.entity_id = "cover." + self._name.lower() + "_" + self._device_id
 
     # default properties
 
@@ -188,7 +193,7 @@ class VimarCover(CoverEntity):
         """Fetch new state data for this cover.
         This is the only method that should fetch new data for Home Assistant.
         """
-        starttime = localtime()
+        # starttime = localtime()
         # self._light.update()
         # self._state = self._light.is_on()
         # self._brightness = self._light.brightness
