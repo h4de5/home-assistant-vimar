@@ -161,8 +161,10 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             elif device_type == DEVICE_TYPE_FANS:
                 fans[device_id] = device
             else:
-                _LOGGER.debug("Found unknown device: " +
-                              device_type + "/" + device_class + "/" + icon)
+                _LOGGER.info("Found unknown device: " +
+                             device_type + "/" +
+                             (device_class if device_class else '-') + "/" +
+                             (icon if icon else '-'))
                 others[device_id] = device
 
     # save devices into hass data to share it with other platforms
