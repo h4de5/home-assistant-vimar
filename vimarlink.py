@@ -284,6 +284,7 @@ ORDER BY o2.NAME, o3.ID;""" % (VimarLink._maingroup_ids)
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
             for device in payload:
+                # device['status_name'] = device['status_name'].replace('/', '_')
                 if device['object_id'] not in devices:
                     devices[device['object_id']] = {
                         'room_ids': device['room_ids'].split(','),

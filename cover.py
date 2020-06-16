@@ -94,6 +94,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class VimarCover(CoverEntity):
     """ Provides a Vimar cover. """
 
+    # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
+    """ Return True if the state is based on our assumption instead of reading it from the device."""
+    """ this will ignore is_closed state ? """
+    assumed_state = False
+
     # pylint: disable=no-self-use
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the cover."""
@@ -114,12 +119,6 @@ class VimarCover(CoverEntity):
     @property
     def should_poll(self):
         """ polling is needed for a Vimar device. """
-        return True
-
-    @property
-    def assumed_state(self):
-        """ Return True if the state is based on our assumption instead of reading it from the device."""
-        """ this will ignore is_closed state ? """
         return True
 
     @property
@@ -157,10 +156,13 @@ class VimarCover(CoverEntity):
         # if _state (stopped) is 1, than stopped was pressed, therefor it cannot be completely closed
         # if its 0, and direction 1, than it was going downwards and it was never stopped, therefor it is closed now
         if self._state:
+            self.assumed_state = True
             return False
-        elif self._direction:
+        elif self._direction == 1:
+            self.assumed_state = False
             return True
         else:
+            self.assumed_state = False
             return False
 
     @property
@@ -241,6 +243,7 @@ class VimarCover(CoverEntity):
             if 'up/down' in self._device['status']:
                 self._direction = int(
                     self._device['status']['up/down']['status_value'])
+                self.assumed_state = False
 
     def format_name(self, name):
         name = name.replace('ROLLLADEN', 'ROLLO')

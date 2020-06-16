@@ -144,6 +144,9 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
         for device_id, device in devices.items():
             device_type, device_class, icon = parse_device_type(device)
 
+            # _LOGGER.info("Found new device: " +
+            #              device_id + "/" + device["object_name"] + " " + device_type + " " + (device_class if device_class else ""))
+
             device["device_type"] = device_type
             device["device_class"] = device_class
             device["icon"] = icon
@@ -158,6 +161,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             elif device_type == DEVICE_TYPE_FANS:
                 fans[device_id] = device
             else:
+                _LOGGER.debug("Found unknown device: " +
+                              device_type + "/" + device_class + "/" + icon)
                 others[device_id] = device
 
     # save devices into hass data to share it with other platforms
@@ -322,7 +327,7 @@ def format_name(name):
                 level_name += " " + parts[i]
         elif len(parts) >= 2:
             device_type = parts[0]
-            entity_number = ''
+            entity_number = '0'
             room_name = 'ALL'
             level_name = parts[1]
 
@@ -333,7 +338,7 @@ def format_name(name):
                 "Found a device with an uncommon naming schema: " + name)
 
             device_type = parts[0]
-            entity_number = ''
+            entity_number = '0'
             room_name = 'ALL'
             level_name = 'LEVEL'
 
@@ -352,8 +357,15 @@ def format_name(name):
     device_type = device_type.replace('VENTILATOR', '')
     device_type = device_type.replace('STECKDOSE', '')
 
-    name = "%s %s %s %s" % (level_name, room_name,
-                            device_type, entity_number)
+    if len(level_name) != 0:
+        level_name += " "
+    if len(room_name) != 0:
+        room_name += " "
+    if len(device_type) != 0:
+        device_type += " "
+
+    name = "%s%s%s%s" % (level_name, room_name,
+                         device_type, entity_number)
 
     # change case
     return name.title()

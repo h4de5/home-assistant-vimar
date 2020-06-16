@@ -107,6 +107,7 @@ class VimarLight(LightEntity):
     ICON = "mdi:ceiling-light"
 
     # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
+    """ Return True if the state is based on our assumption instead of reading it from the device."""
     assumed_state = False
 
     def __init__(self, device, device_id, vimarconnection):
@@ -118,6 +119,9 @@ class VimarLight(LightEntity):
         self._brightness = 255
         self._reset_status()
         self._vimarconnection = vimarconnection
+
+        # _LOGGER.info(
+        #     "init new light: " + device_id + "/" + self._name + " => " + device["object_type"] + " / " + (self._device['device_class'] if self._device['device_class'] else "-") + "/" + device["object_name"])
 
     # default properties
 
@@ -131,10 +135,10 @@ class VimarLight(LightEntity):
         """ Returns the name of the device. """
         return self._name
 
-    @property
-    def color(self):
-        """ Returns the name of the device. """
-        return "red"
+    # @property
+    # def color(self):
+    #     """ Returns the name of the device. """
+    #     return "white"
 
     @property
     def icon(self):
