@@ -2,8 +2,7 @@
 
 This is an integration of the VIMAR bus system into the home-assistant environment.
 
-![image](https://user-images.githubusercontent.com/6115324/83801459-73c20380-a6a9-11ea-8531-9b1df7295e2f.png)
-![image](https://user-images.githubusercontent.com/6115324/84840230-3f522e00-b03f-11ea-8b05-df8a2b444a37.png)
+![image](https://user-images.githubusercontent.com/6115324/84840393-b091e100-b03f-11ea-84b1-c77cbeb83fb8.png)
 
 ## Vimar requirements
 
