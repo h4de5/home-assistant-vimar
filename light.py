@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
-PARALLEL_UPDATES = True
+PARALLEL_UPDATES = 5
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):

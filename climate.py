@@ -8,7 +8,7 @@ except ImportError:
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE, SUPPORT_TARGET_TEMPERATURE_RANGE,
     HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF,
-    CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF)
+    CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF, CURRENT_HVAC_IDLE)
 from homeassistant.const import (
     ATTR_TEMPERATURE, STATE_OFF, TEMP_CELSIUS, TEMP_FAHRENHEIT)
 from datetime import timedelta
@@ -25,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
-PARALLEL_UPDATES = True
+PARALLEL_UPDATES = 5
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -118,6 +118,10 @@ class VimarClimate(ClimateEntity):
         self._hvac_mode = None
         # heating, cooling
         self._hvac_action = None
+
+        # vimar property - if it should be seen as idle
+        self._is_running = None
+
         # TODO - find a way to handle different units from vimar device
         self._temperature_unit = TEMP_CELSIUS
 
@@ -198,13 +202,18 @@ class VimarClimate(ClimateEntity):
     def hvac_mode(self):
         """ The current operation (e.g.heat, cool, idle). Used to determine state. """
         # HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF,
+        if self._state == False:
+            return HVAC_MODE_OFF
+
         return self._hvac_mode
 
     @property
     def hvac_action(self):
         """ The current HVAC action(heating, cooling) """
-        # CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF
-        return self._hvac_action
+        # CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF, CURRENT_HVAC_IDLE
+        if self._state == False:
+            return CURRENT_HVAC_OFF
+        return (CURRENT_HVAC_IDLE, self._hvac_action)[self._is_running == True]
 
     @property
     def hvac_modes(self):
@@ -296,6 +305,18 @@ class VimarClimate(ClimateEntity):
     #     self.async_schedule_update_ha_state()
     # private helper methods
 
+# SELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN (9195,9196,9197);
+
+# ELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN (229,309,438,442,445,447,449,457,461,463,465,468,470,472,476,479,481,483,486,488,490,493,508,510,512,515,517,519,522,524,526,545,547,549,552,554,556,559,561,563,582,584,586,590,592,594,608,610,612,616,618,620,623,625,627,947,948,949,950,951,952,953,954,957,958,959,972,973,974,975,976,977,978,979,982,983,984,997,998,999,1000,1001,1002,1003,1004,1007,1008,1009,1022,1023,1024,1025,1026,1027,1028,1029,1032,1033,1034,1815,1816,1825,1826,1835,1836,1845,1846,3304,3313,3322,3331,9154,9195,9196,9197,9211,9212,9213);
+
+# Row000113: '9154','_DPAD_PRODUCT_VIMARBYME_CERTIFICATE_TRIGGER','-1','0'
+# Row000114: '9195','T1','-1','22.5'
+# Row000115: '9196','T2','-1','23.5'
+# Row000116: '9197','T3','-1','25.0'
+# Row000117: '9211','T1','-1',''
+# Row000118: '9212','T2','-1',''
+# Row000119: '9213','T3','-1',''
+
 # Row000078: '984','unita','-1','0'
 # Row000079: '997','funzionamento','-1','8'
 # Row000080: '998','centralizzato','-1','1'
@@ -305,6 +326,30 @@ class VimarClimate(ClimateEntity):
 # Row000084: '1002','setpoint','-1','26.0'
 # Row000085: '1003','temporizzazione','-1','0'
 # Row000086: '1004','temperatura','-1','23.2'
+
+# active cooling
+# Row000067: '959','unita','-1','0'
+# Row000068: '972','funzionamento','-1','8'
+# Row000069: '973','centralizzato','-1','1'
+# Row000070: '974','stagione','-1','1'
+# Row000071: '975','terziario','-1','0'
+# Row000072: '976','on/off','-1','1'
+# Row000073: '977','setpoint','-1','22.5'
+# Row000074: '978','temporizzazione','-1','0'
+# Row000075: '979','temperatura','-1','23.9'
+
+# idle cooling
+# Row000078: '984','unita','-1','0'
+# Row000079: '997','funzionamento','-1','8'
+# Row000080: '998','centralizzato','-1','1'
+# Row000081: '999','stagione','-1','1'
+# Row000082: '1000','terziario','-1','0'
+# Row000083: '1001','on/off','-1','0'
+# Row000084: '1002','setpoint','-1','26.0'
+# Row000085: '1003','temporizzazione','-1','0'
+# Row000086: '1004','temperatura','-1','23.1'
+
+
 #############
 # status_name = status_value / status_id
 ############
@@ -321,9 +366,14 @@ class VimarClimate(ClimateEntity):
 # variazione = 2 / 1846
 # forzatura off = 0 / 3331
 
+
     def _reset_status(self):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
+            if 'unita' in self._device['status']:
+                self._temperature_unit = (TEMP_FAHRENHEIT, TEMP_CELSIUS)[
+                    self._device['status']['unita']['status_value'] == '0']
+
             if 'temperatura' in self._device['status']:
                 self._temperature = float(
                     self._device['status']['temperatura']['status_value'])
@@ -336,12 +386,12 @@ class VimarClimate(ClimateEntity):
                 self._hvac_mode = (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
                     self._device['status']['stagione']['status_value'] == '1']
 
-            if 'unita' in self._device['status']:
-                self._temperature_unit = (TEMP_FAHRENHEIT, TEMP_CELSIUS)[
-                    self._device['status']['unita']['status_value'] == '0']
+            if 'funzionamento' in self._device['status']:
+                self._state = (False, True)[
+                    self._device['status']['funzionamento']['status_value'] == '8']
 
             if 'on/off' in self._device['status']:
-                self._state = (False, True)[
+                self._is_running = (False, True)[
                     self._device['status']['on/off']['status_value'] != '0']
 
             # if 'value' in self._device['status']:

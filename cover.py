@@ -25,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
-PARALLEL_UPDATES = True
+PARALLEL_UPDATES = 5
 
 # see: https://developers.home-assistant.io/docs/en/entity_cover.html
 
@@ -170,17 +170,17 @@ class VimarCover(CoverEntity):
             self.assumed_state = False
             return False
 
-    @property
-    def is_closing(self):
-        # _state is not 1 (not stopped) and direction = 1 (down) - closing
-        if not self._state and self._direction == 1:
-            return True
+    # @property
+    # def is_closing(self):
+    #     # _state is not 1 (not stopped) and direction = 1 (down) - closing
+    #     if not self._state and self._direction == 1:
+    #         return True
 
-    @property
-    def is_opening(self):
-        # _state is not 1 (not stopped) and direction = 0 (up) - opening
-        if not self._state and self._direction == 0:
-            return True
+    # @property
+    # def is_opening(self):
+    #     # _state is not 1 (not stopped) and direction = 0 (up) - opening
+    #     if not self._state and self._direction == 0:
+    #         return True
 
     @property
     def supported_features(self):

@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=20)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
-PARALLEL_UPDATES = True
+PARALLEL_UPDATES = 5
 
 
 @asyncio.coroutine
