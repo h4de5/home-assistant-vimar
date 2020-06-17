@@ -2,7 +2,7 @@
 
 This is an integration of the VIMAR bus system into the home-assistant environment.
 
-![image](https://user-images.githubusercontent.com/6115324/83801459-73c20380-a6a9-11ea-8531-9b1df7295e2f.png)
+![image](https://user-images.githubusercontent.com/6115324/84840393-b091e100-b03f-11ea-84b1-c77cbeb83fb8.png)
 
 ## Vimar requirements
 
@@ -88,7 +88,7 @@ The hostname or the IP has to match the settings screen on the vimar web server:
 
 ## limitations
 
-The integration can currently list and control all lights, shades, fans and switches. Climates and other devices are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
+The integration can currently list and control all lights, covers/shades, fans, switches and climates. Other devices (audio, KNX, RGB dimmers) are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
 
 ## troubleshooting
 
