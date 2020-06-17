@@ -13,14 +13,9 @@ from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
 import logging
 import asyncio
-import re
 
-# import variables set in __init__.py
-# from . import vimarconnection
-# from . import vimarlink
 from .const import DOMAIN
 from . import format_name
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +97,6 @@ def recalculate_brightness(brightness):
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 
 
-# class VimarLight(Light):
 class VimarLight(LightEntity):
     """ Provides a Vimar lights. """
 
@@ -110,7 +104,7 @@ class VimarLight(LightEntity):
 
     # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
     """ Return True if the state is based on our assumption instead of reading it from the device."""
-    assumed_state = False
+    # assumed_state = False
 
     """ set entity_id, object_id manually due to possible duplicates """
     entity_id = "light." + "unset"
@@ -209,7 +203,6 @@ class VimarLight(LightEntity):
 
     # def update(self):
     # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
-    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
         """Fetch new state data for this light.
@@ -229,6 +222,10 @@ class VimarLight(LightEntity):
             self.async_schedule_update_ha_state()
         # _LOGGER.debug("Vimar Light update finished after " +
         #               str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+
+        # for status_name, status_dict in self._device['status'].items():
+        #     _LOGGER.info("Vimar light update id: " +
+        #                  status_name + " = " + status_dict['status_value'] + " / " + status_dict['status_id'])
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar light on. """

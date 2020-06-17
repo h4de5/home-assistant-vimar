@@ -168,9 +168,10 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
                 others[device_id] = device
 
     # save devices into hass data to share it with other platforms
-    hass.data[DOMAIN]["lights"] = lights
-    hass.data[DOMAIN]["covers"] = covers
-    hass.data[DOMAIN]["switches"] = switches
+    hass.data[DOMAIN][DEVICE_TYPE_LIGHTS] = lights
+    hass.data[DOMAIN][DEVICE_TYPE_COVERS] = covers
+    hass.data[DOMAIN][DEVICE_TYPE_SWITCHES] = switches
+    hass.data[DOMAIN][DEVICE_TYPE_CLIMATES] = climates
     # there should not be too many requests per second
     # limit scan_interval depending on items
     scan_interval = max(3, int(len(devices) / 500 * 60))
@@ -197,6 +198,9 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     # homeassistant.helpers.discovery.async_load_platform(hass, component, platform, discovered, hass_config)
 
+    if climates and len(climates) > 0:
+        hass.async_create_task(hass.helpers.discovery.async_load_platform(
+            "climate", DOMAIN, {"hass_data_key": DEVICE_TYPE_CLIMATES}, config))
     if lights and len(lights) > 0:
         hass.async_create_task(hass.helpers.discovery.async_load_platform(
             "light", DOMAIN, {"hass_data_key": DEVICE_TYPE_LIGHTS}, config))
@@ -207,9 +211,6 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
         hass.async_create_task(hass.helpers.discovery.async_load_platform(
             "switch", DOMAIN, {"hass_data_key": DEVICE_TYPE_SWITCHES}, config))
 
-    # if climates and len(climates) > 0:
-    #     hass.async_create_task(hass.helpers.discovery.async_load_platform(
-    #         "climate", DOMAIN, {"hass_data_key": DEVICE_TYPE_CLIMATES}, config))
     # if fans and len(fans) > 0:
     #     hass.async_create_task(hass.helpers.discovery.async_load_platform(
     #         "fan", DOMAIN, {"hass_data_key": DEVICE_TYPE_FANS}, config))
@@ -336,7 +337,7 @@ def format_name(name):
             for i in range(2, len(parts)):
                 level_name += " " + parts[i]
         else:
-            _LOGGER.warning(
+            _LOGGER.info(
                 "Found a device with an uncommon naming schema: " + name)
 
             device_type = parts[0]
@@ -358,6 +359,7 @@ def format_name(name):
     device_type = device_type.replace('VENTILATORE', '')
     device_type = device_type.replace('VENTILATOR', '')
     device_type = device_type.replace('STECKDOSE', '')
+    device_type = device_type.replace('THERMOSTAT', '')
 
     if len(level_name) != 0:
         level_name += " "
