@@ -161,10 +161,10 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             elif device_type == DEVICE_TYPE_FANS:
                 fans[device_id] = device
             else:
-                _LOGGER.info("Found unknown device: " +
-                             device_type + "/" +
-                             (device_class if device_class else '-') + "/" +
-                             (icon if icon else '-'))
+                # _LOGGER.info("Found unknown device: " +
+                #              device_type + "/" +
+                #              (device_class if device_class else '-') + "/" +
+                #              (icon if icon else '-'))
                 others[device_id] = device
 
     # save devices into hass data to share it with other platforms
@@ -301,10 +301,10 @@ def parse_device_type(device):
             # see: https://www.home-assistant.io/integrations/cover/
             device_class = DEVICE_CLASS_SHUTTER
             device_type = DEVICE_TYPE_COVERS
-    elif device["object_type"] in ["CH_Clima"]:
+    elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra"]:
         device_type = DEVICE_TYPE_CLIMATES
-    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_HVAC_NoZonaNeutra", "CH_Scene"]:
-        _LOGGER.debug(
+    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Scene"]:
+        _LOGGER.info(
             "Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"])
     else:
         _LOGGER.warning(
