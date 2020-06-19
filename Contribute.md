@@ -48,10 +48,10 @@ The way to find out how attributes are set, is similar. The main difference is, 
 8. the network tab will show many requests that do look almost identical
     > in addition to the status updates (see above) that we still get regulary, every status change trigger another request
     > such a change request should include the following:
-        `<operation>SETVALUE</operation>` to indicate that it is a actual change and not a status update request
-        `<idobject>712</idobject>` a status identifier that define which attribute should be changed
-        `<payload>36</payload>` and the payload or the value to which we change that attribute (e.g. dimm the light to 36%)
-    > it is possible that a single click in the webserver, changes multible attributes at once in this case we need all the change details
+    1.    `<operation>SETVALUE</operation>` to indicate that it is a actual change and not a status update request
+    2.    `<idobject>712</idobject>` a status identifier that define which attribute should be changed
+    3.    `<payload>36</payload>` and the payload or the value to which we change that attribute (e.g. dimm the light to 36%)
+    > it is possible that a single click in the webserver, changes multible attributes at once. In this case we need all the change details
 9. again copy that text into the ticket and try to explain what the values mean
         
 > this was done in the chrome browser - name of tabs and shortcuts may be different in other browsers but usually all modern browsers should support this
