@@ -1,24 +1,25 @@
 """Platform for climate integration."""
-# credits to https://github.com/GeoffAtHome/climatewaverf-home-assistant-climates/blob/master/climatewave.py
+# credits to
+# https://github.com/GeoffAtHome/climatewaverf-home-assistant-climates/blob/master/climatewave.py
 
 try:
     from homeassistant.components.climate import ClimateEntity
 except ImportError:
     from homeassistant.components.climate import ClimateDevice as ClimateEntity
 from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE, SUPPORT_TARGET_TEMPERATURE_RANGE,
-    HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF,
+    SUPPORT_TARGET_TEMPERATURE,
+    HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF, HVAC_MODE_AUTO,
     CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF, CURRENT_HVAC_IDLE)
 from homeassistant.const import (
-    ATTR_TEMPERATURE, STATE_OFF, TEMP_CELSIUS, TEMP_FAHRENHEIT)
+    ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT)
 from datetime import timedelta
-from time import gmtime, strftime, localtime, mktime
+# from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
-import homeassistant.helpers.config_validation as cv
+# import homeassistant.helpers.config_validation as cv
 import logging
-import asyncio
+# import asyncio
 
-from .const import DOMAIN
+from .const import (DOMAIN, VIMAR_CLIMATE_MANUAL, VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_COOL, VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_OFF)
 from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,39 +92,46 @@ class VimarClimate(ClimateEntity):
 
     ICON = "mdi:ceiling-climate"
 
-    # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
+    # see:
+    # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     """ Return True if the state is based on our assumption instead of reading it from the device."""
     # assumed_state = False
 
     """ set entity_id, object_id manually due to possible duplicates """
     entity_id = "climate." + "unset"
 
+    # 20.3
+    _temperature = None
+    # 23
+    # self._target_temperature_high = None
+    # 20
+    # self._target_temperature_low = None
+    _target_temperature = None
+    # heat, cool, idle
+    _hvac_mode = None
+    # heating, cooling
+    _hvac_action = CURRENT_HVAC_IDLE
+
+    # for how many hours the temporary target temperature will be held SYNCDB
+    _temporizzazione = 0
+
+    # TODO - find a way to handle different units from vimar device
+    _temperature_unit = TEMP_CELSIUS
+
+    # 8 .. auto, 7 .. manual timed, 6 .. manual  NO-OPTIONALS
+    # self._funzionamento = VIMAR_CLIMATE_AUTO
+
+    # vimar property - if it should be seen as idle
+    _is_running = None
+
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the climate."""
         self._device = device
         self._name = format_name(self._device['object_name'])
         self._device_id = device_id
-        self._state = False
+        self._state = True
         self._reset_status()
         self._vimarconnection = vimarconnection
-
-        # 20.3
-        self._temperature = None
-        # 23
-        # self._target_temperature_high = None
-        # 20
-        # self._target_temperature_low = None
-        self._target_temperature = None
-        # heat, cool, idle
-        self._hvac_mode = None
-        # heating, cooling
-        self._hvac_action = None
-
-        # vimar property - if it should be seen as idle
-        self._is_running = None
-
-        # TODO - find a way to handle different units from vimar device
-        self._temperature_unit = TEMP_CELSIUS
 
         self.entity_id = "climate." + self._name.lower() + "_" + self._device_id
 
@@ -181,28 +189,20 @@ class VimarClimate(ClimateEntity):
         return self._temperature
 
     @property
-    def target_temperature_high(self):
-        """ The upper bound target temperature """
-        # return self._target_temperature_high
-        if self._hvac_mode == HVAC_MODE_COOL:
-            return self._target_temperature
-        else:
-            return None
+    def target_temperature(self):
+        """Return the temperature we try to reach."""
+        return self._target_temperature
 
     @property
-    def target_temperature_low(self):
-        """ The lower bound target temperature """
-        # return self._target_temperature_low
-        if self._hvac_mode == HVAC_MODE_HEAT:
-            return self._target_temperature
-        else:
-            return None
+    def target_temperature_step(self):
+        """Return the supported step of target temperature."""
+        return 0.1
 
     @property
     def hvac_mode(self):
         """ The current operation (e.g.heat, cool, idle). Used to determine state. """
         # HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF,
-        if self._state == False:
+        if not self._state:
             return HVAC_MODE_OFF
 
         return self._hvac_mode
@@ -211,14 +211,15 @@ class VimarClimate(ClimateEntity):
     def hvac_action(self):
         """ The current HVAC action(heating, cooling) """
         # CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF, CURRENT_HVAC_IDLE
-        if self._state == False:
+        if not self._state:
             return CURRENT_HVAC_OFF
-        return (CURRENT_HVAC_IDLE, self._hvac_action)[self._is_running == True]
+        return self._hvac_action
+        # return (CURRENT_HVAC_IDLE, self._hvac_action)[self._is_running]
 
     @property
     def hvac_modes(self):
         """ List of available operation modes. See below. """
-        return [HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF]
+        return [HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF, HVAC_MODE_AUTO]
 
     @property
     def temperature_unit(self):
@@ -236,23 +237,83 @@ class VimarClimate(ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
 
+        _LOGGER.info("Vimar Climate setting hvac_mode: " + hvac_mode)
+
+        # if 'stagione' in self._device['status']:
+        #     self._hvac_mode = (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
+        #         self._device['status']['stagione']['status_value'] == '1']
+
+        # self._hvac_mode = hvac_mode
+
+        if 'status' in self._device and self._device['status']:
+            if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
+
+                if 'stagione' in self._device['status']:
+                    self._hvac_mode = hvac_mode
+                    self._device['status']['stagione']['status_value'] = (
+                        VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_COOL)[self._hvac_mode == HVAC_MODE_COOL]
+                    await self.hass.async_add_executor_job(self._vimarconnection.set_device_status,
+                                                           self._device['status']['stagione']['status_id'],
+                                                           self._device['status']['stagione']['status_value'], 'SYNCDB')
+
+            # we always set current function mode
+            if 'funzionamento' in self._device['status']:
+                self._hvac_mode = hvac_mode
+
+                if hvac_mode in (HVAC_MODE_AUTO, HVAC_MODE_OFF):
+                    self._funzionamento = (VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_OFF)[hvac_mode == HVAC_MODE_OFF]
+
+                _LOGGER.info("Vimar Climate setting setup mode to: " + self._funzionamento)
+
+                self._device['status']['funzionamento']['status_value'] = self._funzionamento
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status,
+                                                       self._device['status']['funzionamento']['status_id'],
+                                                       self._device['status']['funzionamento']['status_value'], 'NO-OPTIONALS')
+
+            self.async_schedule_update_ha_state()
+
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
 
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if temperature is None:
+            return
+
+        _LOGGER.info("Vimar Climate setting temperature: " + str(temperature))
+
+        self._target_temperature = temperature
+
+        if 'status' in self._device and self._device['status']:
+            # set target temperatur only if mode and setpoint status are available
+            if 'setpoint' in self._device['status'] and 'funzionamento' in self._device['status']:
+
+                self._device['status']['setpoint']['status_value'] = str(
+                    self._target_temperature)
+                self._device['status']['funzionamento']['status_value'] = VIMAR_CLIMATE_MANUAL
+
+                self._funzionamento = VIMAR_CLIMATE_MANUAL
+
+                # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status,
+                                                       self._device['status']['setpoint']['status_id'],
+                                                       self._device['status']['setpoint']['status_value'], 'SYNCDB')
+
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status,
+                                                       self._device['status']['funzionamento']['status_id'],
+                                                       self._device['status']['funzionamento']['status_value'], 'NO-OPTIONALS')
+
+                self.async_schedule_update_ha_state()
+
     # def update(self):
     # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
-    # see: https://github.com/home-assistant/home-assistant/blob/master/homeassistant/components/dweet/__init__.py
+    # see:
+    # https://github.com/home-assistant/home-assistant/blob/master/homeassistant/components/dweet/__init__.py
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
         """Fetch new state data for this climate.
         This is the only method that should fetch new data for Home Assistant.
         """
         # starttime = localtime()
-        # self._climate.update()
-        # self._state = self._climate.is_on()
-        # self._brightness = self._climate.brightness
-        # self._device = self._vimarconnection.getDevice(self._device_id)
-        # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
         old_status = self._device['status']
         self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
         self._reset_status()
@@ -261,7 +322,8 @@ class VimarClimate(ClimateEntity):
 
         # for status_name, status_dict in self._device['status'].items():
         #     _LOGGER.info("Vimar Climate update id: " +
-        #                  status_name + " = " + status_dict['status_value'] + " / " + status_dict['status_id'])
+        # status_name + " = " + status_dict['status_value'] + " / " +
+        # status_dict['status_id'])
 
         # keys_values = self._device['status'].items()
         # new_d = {str(key): str(value) for key, value in keys_values}
@@ -269,7 +331,7 @@ class VimarClimate(ClimateEntity):
         # _LOGGER.info("Vimar Climate update " + new_d)
 
         # _LOGGER.info("Vimar Climate update finished after " +
-        #              str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+        # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     # async def async_turn_on(self, **kwargs):
     #     """ Turn the Vimar climate on. """
@@ -280,16 +342,8 @@ class VimarClimate(ClimateEntity):
     #             # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
     #             # await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
     #             self.hass.async_add_executor_job(
-    #                 self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
-
-    #     if ATTR_BRIGHTNESS in kwargs:
-    #         if 'status' in self._device and self._device['status']:
-    #             if 'value' in self._device['status']:
-    #                 self._brightness = kwargs[ATTR_BRIGHTNESS]
-    #                 brightness_value = calculate_brightness(self._brightness)
-    #                 # self._vimarconnection.set_device_status(self._device['status']['value']['status_id'], brightness_value)
-    #                 self.hass.async_add_executor_job(
-    #                     self._vimarconnection.set_device_status, self._device['status']['value']['status_id'], brightness_value)
+    # self._vimarconnection.set_device_status,
+    # self._device['status']['on/off']['status_id'], 1)
 
     #     self.async_schedule_update_ha_state()
 
@@ -300,14 +354,17 @@ class VimarClimate(ClimateEntity):
     #             self._state = False
     #             # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
     #             self.hass.async_add_executor_job(
-    #                 self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
+    # self._vimarconnection.set_device_status,
+    # self._device['status']['on/off']['status_id'], 0)
 
     #     self.async_schedule_update_ha_state()
     # private helper methods
 
-# SELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN (9195,9196,9197);
+# SELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN
+# (9195,9196,9197);
 
-# ELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN (229,309,438,442,445,447,449,457,461,463,465,468,470,472,476,479,481,483,486,488,490,493,508,510,512,515,517,519,522,524,526,545,547,549,552,554,556,559,561,563,582,584,586,590,592,594,608,610,612,616,618,620,623,625,627,947,948,949,950,951,952,953,954,957,958,959,972,973,974,975,976,977,978,979,982,983,984,997,998,999,1000,1001,1002,1003,1004,1007,1008,1009,1022,1023,1024,1025,1026,1027,1028,1029,1032,1033,1034,1815,1816,1825,1826,1835,1836,1845,1846,3304,3313,3322,3331,9154,9195,9196,9197,9211,9212,9213);
+# ELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN
+# (229,309,438,442,445,447,449,457,461,463,465,468,470,472,476,479,481,483,486,488,490,493,508,510,512,515,517,519,522,524,526,545,547,549,552,554,556,559,561,563,582,584,586,590,592,594,608,610,612,616,618,620,623,625,627,947,948,949,950,951,952,953,954,957,958,959,972,973,974,975,976,977,978,979,982,983,984,997,998,999,1000,1001,1002,1003,1004,1007,1008,1009,1022,1023,1024,1025,1026,1027,1028,1029,1032,1033,1034,1815,1816,1825,1826,1835,1836,1845,1846,3304,3313,3322,3331,9154,9195,9196,9197,9211,9212,9213);
 
 # Row000113: '9154','_DPAD_PRODUCT_VIMARBYME_CERTIFICATE_TRIGGER','-1','0'
 # Row000114: '9195','T1','-1','22.5'
@@ -366,30 +423,39 @@ class VimarClimate(ClimateEntity):
 # variazione = 2 / 1846
 # forzatura off = 0 / 3331
 
-
     def _reset_status(self):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
+            # temperature units
             if 'unita' in self._device['status']:
                 self._temperature_unit = (TEMP_FAHRENHEIT, TEMP_CELSIUS)[
                     self._device['status']['unita']['status_value'] == '0']
 
+            # current temperature
             if 'temperatura' in self._device['status']:
                 self._temperature = float(
                     self._device['status']['temperatura']['status_value'])
 
+            # target tempertature
             if 'setpoint' in self._device['status']:
                 self._target_temperature = float(
                     self._device['status']['setpoint']['status_value'])
 
+            # current direction cooling or heating
             if 'stagione' in self._device['status']:
                 self._hvac_mode = (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
-                    self._device['status']['stagione']['status_value'] == '1']
+                    self._device['status']['stagione']['status_value'] == VIMAR_CLIMATE_COOL]
+                self._hvac_action = (CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL)[
+                    self._device['status']['stagione']['status_value'] == VIMAR_CLIMATE_COOL]
 
+            # mode of the climate, 0 off, 8 auto, 6 manual
             if 'funzionamento' in self._device['status']:
-                self._state = (False, True)[
-                    self._device['status']['funzionamento']['status_value'] == '8']
+                self._funzionamento = self._device['status']['funzionamento']['status_value']
 
+                self._state = (True, False)[
+                    self._device['status']['funzionamento']['status_value'] == VIMAR_CLIMATE_OFF]
+
+            # whenever the climate is idle or active (heating, cooling)
             if 'on/off' in self._device['status']:
                 self._is_running = (False, True)[
                     self._device['status']['on/off']['status_value'] != '0']

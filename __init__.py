@@ -14,9 +14,19 @@ import os
 import voluptuous as vol
 from . import vimarlink
 from .const import (
-    DOMAIN, CONF_SCHEMA, CONF_CERTIFICATE, DEFAULT_USERNAME, DEFAULT_SCHEMA, DEFAULT_PORT, DEFAULT_CERTIFICATE,
-    DEVICE_TYPE_LIGHTS, DEVICE_TYPE_COVERS, DEVICE_TYPE_SWITCHES, DEVICE_TYPE_CLIMATES, DEVICE_TYPE_FANS, DEVICE_TYPE_OTHERS
-)
+    DOMAIN,
+    CONF_SCHEMA,
+    CONF_CERTIFICATE,
+    DEFAULT_USERNAME,
+    DEFAULT_SCHEMA,
+    DEFAULT_PORT,
+    DEFAULT_CERTIFICATE,
+    DEVICE_TYPE_LIGHTS,
+    DEVICE_TYPE_COVERS,
+    DEVICE_TYPE_SWITCHES,
+    DEVICE_TYPE_CLIMATES,
+    DEVICE_TYPE_FANS,
+    DEVICE_TYPE_OTHERS)
 
 # from . import vimarlink
 # see some examples: https://github.com/pnbruckner/homeassistant-config/blob/master/custom_components/amcrest/__init__.py
@@ -95,11 +105,12 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     vimarconnection = vimarlink.VimarLink(
         schema, host, port, username, password, certificate)
 
-    # if certificate is set, but file is not there - download it from the webserver
-    if schema == "https" and certificate != None and len(certificate) != 0:
+    # if certificate is set, but file is not there - download it from the
+    # webserver
+    if schema == "https" and certificate is not None and len(certificate) != 0:
         if os.path.isfile(certificate) == False:
             valid_certificate = await hass.async_add_executor_job(vimarconnection.installCertificate)
-            if valid_certificate == False:
+            if not valid_certificate:
                 _LOGGER.error(
                     "Could not download certificate to " + certificate)
                 raise PlatformNotReady
@@ -145,7 +156,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             device_type, device_class, icon = parse_device_type(device)
 
             # _LOGGER.info("Found new device: " +
-            #              device_id + "/" + device["object_name"] + " " + device_type + " " + (device_class if device_class else ""))
+            # device_id + "/" + device["object_name"] + " " + device_type + " "
+            # + (device_class if device_class else ""))
 
             device["device_type"] = device_type
             device["device_class"] = device_class
@@ -161,10 +173,10 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             elif device_type == DEVICE_TYPE_FANS:
                 fans[device_id] = device
             else:
-                _LOGGER.info("Found unknown device: " +
-                             device_type + "/" +
-                             (device_class if device_class else '-') + "/" +
-                             (icon if icon else '-'))
+                # _LOGGER.info("Found unknown device: " +
+                #              device_type + "/" +
+                #              (device_class if device_class else '-') + "/" +
+                #              (icon if icon else '-'))
                 others[device_id] = device
 
     # save devices into hass data to share it with other platforms
@@ -241,7 +253,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
 def parse_device_type(device):
     device_type = DEVICE_TYPE_OTHERS
-    # see: https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class
+    # see:
+    # https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class
     device_class = None
     # see: https://materialdesignicons.com/cdn/2.0.46/
     icon = None
@@ -266,7 +279,8 @@ def parse_device_type(device):
     # DEVICE_TYPE_LIGHTS, DEVICE_TYPE_COVERS, DEVICE_TYPE_SWITCHES, DEVICE_TYPE_CLIMATES, DEVICE_TYPE_FANS
 
     if device["object_type"] == "CH_Main_Automation":
-        if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
+        if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find(
+                "FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
             icon = "mdi:fan"
         elif device["object_name"].find("LAMPE") != -1:
@@ -301,14 +315,20 @@ def parse_device_type(device):
             # see: https://www.home-assistant.io/integrations/cover/
             device_class = DEVICE_CLASS_SHUTTER
             device_type = DEVICE_TYPE_COVERS
-    elif device["object_type"] in ["CH_Clima"]:
+    elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra"]:
         device_type = DEVICE_TYPE_CLIMATES
-    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_HVAC_NoZonaNeutra", "CH_Scene"]:
-        _LOGGER.debug(
-            "Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Scene"]:
+        _LOGGER.info(
+            "Unsupported object returned from web server: " +
+            device["object_type"] +
+            " / " +
+            device["object_name"])
     else:
         _LOGGER.warning(
-            "Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            "Unknown object returned from web server: " +
+            device["object_type"] +
+            " / " +
+            device["object_name"])
 
     return device_type, device_class, icon
 

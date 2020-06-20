@@ -1,5 +1,6 @@
 """Platform for light integration."""
-# credits to https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
+# credits to
+# https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
@@ -8,11 +9,11 @@ try:
 except ImportError:
     from homeassistant.components.light import Light as LightEntity
 from datetime import timedelta
-from time import gmtime, strftime, localtime, mktime
+# from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
-import homeassistant.helpers.config_validation as cv
+# import homeassistant.helpers.config_validation as cv
 import logging
-import asyncio
+# import asyncio
 
 from .const import DOMAIN
 from . import format_name
@@ -78,7 +79,9 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     #             lights.append(VimarLight({'object_name': name}, device_id, link))
 
     if len(lights) != 0:
-        # If your entities need to fetch data before being written to Home Assistant for the first time, pass True to the add_entities method: add_entities([MyEntity()], True).
+        # If your entities need to fetch data before being written to Home
+        # Assistant for the first time, pass True to the add_entities method:
+        # add_entities([MyEntity()], True).
         async_add_entities(lights)
     _LOGGER.info("Vimar Light complete!")
 
@@ -102,7 +105,8 @@ class VimarLight(LightEntity):
 
     ICON = "mdi:ceiling-light"
 
-    # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
+    # see:
+    # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     """ Return True if the state is based on our assumption instead of reading it from the device."""
     # assumed_state = False
 
@@ -131,7 +135,7 @@ class VimarLight(LightEntity):
 
     @property
     def should_poll(self):
-        """ polling is needed for a Vimar device. """
+        """ Poll for a Vimar device. """
         return True
 
     @property
@@ -172,7 +176,8 @@ class VimarLight(LightEntity):
     # @property
     # def entity_id(self):
     #     """Return the ID of this device."""
-    #     return DOMAIN + "." + self._device_id + "_" + re.sub("[^0-9a-z\_]+", "_", self._name.lower())
+    # return DOMAIN + "." + self._device_id + "_" + re.sub("[^0-9a-z\_]+",
+    # "_", self._name.lower())
 
     @property
     def available(self):
@@ -202,7 +207,8 @@ class VimarLight(LightEntity):
     # async getter and setter
 
     # def update(self):
-    # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
+    # see:
+    # https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
         """Fetch new state data for this light.
@@ -221,11 +227,12 @@ class VimarLight(LightEntity):
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
         # _LOGGER.debug("Vimar Light update finished after " +
-        #               str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+        # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
         # for status_name, status_dict in self._device['status'].items():
         #     _LOGGER.info("Vimar light update id: " +
-        #                  status_name + " = " + status_dict['status_value'] + " / " + status_dict['status_id'])
+        # status_name + " = " + status_dict['status_value'] + " / " +
+        # status_dict['status_id'])
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar light on. """
@@ -235,7 +242,9 @@ class VimarLight(LightEntity):
                 self._state = True
                 self._device['status']['on/off']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
-                # await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
+                # await
+                # self.hass.async_add_executor_job(self._vimarconnection.set_device_status,
+                # self._device['status']['on/off']['status_id'], 1)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
 
         if ATTR_BRIGHTNESS in kwargs:

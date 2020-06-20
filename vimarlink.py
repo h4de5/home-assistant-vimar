@@ -33,7 +33,14 @@ class VimarLink():
     _maingroup_ids = None
     _certificate = None
 
-    def __init__(self, schema=None, host=None, port=None, username=None, password=None, certificate=None):
+    def __init__(
+            self,
+            schema=None,
+            host=None,
+            port=None,
+            username=None,
+            password=None,
+            certificate=None):
         _LOGGER.info("Vimar link initialized")
 
         if schema is not None:
@@ -59,7 +66,7 @@ class VimarLink():
                 VimarLink._schema, VimarLink._host, VimarLink._port)
             certificateFile = self._request(certificateUrl)
 
-            if certificateFile == None:
+            if certificateFile is None:
                 _LOGGER.error("Certificate download failed")
                 return False
 
@@ -70,7 +77,7 @@ class VimarLink():
                 file = open(self._certificate, "w")
                 file.write(certificateFile)
                 file.close()
-            except:
+            except BaseException:
                 _LOGGER.error("Saving certificate failed")
                 return False
 
@@ -95,11 +102,16 @@ class VimarLink():
                 else:
                     _LOGGER.error("Error during login: " + logincode.text)
             else:
-                _LOGGER.info("Vimar login successfull")
+                _LOGGER.info("Vimar login ok")
                 loginsession = xml.find('sessionid')
-                _LOGGER.debug("Got a new Vimar Session id: " +
-                              loginsession.text)
-                VimarLink._session_id = loginsession.text
+                if loginsession.text != "":
+                    _LOGGER.debug("Got a new Vimar Session id: " +
+                                  loginsession.text)
+                    VimarLink._session_id = loginsession.text
+                else:
+                    _LOGGER.warning(
+                        "Missing Session id in login response:" + result)
+
         return result
 
     def check_login(self):
@@ -108,9 +120,14 @@ class VimarLink():
 
         return (VimarLink._session_id is not None)
 
-    def set_device_status(self, object_id, status):
-        post = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws"><payload>%d</payload><hashcode>NO-HASHCODE</hashcode><optionals>NO-OPTIONALS</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>10</waittime><idobject>%s</idobject><operation>SETVALUE</operation></service-runonelement></soapenv:Body></soapenv:Envelope>
-		""" % (status, VimarLink._session_id, object_id)
+    def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
+        """ when setting climates optionals should be set to SYNCDB """
+
+        post = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws"><payload>%s</payload><hashcode>NO-HASHCODE</hashcode><optionals>%s</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>10</waittime><idobject>%s</idobject><operation>SETVALUE</operation></service-runonelement></soapenv:Body></soapenv:Envelope>
+        """ % (status,
+               optionals,
+               VimarLink._session_id,
+               object_id)
 
         response = self._request_vimar(post)
         if response is not None and response is not False:
@@ -120,7 +137,10 @@ class VimarLink():
             # usually set_status should not return a payload
             if payload is not None:
                 _LOGGER.warning(
-                    "set_device_status returned a payload: " + payload.text + " from post request: " + post)
+                    "set_device_status returned a payload: " +
+                    payload.text +
+                    " from post request: " +
+                    post)
                 parsed_data = self._parse_sql_payload(payload.text)
                 # _LOGGER.info("parsed payload: "+ parsed_data)
                 return parsed_data
@@ -271,9 +291,11 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
         #
         #
         # AND
-        # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE = "1" AND o2.IS_VISIBLE = "1"
+        # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE =
+        # "1" AND o2.IS_VISIBLE = "1"
 
-        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
+        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
+o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
 o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
 INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
@@ -343,7 +365,12 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         select = select.replace('\r\n', ' ').replace(
             '\n', ' ').replace('"', '&apos;').replace('\'', '&apos;')
 
-        post = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-databasesocketoperation xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>5</waittime><function>DML-SQL</function><type>SELECT</type><statement>%s</statement><statement-len>%d</statement-len></service-databasesocketoperation></soapenv:Body></soapenv:Envelope>' % (
+        post = ('<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body>'
+                '<service-databasesocketoperation xmlns="urn:xmethods-dpadws">'
+                '<payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals>'
+                '<callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>5</waittime>'
+                '<function>DML-SQL</function><type>SELECT</type><statement>%s</statement><statement-len>%d</statement-len>'
+                '</service-databasesocketoperation></soapenv:Body></soapenv:Envelope>') % (
             VimarLink._session_id, select, len(select))
 
         # _LOGGER.info("in _request_vimar_sql")
@@ -357,9 +384,14 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 # _LOGGER.info("Got a new payload: " + payload.text)
                 parsed_data = self._parse_sql_payload(payload.text)
 
-                if parsed_data == None:
-                    _LOGGER.warning("Received invalid data from SQL: " +
-                                    ElementTree.tostring(response, encoding='unicode') + " from post: " + post)
+                if parsed_data is None:
+                    _LOGGER.warning(
+                        "Received invalid data from SQL: " +
+                        ElementTree.tostring(
+                            response,
+                            encoding='unicode') +
+                        " from post: " +
+                        post)
 
                 return parsed_data
             else:
@@ -377,7 +409,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         # NextRows: 2
         # Row000001: 'MAIN_GROUPS'
         # Row000002: '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
-        # should be MAIN_GROUPS = '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
+        # should be MAIN_GROUPS =
+        # '435,439,454,458,473,494,505,532,579,587,605,613,628,641,649,660,682,690,703,731,739,752,760,794,802,817,828,836,868,883,898,906,921,929,1777,1778'
 
         return_list = []
 
@@ -412,10 +445,16 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                             if len(row_dict):
                                 return_list.append(row_dict)
         except Exception as err:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
+            # exc_type, exc_obj, exc_tb = sys.exc_info()
+            _, _, exc_tb = sys.exc_info()
 
-            _LOGGER.error("Error parsing SQL: " +
-                          repr(err) + " in line: " + exc_tb.tb_lineno + " - payload: " + string)
+            _LOGGER.error(
+                "Error parsing SQL: " +
+                repr(err) +
+                " in line: " +
+                exc_tb.tb_lineno +
+                " - payload: " +
+                string)
             return None
 
         # _LOGGER.info("parseSQLPayload")
@@ -434,7 +473,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             'Content-Type': 'text/xml; charset="UTF-8"',
             # needs to be set to overcome:
             # 'Expect' => '100-continue'
-            # otherwise header and payload is send in two requests if payload is bigger then 1024byte
+            # otherwise header and payload is send in two requests if payload
+            # is bigger then 1024byte
             'Expect': ''
         }
         # _LOGGER.info("in _request_vimar")
@@ -458,13 +498,19 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return root
         return None
 
-    def _request(self, url, post=None, headers=None, timeout=5, checkSSL=False):
+    def _request(
+            self,
+            url,
+            post=None,
+            headers=None,
+            timeout=5,
+            checkSSL=False):
         # _LOGGER.info("request to " + url)
         try:
             # connection, read timeout
             timeouts = (3, 6)
 
-            if self._certificate != None:
+            if self._certificate is not None:
                 checkSSL = self._certificate
             else:
                 _LOGGER.debug("Request ignores ssl certificate")
@@ -508,7 +554,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
     # read out schedule: <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-vimarclimateeventgettimeschedule xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>5e8a5aa99db78</sessionid><waittime>300</waittime><idobject>939</idobject><mode>CLIMATE</mode><type>WEEKLY</type><weekday>2</weekday><season>0</season></service-vimarclimateeventgettimeschedule></soapenv:Body></soapenv:Envelope>
     # read out all climate details: SELECT * FROM DPADD_OBJECT_RELATION WHERE PARENTOBJ_ID IN (939) OR CHILDOBJ_ID IN (939) ORDER BY ORDER_NUM,ID ;
-    # read out climate values t1,t2,t3: SELECT ID,NAME,STATUS_ID,CURRENT_VALUE FROM DPADD_OBJECT WHERE ID IN (9187,9188,9189);
+    # read out climate values t1,t2,t3: SELECT ID,NAME,STATUS_ID,CURRENT_VALUE
+    # FROM DPADD_OBJECT WHERE ID IN (9187,9188,9189);
 
     # methods for async sending and thread
     # problem: how do i get the response...

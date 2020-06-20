@@ -1,13 +1,13 @@
 """Platform for switch integration."""
 
 from homeassistant.helpers.entity import ToggleEntity
-from homeassistant.components import switch
+# from homeassistant.components import switch
 from datetime import timedelta
-from time import gmtime, strftime, localtime, mktime
+# from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
-import homeassistant.helpers.config_validation as cv
+# import homeassistant.helpers.config_validation as cv
 import logging
-import asyncio
+# import asyncio
 
 # import variables set in __init__.py
 # from . import vimarconnection
@@ -22,7 +22,7 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
 PARALLEL_UPDATES = 5
 
 
-@asyncio.coroutine
+# @asyncio.coroutine
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Switch platform."""
 
@@ -158,7 +158,7 @@ class VimarSwitch(ToggleEntity):
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
         # _LOGGER.debug("Vimar Switch update finished after " +
-        #               str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+        # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar switch on. """

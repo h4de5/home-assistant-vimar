@@ -1,5 +1,6 @@
 """Platform for cover integration."""
-# credits to https://community.home-assistant.io/t/create-new-cover-component-not-working/50361/5
+# credits to
+# https://community.home-assistant.io/t/create-new-cover-component-not-working/50361/5
 
 from homeassistant.components.cover import (
     SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
@@ -7,12 +8,7 @@ try:
     from homeassistant.components.cover import CoverEntity
 except ImportError:
     from homeassistant.components.cover import CoverDevice as CoverEntity
-from homeassistant.components.cover import (
-    ATTR_CURRENT_POSITION,
-    ATTR_CURRENT_TILT_POSITION,
-    ATTR_POSITION,
-    ATTR_TILT_POSITION)
-from datetime import timedelta
+# from datetime import timedelta
 from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv
@@ -94,7 +90,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class VimarCover(CoverEntity):
     """ Provides a Vimar cover. """
 
-    # see: https://developers.home-assistant.io/docs/entity_index/#generic-properties
+    # see:
+    # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     """ Return True if the state is based on our assumption instead of reading it from the device."""
     """ this will ignore is_closed state ? """
     assumed_state = True
@@ -159,7 +156,8 @@ class VimarCover(CoverEntity):
     def is_closed(self):
         """Return if the cover is closed."""
         # if _state (stopped) is 1, than stopped was pressed, therefor it cannot be completely closed
-        # if its 0, and direction 1, than it was going downwards and it was never stopped, therefor it is closed now
+        # if its 0, and direction 1, than it was going downwards and it was
+        # never stopped, therefor it is closed now
         if self._state:
             self.assumed_state = True
             return False
@@ -207,7 +205,7 @@ class VimarCover(CoverEntity):
         if old_status != self._device['status']:
             self.async_schedule_update_ha_state()
         # _LOGGER.debug("Vimar Cover update finished after " +
-        #               str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+        # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
@@ -248,8 +246,10 @@ class VimarCover(CoverEntity):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
             if 'stop up/stop down' in self._device['status']:
-                self._state = (False, True)[
-                    self._device['status']['stop up/stop down']['status_value'] != '0']
+                self._state = (
+                    False, True)[
+                    self._device['status']['stop up/stop down']
+                    ['status_value'] != '0']
             if 'up/down' in self._device['status']:
                 self._direction = int(
                     self._device['status']['up/down']['status_value'])
