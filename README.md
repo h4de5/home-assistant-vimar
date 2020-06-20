@@ -90,6 +90,10 @@ The hostname or the IP has to match the settings screen on the vimar web server:
 
 The integration can currently list and control all lights, covers/shades, fans, switches and climates. Other devices (audio, KNX, RGB dimmers) are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
 
+## contribution
+
+If you want to help see some examples of how to read out data for new devies in [contribution](Contribute.md). 
+
 ## troubleshooting
 
 **When you install, update or uninstall the integration, you need to restart Home Assistant.**
