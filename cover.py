@@ -8,7 +8,7 @@ try:
     from homeassistant.components.cover import CoverEntity
 except ImportError:
     from homeassistant.components.cover import CoverDevice as CoverEntity
-# from datetime import timedelta
+from datetime import timedelta
 from time import gmtime, strftime, localtime, mktime
 from homeassistant.util import Throttle
 import homeassistant.helpers.config_validation as cv

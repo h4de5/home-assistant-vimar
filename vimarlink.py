@@ -32,6 +32,7 @@ class VimarLink():
     _session_id = None
     _maingroup_ids = None
     _certificate = None
+    _timeout = 6
 
     def __init__(
             self,
@@ -40,7 +41,8 @@ class VimarLink():
             port=None,
             username=None,
             password=None,
-            certificate=None):
+            certificate=None,
+            timeout=None):
         _LOGGER.info("Vimar link initialized")
 
         if schema is not None:
@@ -55,6 +57,8 @@ class VimarLink():
             VimarLink._password = password
         if certificate is not None:
             VimarLink._certificate = certificate
+        if timeout is not None:
+            VimarLink._timeout = timeout
 
     def installCertificate(self):
         # temporarily disable certificate requests
@@ -493,7 +497,9 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         try:
             root = xmlTree.fromstring(xml)
         except Exception as err:
-            _LOGGER.error("Error parsing XML: " + xml + " - " + repr(err))
+            _LOGGER.error("Error parsing XML: " + repr(err))
+            _LOGGER.error("Problematic XML: " + str(xml))
+
         else:
             return root
         return None
@@ -508,7 +514,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         # _LOGGER.info("request to " + url)
         try:
             # connection, read timeout
-            timeouts = (3, 6)
+            timeouts = (int(VimarLink._timeout / 2), VimarLink._timeout)
 
             if self._certificate is not None:
                 checkSSL = self._certificate

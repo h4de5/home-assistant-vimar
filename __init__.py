@@ -2,10 +2,13 @@
 from homeassistant.helpers.typing import HomeAssistantType, ConfigType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME)
+    CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_TIMEOUT)
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.cover import (
-    DEVICE_CLASS_SHUTTER, DEVICE_CLASS_WINDOW, DEVICE_CLASS_SHADE)
+    DEVICE_CLASS_SHUTTER,
+    DEVICE_CLASS_WINDOW,
+    # DEVICE_CLASS_SHADE
+)
 from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import logging
@@ -21,6 +24,7 @@ from .const import (
     DEFAULT_SCHEMA,
     DEFAULT_PORT,
     DEFAULT_CERTIFICATE,
+    DEFAULT_TIMEOUT,
     DEVICE_TYPE_LIGHTS,
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_SWITCHES,
@@ -41,7 +45,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
-        vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None)
+        vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
+        vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60)
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -100,10 +105,11 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     username = vimarconfig.get(CONF_USERNAME)
     password = vimarconfig.get(CONF_PASSWORD)
     certificate = vimarconfig.get(CONF_CERTIFICATE)
+    timeout = vimarconfig.get(CONF_TIMEOUT)
 
     # initialize a new VimarLink object
     vimarconnection = vimarlink.VimarLink(
-        schema, host, port, username, password, certificate)
+        schema, host, port, username, password, certificate, timeout)
 
     # if certificate is set, but file is not there - download it from the
     # webserver

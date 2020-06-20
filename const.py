@@ -10,6 +10,7 @@ DEFAULT_USERNAME = "admin"
 DEFAULT_SCHEMA = "https"
 DEFAULT_PORT = 443
 DEFAULT_CERTIFICATE = "rootCA.VIMAR.crt"
+DEFAULT_TIMEOUT = 6
 
 # vimar integration specific const
 
