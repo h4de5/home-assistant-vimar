@@ -1,14 +1,17 @@
-"""Platform for light integration."""
+"""Connection to vimar web server."""
 
 import logging
+import sys
 # import asyncio
 # import time
 # for communicating with vimar webserver
+import xml.etree.cElementTree as xmlTree
+from xml.etree import ElementTree
+
 import requests
 from requests.exceptions import HTTPError
-import xml.etree.cElementTree as xmlTree
-import sys
-from xml.etree import ElementTree
+from urllib3.exceptions import ReadTimeoutError
+
 # from . import DOMAIN
 
 # import queue
@@ -19,6 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class VimarLink():
+    """Link to communicate with the Vimar webserver"""
 
     # the_queue = queue.Queue()
     # thread = None
@@ -60,37 +64,40 @@ class VimarLink():
         if timeout is not None:
             VimarLink._timeout = timeout
 
-    def installCertificate(self):
+    def install_certificate(self):
+        """Downloads the CA certificate from the web server to be used for the next calls"""
         # temporarily disable certificate requests
         if len(self._certificate) != 0:
-            tempCertificate = self._certificate
+            temp_certificate = self._certificate
             self._certificate = None
 
-            certificateUrl = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
+            temp_certificate = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
                 VimarLink._schema, VimarLink._host, VimarLink._port)
-            certificateFile = self._request(certificateUrl)
+            certificate_file = self._request(temp_certificate)
 
-            if certificateFile is None:
+            if certificate_file is None:
                 _LOGGER.error("Certificate download failed")
                 return False
 
             # get it back
-            self._certificate = tempCertificate
+            self._certificate = temp_certificate
 
             try:
                 file = open(self._certificate, "w")
-                file.write(certificateFile)
+                file.write(certificate_file)
                 file.close()
-            except BaseException:
-                _LOGGER.error("Saving certificate failed")
+
+            except IOError as err:
+                _LOGGER.error("Saving certificate failed: %s", repr(err))
                 return False
 
-            _LOGGER.info("Downloaded Vimar CA certificate to: " +
-                         self._certificate)
+            _LOGGER.debug("Downloaded Vimar CA certificate to: %s",
+                          self._certificate)
 
         return True
 
     def login(self):
+        """Call login and store the session id"""
         loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
             VimarLink._schema, VimarLink._host, VimarLink._port, VimarLink._username, VimarLink._password)
 
@@ -102,23 +109,24 @@ class VimarLink():
             loginmessage = xml.find('message')
             if logincode is not None and logincode.text != "0":
                 if loginmessage is not None:
-                    _LOGGER.error("Error during login: " + loginmessage.text)
+                    _LOGGER.error("Error during login: %s", loginmessage.text)
                 else:
-                    _LOGGER.error("Error during login: " + logincode.text)
+                    _LOGGER.error("Error during login: %s", logincode.text)
             else:
                 _LOGGER.info("Vimar login ok")
                 loginsession = xml.find('sessionid')
                 if loginsession.text != "":
-                    _LOGGER.debug("Got a new Vimar Session id: " +
+                    _LOGGER.debug("Got a new Vimar Session id: %s",
                                   loginsession.text)
                     VimarLink._session_id = loginsession.text
                 else:
                     _LOGGER.warning(
-                        "Missing Session id in login response:" + result)
+                        "Missing Session id in login response: %s", result)
 
         return result
 
     def check_login(self):
+        """Check if session is available - if not, aquire a new one"""
         if (VimarLink._session_id is None):
             self.login()
 
@@ -141,10 +149,10 @@ class VimarLink():
             # usually set_status should not return a payload
             if payload is not None:
                 _LOGGER.warning(
-                    "set_device_status returned a payload: " +
-                    payload.text +
-                    " from post request: " +
-                    post)
+                    "set_device_status returned a payload: "
+                    + payload.text
+                    + " from post request: "
+                    + post)
                 parsed_data = self._parse_sql_payload(payload.text)
                 # _LOGGER.info("parsed payload: "+ parsed_data)
                 return parsed_data
@@ -152,7 +160,8 @@ class VimarLink():
         # _LOGGER.warning("Empty payload from Status")
         return None
 
-    def get_device_status(self, object_id, status_id=None):
+    def get_device_status(self, object_id):
+        """Get attribute status for a single device"""
 
         status_list = {}
 
@@ -188,20 +197,20 @@ ORDER BY o3.ID;""" % (object_id)
             # _LOGGER.info(single_device)
 
             return status_list
-        else:
-            return {}
 
         return {}
 
     def get_device(self, object_id):
+        """Get all parameter status from a single device"""
 
         single_device = {}
 
 # , o3.OPTIONALP AS status_range
-        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
+        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
+o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
 o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
-INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
+INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX"
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
 WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
@@ -239,8 +248,6 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
             # _LOGGER.info(single_device)
 
             return single_device
-        else:
-            return None
 
         return None
 
@@ -282,8 +289,9 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
 #   'IS_VISIBLE' => string '1' (length=1)
 
     def get_devices(self):
+        """Get a list of all available devices and its parameters"""
 
-        _LOGGER.info("getDevices started")
+        _LOGGER.info("get_devices started")
 
         if VimarLink._maingroup_ids is None:
             return None
@@ -307,7 +315,7 @@ INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_W
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
 WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
-ORDER BY o2.NAME, o3.ID;""" % (VimarLink._maingroup_ids)
+LIMIT 300;""" % (VimarLink._maingroup_ids)
 
         payload = self._request_vimar_sql(select)
         if payload is not None:
@@ -337,20 +345,20 @@ ORDER BY o2.NAME, o3.ID;""" % (VimarLink._maingroup_ids)
                             # 'status_range': device['status_range'],
                         }
 
-            _LOGGER.info("getDevices ends - found " +
-                         str(len(devices)) + " devices")
+            _LOGGER.info("get_devices ends - found %d devices", len(devices))
             # _LOGGER.info("getDevices")
             # _LOGGER.info(devices)
 
             return devices
-        else:
-            return None
 
         return None
 
     def get_main_groups(self):
+        """Load main groups"""
         if VimarLink._maingroup_ids is not None:
             return VimarLink._maingroup_ids
+
+        _LOGGER.info("get_main_groups start")
 
         select = """SELECT GROUP_CONCAT(o1.id) as MAIN_GROUPS FROM DPADD_OBJECT o0
 INNER JOIN DPADD_OBJECT_RELATION r1 ON o0.ID = r1.PARENTOBJ_ID AND r1.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
@@ -360,6 +368,9 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         payload = self._request_vimar_sql(select)
         if payload is not None:
             VimarLink._maingroup_ids = payload[0]['MAIN_GROUPS']
+
+            _LOGGER.info("get_main_groups ends - found %d groups", len(VimarLink._maingroup_ids.split(',')))
+
             return VimarLink._maingroup_ids
         else:
             return None
@@ -390,23 +401,24 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
                 if parsed_data is None:
                     _LOGGER.warning(
-                        "Received invalid data from SQL: " +
-                        ElementTree.tostring(
+                        "Received invalid data from SQL: "
+                        + ElementTree.tostring(
                             response,
-                            encoding='unicode') +
-                        " from post: " +
-                        post)
+                            encoding='unicode')
+                        + " from post: "
+                        + post)
 
                 return parsed_data
             else:
                 _LOGGER.warning("Empty payload from SQL")
                 return None
         elif response is None:
-            _LOGGER.warning("Empty response from SQL")
-            _LOGGER.info("Errorous SQL: " + select)
+            _LOGGER.warning("Unparseable response from SQL")
+            _LOGGER.info("Errorous SQL: %s", select)
         return None
 
     def _parse_sql_payload(self, string):
+        """Split string payload into dictionary array"""
         # DONE: we need to move parseSQLPayload over to pyton
         # Example payload string:
         # Response: DBMG-000
@@ -429,7 +441,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                     prefix = prefix.strip()
 
                     # skip unused prefixes
-                    if prefix == 'Response' or prefix == 'NextRows':
+                    if prefix in ['Response', 'NextRows']:
                         pass
                     else:
                         # remove outer quotes, split each quoted string
@@ -446,19 +458,19 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                                 row_dict[keys[idx]] = value
                                 idx += 1
 
-                            if len(row_dict):
+                            if row_dict and len(row_dict) > 0:
                                 return_list.append(row_dict)
-        except Exception as err:
+        except BaseException as err:
             # exc_type, exc_obj, exc_tb = sys.exc_info()
             _, _, exc_tb = sys.exc_info()
 
             _LOGGER.error(
-                "Error parsing SQL: " +
-                repr(err) +
-                " in line: " +
-                exc_tb.tb_lineno +
-                " - payload: " +
-                string)
+                "Error parsing SQL: "
+                + repr(err)
+                + " in line: "
+                + exc_tb.tb_lineno
+                + " - payload: "
+                + string)
             return None
 
         # _LOGGER.info("parseSQLPayload")
@@ -466,6 +478,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         return return_list
 
     def _request_vimar(self, post):
+        """Prepare call to vimar webserver"""
         url = '%s://%s:%s/cgi-bin/dpadws' % (
             VimarLink._schema, VimarLink._host, VimarLink._port)
 
@@ -490,15 +503,17 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             # _LOGGER.info(responsexml)
 
             return responsexml
-        else:
-            return response
 
-    def _parse_xml(self, xml):
+        return response
+
+    @classmethod
+    def _parse_xml(cls, xml):
+        """Parse xml response from webserver to array"""
         try:
             root = xmlTree.fromstring(xml)
-        except Exception as err:
-            _LOGGER.error("Error parsing XML: " + repr(err))
-            _LOGGER.error("Problematic XML: " + str(xml))
+        except BaseException as err:
+            _LOGGER.error("Error parsing XML: %s", repr(err))
+            _LOGGER.error("Problematic XML: %s", str(xml))
 
         else:
             return root
@@ -509,22 +524,22 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             url,
             post=None,
             headers=None,
-            timeout=5,
-            checkSSL=False):
+            check_ssl=False):
+        """Call web server using post variables"""
         # _LOGGER.info("request to " + url)
         try:
             # connection, read timeout
             timeouts = (int(VimarLink._timeout / 2), VimarLink._timeout)
 
             if self._certificate is not None:
-                checkSSL = self._certificate
+                check_ssl = self._certificate
             else:
                 _LOGGER.debug("Request ignores ssl certificate")
 
             if post is None:
                 response = requests.get(url,
                                         headers=headers,
-                                        verify=checkSSL,
+                                        verify=check_ssl,
                                         timeout=timeouts)
             else:
                 # _LOGGER.info("sending post: ")
@@ -535,7 +550,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 response = requests.post(url,
                                          data=post,
                                          headers=headers,
-                                         verify=checkSSL,
+                                         verify=check_ssl,
                                          timeout=timeouts)
 
             # If the response was successful, no Exception will be raised
@@ -543,11 +558,13 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
         except HTTPError as http_err:
             # _LOGGER.error(f'HTTP error occurred: {http_err}') # Python 3.6
-            _LOGGER.error('HTTP error occurred: ' + str(http_err))
+            _LOGGER.error('HTTP error occurred: %s', str(http_err))
             return False
-        except Exception as err:
+        except ReadTimeoutError:
+            return False
+        except BaseException as err:
             # _LOGGER.error(f'Other error occurred: {err}') # Python 3.6
-            _LOGGER.error('Other error occurred: ' + repr(err))
+            _LOGGER.error('Other error occurred: %s', repr(err))
             return False
         else:
             # _LOGGER.info('request Successful!')

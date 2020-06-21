@@ -1,6 +1,9 @@
 """Vimar Platform integration."""
+from datetime import timedelta
+import logging
+import asyncio
+import os
 from homeassistant.helpers.typing import HomeAssistantType, ConfigType
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_TIMEOUT)
 from homeassistant.exceptions import PlatformNotReady
@@ -9,11 +12,7 @@ from homeassistant.components.cover import (
     DEVICE_CLASS_WINDOW,
     # DEVICE_CLASS_SHADE
 )
-from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
-import logging
-import asyncio
-import os
 import voluptuous as vol
 from . import vimarlink
 from .const import (
@@ -50,41 +49,10 @@ CONFIG_SCHEMA = vol.Schema({
     })
 }, extra=vol.ALLOW_EXTRA)
 
-
-# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-# PLATFORM_SCHEMA = vol.Schema(
-#     {
-#         vol.Required(CONF_HOST): cv.string,
-#         vol.Required(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
-#         vol.Required(CONF_PASSWORD): cv.string,
-#     }
-# )
-
-
-# CONFIG_SCHEMA = vol.extend({
-#     DOMAIN: vol.All(cv.ensure_list, [vol.Schema({
-#         vol.Required(CONF_HOST): cv.string,
-#         vol.Required(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
-#         vol.Required(CONF_PASSWORD): cv.string,
-#         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-#         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.schema,
-#     })])
-# }, extra=vol.ALLOW_EXTRA)
-# CONFIG_SCHEMA = CONFIG_SCHEMA.extend({
-#     vol.Required(CONF_HOST): cv.string,
-#     vol.Required(CONF_USERNAME, default="admin"): cv.string,
-#     vol.Required(CONF_PASSWORD): cv.string
-# })
-# Import the device class from the component that you want to support
-# DEVICE_SCHEMA = vol.Schema({
-#     vol.Required(CONF_NAME): cv.string
-# })
-
 @asyncio.coroutine
 async def async_setup(hass: HomeAssistantType, config: ConfigType):
     # def setup(hass, config):
     """Connect to the Vimar Webserver, verify login and read all devices."""
-    """Split up devices into supported groups based on their names."""
 
     # Data that you want to share with your platforms
     # hass.data[DOMAIN] = {
@@ -114,22 +82,22 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     # if certificate is set, but file is not there - download it from the
     # webserver
     if schema == "https" and certificate is not None and len(certificate) != 0:
-        if os.path.isfile(certificate) == False:
-            valid_certificate = await hass.async_add_executor_job(vimarconnection.installCertificate)
+        if os.path.isfile(certificate) is False:
+            valid_certificate = await hass.async_add_executor_job(vimarconnection.install_certificate)
             if not valid_certificate:
                 _LOGGER.error(
-                    "Could not download certificate to " + certificate)
+                    "Could not download certificate to %s", certificate)
                 raise PlatformNotReady
         else:
             _LOGGER.info(
-                "Vimar CA Certificate is already in place: " + certificate)
+                "Vimar CA Certificate is already in place: %s", certificate)
 
     # Verify that passed in configuration works
     # starting it outside MainThread
     valid_login = await hass.async_add_executor_job(vimarconnection.check_login)
 
     if not valid_login:
-        _LOGGER.error("Could not connect to Vimar Webserver " + host)
+        _LOGGER.error("Could not connect to Vimar Webserver %s", host)
         raise PlatformNotReady
 
     # save vimar connection into hass data to share it with other platforms
@@ -140,14 +108,14 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     if not maingroups or len(maingroups) == 0:
         _LOGGER.error(
-            "Could not find any groups or rooms on Vimar Webserver " + host)
+            "Could not find any groups or rooms on Vimar Webserver %s", host)
         return False
 
     # load devices
     devices = await hass.async_add_executor_job(vimarconnection.get_devices)
 
     if not devices or len(devices) == 0:
-        _LOGGER.error("Could not find any devices on Vimar Webserver " + host)
+        _LOGGER.error("Could not find any devices on Vimar Webserver %s", host)
         return False
 
     lights = {}
@@ -258,6 +226,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
 
 def parse_device_type(device):
+    """Split up devices into supported groups based on their names."""
+
     device_type = DEVICE_TYPE_OTHERS
     # see:
     # https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class
@@ -312,7 +282,7 @@ def parse_device_type(device):
         device_type = DEVICE_TYPE_LIGHTS
         icon = "mdi:speedometer"  # mdi:rotate-right
 
-    elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation"]:
+    elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation"]:
         if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             device_class = DEVICE_CLASS_WINDOW
             device_type = DEVICE_TYPE_COVERS
@@ -323,24 +293,24 @@ def parse_device_type(device):
             device_type = DEVICE_TYPE_COVERS
     elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra"]:
         device_type = DEVICE_TYPE_CLIMATES
-    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Scene"]:
+    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Scene", "CH_Carichi", "CH_SAI", "CH_Event"]:
         _LOGGER.info(
-            "Unsupported object returned from web server: " +
-            device["object_type"] +
-            " / " +
-            device["object_name"])
+            "Unsupported object returned from web server: "
+            + device["object_type"]
+            + " / "
+            + device["object_name"])
     else:
         _LOGGER.warning(
-            "Unknown object returned from web server: " +
-            device["object_type"] +
-            " / " +
-            device["object_name"])
+            "Unknown object returned from web server: "
+            + device["object_type"]
+            + " / "
+            + device["object_name"])
 
     return device_type, device_class, icon
 
 
 def format_name(name):
-
+    """Format device name to get rid of unused terms"""
     # _LOGGER.info("Splitting name: " + name)
 
     parts = name.split(' ')
@@ -364,7 +334,7 @@ def format_name(name):
                 level_name += " " + parts[i]
         else:
             _LOGGER.info(
-                "Found a device with an uncommon naming schema: " + name)
+                "Found a device with an uncommon naming schema: %s", name)
 
             device_type = parts[0]
             entity_number = '0'
