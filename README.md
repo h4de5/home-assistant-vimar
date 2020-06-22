@@ -92,7 +92,7 @@ The integration can currently list and control all lights, covers/shades, fans, 
 
 ## contribution
 
-If you want to help see some examples of how to read out data for new devies in [contribution](Contribute.md). 
+If you want to help see some examples of how to read out data for new devies in [contribution](CONTRIBUTING.md). 
 
 ## troubleshooting
 
