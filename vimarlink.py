@@ -322,6 +322,8 @@ LIMIT 300;""" % (VimarLink._maingroup_ids)
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
             for device in payload:
+                # _LOGGER.info("device %s", str(device))
+
                 # device['status_name'] = device['status_name'].replace('/', '_')
                 if device['object_id'] not in devices:
                     devices[device['object_id']] = {
@@ -399,9 +401,14 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         # _LOGGER.info("response: ")
         # _LOGGER.info(response)
         if response is not None and response is not False:
+
+            # if debug:
+            # _LOGGER.info("received payload: %s", str(response))
+
             payload = response.find('.//payload')
             if payload is not None:
-                # _LOGGER.info("Got a new payload: " + payload.text)
+                # if debug:
+                #     _LOGGER.info("Got a new payload: " + payload.text)
                 parsed_data = self._parse_sql_payload(payload.text)
 
                 if parsed_data is None:
@@ -463,8 +470,9 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                                 row_dict[keys[idx]] = value
                                 idx += 1
 
-                            if row_dict and len(row_dict) > 0:
-                                return_list.append(row_dict)
+                        if row_dict and len(row_dict) > 0:
+                            return_list.append(row_dict)
+
         except BaseException as err:
             # exc_type, exc_obj, exc_tb = sys.exc_info()
             _, _, exc_tb = sys.exc_info()

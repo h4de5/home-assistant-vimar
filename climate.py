@@ -126,7 +126,20 @@ class VimarClimate(VimarEntity, ClimateEntity):
     # TODO - find a way to handle different units from vimar device
     _temperature_unit = TEMP_CELSIUS
 
+    # thermostat I
     # 8 .. auto, 7 .. manual timed, 6 .. manual  NO-OPTIONALS
+    # thermostat II
+    # 0 (automatic)
+    # 1 (manual)
+    # 2 (so called 'reduction')
+    # 3 (away)
+    # 5 (manual for a certain time)
+    # 6 (off)
+    # 0 Automatico -> Automatic (follow the 3-setpoints T1-T2-T3 program along the week see rows 97-99)
+    # 1 Manuale-> Manual mode with setpoint
+    # 2 Riduzione -> I guess a kind of energy saving mode, never used
+    # 3 Assenza -> Away mode (If you use an extreme setpoint - eg. 31° for cooling - is equivalent of being off)
+
     # self._funzionamento = VIMAR_CLIMATE_AUTO
 
     # vimar property - if it should be seen as idle
@@ -404,6 +417,10 @@ class VimarClimate(VimarEntity, ClimateEntity):
             if 'temperatura_misurata' in self._device['status']:
                 self._temperature = float(
                     self._device['status']['temperatura_misurata']['status_value'])
+
+            # cooling ventilatore
+            # modalita_fancoil
+            # velocita_fancoil
 
             # target tempertature
             if 'setpoint' in self._device['status']:
