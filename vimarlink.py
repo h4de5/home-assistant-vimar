@@ -346,6 +346,11 @@ LIMIT 300;""" % (VimarLink._maingroup_ids)
                         }
 
             _LOGGER.info("get_devices ends - found %d devices", len(devices))
+
+            if len(payload) >= 300:
+                _LOGGER.warning(
+                    "Your installation has over %d device parameters. In order to not crash the webserver the query was limited. It is possible, that some devices are missing or not working correctly.",
+                    len(payload))
             # _LOGGER.info("getDevices")
             # _LOGGER.info(devices)
 

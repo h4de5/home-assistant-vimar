@@ -401,6 +401,9 @@ class VimarClimate(VimarEntity, ClimateEntity):
             if 'temperatura' in self._device['status']:
                 self._temperature = float(
                     self._device['status']['temperatura']['status_value'])
+            if 'temperatura_misurata' in self._device['status']:
+                self._temperature = float(
+                    self._device['status']['temperatura_misurata']['status_value'])
 
             # target tempertature
             if 'setpoint' in self._device['status']:
