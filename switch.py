@@ -1,19 +1,22 @@
 """Platform for switch integration."""
 
-from homeassistant.helpers.entity import ToggleEntity
-# from homeassistant.components import switch
-from datetime import timedelta
-# from time import gmtime, strftime, localtime, mktime
-from homeassistant.util import Throttle
-# import homeassistant.helpers.config_validation as cv
 import logging
-# import asyncio
+from datetime import timedelta
 
+from homeassistant.helpers.entity import ToggleEntity
+from homeassistant.util import Throttle
+
+from . import format_name
+from .const import DOMAIN
 # import variables set in __init__.py
 # from . import vimarconnection
 # from . import vimarlink
-from .const import (DOMAIN)
-from . import format_name
+from .vimar_entity import VimarEntity
+
+# from homeassistant.components.switch import SwitchEntity
+
+# import asyncio
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,7 +84,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("Vimar Switch complete!")
 
 
-class VimarSwitch(ToggleEntity):
+class VimarSwitch(VimarEntity, ToggleEntity):
     """Provides a Vimar switches. """
 
     ICON = "mdi:power-plug"
@@ -91,48 +94,10 @@ class VimarSwitch(ToggleEntity):
 
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the switch."""
-        self._device = device
-        self._name = format_name(self._device['object_name'])
-        self._device_id = device_id
-        self._state = False
-        self._reset_status()
-        self._vimarconnection = vimarconnection
+
+        VimarEntity.__init__(self, device, device_id, vimarconnection)
 
         self.entity_id = "switch." + self._name.lower() + "_" + self._device_id
-
-    # default properties
-
-    @property
-    def should_poll(self):
-        """ polling is needed for a Vimar device. """
-        return True
-
-    @property
-    def name(self):
-        """ Returns the name of the device. """
-        return self._name
-
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        if 'icon' in self._device and self._device['icon']:
-            return self._device['icon']
-        return self.ICON
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return self._device['device_class']
-
-    @property
-    def unique_id(self):
-        """Return the ID of this device."""
-        return self._device_id
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return True
 
     # switch properties
 

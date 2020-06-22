@@ -2,21 +2,22 @@
 # credits to
 # https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
 
-from homeassistant.components.light import (
-    ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+import logging
+from datetime import timedelta
+
+from homeassistant.components.light import ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS
+from homeassistant.util import Throttle
+
+# from . import format_name
+from .const import DOMAIN
+from .vimar_entity import VimarEntity
+
 try:
     from homeassistant.components.light import LightEntity
 except ImportError:
     from homeassistant.components.light import Light as LightEntity
-from datetime import timedelta
-# from time import gmtime, strftime, localtime, mktime
-from homeassistant.util import Throttle
-# import homeassistant.helpers.config_validation as cv
-import logging
 # import asyncio
 
-from .const import DOMAIN
-from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,15 +70,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         for device_id, device in devices.items():
             lights.append(VimarLight(device, device_id, vimarconnection))
 
-    # fallback
-    # if len(lights) == 0:
-    #     # Config is empty so generate a default set of switches
-    #     for room in range(1, 2):
-    #         for device in range(1, 2):
-    #             name = "Room " + str(room) + " Device " + str(device)
-    #             device_id = "R" + str(room) + "D" + str(device)
-    #             lights.append(VimarLight({'object_name': name}, device_id, link))
-
     if len(lights) != 0:
         # If your entities need to fetch data before being written to Home
         # Assistant for the first time, pass True to the add_entities method:
@@ -100,7 +92,7 @@ def recalculate_brightness(brightness):
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 
 
-class VimarLight(LightEntity):
+class VimarLight(VimarEntity, LightEntity):
     """ Provides a Vimar lights. """
 
     ICON = "mdi:ceiling-light"
@@ -115,74 +107,12 @@ class VimarLight(LightEntity):
 
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the light."""
-        self._device = device
-        self._name = format_name(self._device['object_name'])
-        self._device_id = device_id
-        self._state = False
+
+        VimarEntity.__init__(self, device, device_id, vimarconnection)
+
+        # set device type specific attributes
         self._brightness = 255
-        self._reset_status()
-        self._vimarconnection = vimarconnection
-
-        # self.entity_id = "light." + self._device_id + "_" + \
-        #     re.sub("[^0-9a-z_]+", "_", self._name.lower())
-
         self.entity_id = "light." + self._name.lower() + "_" + self._device_id
-
-        # _LOGGER.info(
-        #     "init new light: " + device_id + "/" + self._name + " => " + device["object_type"] + " / " + (self._device['device_class'] if self._device['device_class'] else "-") + "/" + device["object_name"])
-
-    # default properties
-
-    @property
-    def should_poll(self):
-        """ Poll for a Vimar device. """
-        return True
-
-    @property
-    def name(self):
-        """ Returns the name of the device. """
-        return self._name
-
-    # @property
-    # def color(self):
-    #     """ Returns the name of the device. """
-    #     return "white"
-
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        if 'icon' in self._device and self._device['icon']:
-            return self._device['icon']
-        return self.ICON
-
-    # @property
-    # def entity_picture(self):
-    #     """Return the entity picture to use in the frontend, if any."""
-    #     return None
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return self._device['device_class']
-
-    @property
-    def unique_id(self):
-        """Return the ID of this device."""
-
-        # _LOGGER.info("get unique id: " + self._device_id)
-
-        return self._device_id
-
-    # @property
-    # def entity_id(self):
-    #     """Return the ID of this device."""
-    # return DOMAIN + "." + self._device_id + "_" + re.sub("[^0-9a-z\_]+",
-    # "_", self._name.lower())
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return True
 
     # light properties
 

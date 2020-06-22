@@ -2,20 +2,22 @@
 # credits to
 # https://community.home-assistant.io/t/create-new-cover-component-not-working/50361/5
 
-from homeassistant.components.cover import (
-    SUPPORT_OPEN, SUPPORT_CLOSE, SUPPORT_STOP)
+import logging
+from datetime import timedelta
+
+from homeassistant.components.cover import (SUPPORT_CLOSE, SUPPORT_OPEN,
+                                            SUPPORT_STOP)
+from homeassistant.util import Throttle
+
+# from . import format_name
+from .const import DOMAIN
+from .vimar_entity import VimarEntity
+
 try:
     from homeassistant.components.cover import CoverEntity
 except ImportError:
     from homeassistant.components.cover import CoverDevice as CoverEntity
-from datetime import timedelta
-from time import gmtime, strftime, localtime, mktime
-from homeassistant.util import Throttle
-import homeassistant.helpers.config_validation as cv
-import logging
 
-from .const import DOMAIN
-from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +89,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 # class VimarCover(CoverDevice):
 
 
-class VimarCover(CoverEntity):
+class VimarCover(VimarEntity, CoverEntity):
     """ Provides a Vimar cover. """
 
     # see:
@@ -102,31 +104,26 @@ class VimarCover(CoverEntity):
     # pylint: disable=no-self-use
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the cover."""
-        self._device = device
-        self._name = format_name(self._device['object_name'])
-        self._device_id = device_id
+
+        VimarEntity.__init__(self, device, device_id, vimarconnection)
+
+        # self._device = device
+        # self._name = format_name(self._device['object_name'])
+        # self._device_id = device_id
+
         # _state = False .. 0, stop has not been pressed
         # _state = True .. 1, stop has been pressed
-        self._state = False
+        # self._state = False
+
         # _direction = 0 .. upwards
         # _direction = 1 .. downards
+
+        # self._reset_status()
+        # self._vimarconnection = vimarconnection
+
+        # set device type specific attributes
         self._direction = 0
-        self._reset_status()
-        self._vimarconnection = vimarconnection
-
         self.entity_id = "cover." + self._name.lower() + "_" + self._device_id
-
-    # default properties
-
-    @property
-    def should_poll(self):
-        """ polling is needed for a Vimar device. """
-        return True
-
-    @property
-    def name(self):
-        """ Returns the name of the device. """
-        return self._name
 
     @property
     def icon(self):
@@ -135,22 +132,6 @@ class VimarCover(CoverEntity):
             return self._device['icon']
         # return self.ICON
         return ("mdi:window-open", "mdi:window-closed")[self.is_closed]
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return self._device['device_class']
-
-    @property
-    def unique_id(self):
-        """Return the ID of this device."""
-        return self._device_id
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return True
-    # cover properties
 
     @property
     def is_closed(self):
@@ -167,18 +148,6 @@ class VimarCover(CoverEntity):
         else:
             self.assumed_state = False
             return False
-
-    # @property
-    # def is_closing(self):
-    #     # _state is not 1 (not stopped) and direction = 1 (down) - closing
-    #     if not self._state and self._direction == 1:
-    #         return True
-
-    # @property
-    # def is_opening(self):
-    #     # _state is not 1 (not stopped) and direction = 0 (up) - opening
-    #     if not self._state and self._direction == 0:
-    #         return True
 
     @property
     def supported_features(self):
@@ -254,11 +223,5 @@ class VimarCover(CoverEntity):
                 self._direction = int(
                     self._device['status']['up/down']['status_value'])
                 # self.assumed_state = False
-
-    def format_name(self, name):
-        name = name.replace('ROLLLADEN', 'ROLLO')
-        name = name.replace('F-FERNBEDIENUNG', 'FENSTER')
-        # change case
-        return name.title()
 
 # end class VimarCover

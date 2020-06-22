@@ -6,21 +6,29 @@ try:
     from homeassistant.components.climate import ClimateEntity
 except ImportError:
     from homeassistant.components.climate import ClimateDevice as ClimateEntity
-from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE,
-    HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF, HVAC_MODE_AUTO,
-    CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF, CURRENT_HVAC_IDLE)
-from homeassistant.const import (
-    ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT)
-from datetime import timedelta
-# from time import gmtime, strftime, localtime, mktime
-from homeassistant.util import Throttle
 # import homeassistant.helpers.config_validation as cv
 import logging
-# import asyncio
+from datetime import timedelta
 
-from .const import (DOMAIN, VIMAR_CLIMATE_MANUAL, VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_COOL, VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_OFF)
+from homeassistant.components.climate.const import (CURRENT_HVAC_COOL,
+                                                    CURRENT_HVAC_HEAT,
+                                                    CURRENT_HVAC_IDLE,
+                                                    CURRENT_HVAC_OFF,
+                                                    HVAC_MODE_AUTO,
+                                                    HVAC_MODE_COOL,
+                                                    HVAC_MODE_HEAT,
+                                                    HVAC_MODE_OFF,
+                                                    SUPPORT_TARGET_TEMPERATURE)
+from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
+# from time import gmtime, strftime, localtime, mktime
+from homeassistant.util import Throttle
+
 from . import format_name
+from .const import (DOMAIN, VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_COOL,
+                    VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_MANUAL,
+                    VIMAR_CLIMATE_OFF)
+from .vimar_entity import VimarEntity
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +95,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("Vimar Climate complete!")
 
 
-class VimarClimate(ClimateEntity):
+class VimarClimate(VimarEntity, ClimateEntity):
     """ Provides a Vimar climates. """
 
     ICON = "mdi:ceiling-climate"
@@ -126,48 +134,10 @@ class VimarClimate(ClimateEntity):
 
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the climate."""
-        self._device = device
-        self._name = format_name(self._device['object_name'])
-        self._device_id = device_id
-        self._state = True
-        self._reset_status()
-        self._vimarconnection = vimarconnection
+
+        VimarEntity.__init__(self, device, device_id, vimarconnection)
 
         self.entity_id = "climate." + self._name.lower() + "_" + self._device_id
-
-    # default properties
-
-    @property
-    def should_poll(self):
-        """ polling is needed for a Vimar device. """
-        return True
-
-    @property
-    def name(self):
-        """ Returns the name of the device. """
-        return self._name
-
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        if 'icon' in self._device and self._device['icon']:
-            return self._device['icon']
-        return self.ICON
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return self._device['device_class']
-
-    @property
-    def unique_id(self):
-        """Return the ID of this device."""
-        return self._device_id
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return True
 
     # climate properties
 
@@ -227,17 +197,13 @@ class VimarClimate(ClimateEntity):
         # if self._temperature_unit == None:
         #     raise NotImplementedError()
         return self._temperature_unit
-    # @property
-    # def hvac_mode(self):
-    #     """  """
-    #     return self._hvac_mode
 
     # async getter and setter
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
 
-        _LOGGER.info("Vimar Climate setting hvac_mode: " + hvac_mode)
+        _LOGGER.info("Vimar Climate setting hvac_mode: %s", hvac_mode)
 
         # if 'stagione' in self._device['status']:
         #     self._hvac_mode = (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
@@ -263,7 +229,7 @@ class VimarClimate(ClimateEntity):
                 if hvac_mode in (HVAC_MODE_AUTO, HVAC_MODE_OFF):
                     self._funzionamento = (VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_OFF)[hvac_mode == HVAC_MODE_OFF]
 
-                _LOGGER.info("Vimar Climate setting setup mode to: " + self._funzionamento)
+                _LOGGER.info("Vimar Climate setting setup mode to: %s", self._funzionamento)
 
                 self._device['status']['funzionamento']['status_value'] = self._funzionamento
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status,
@@ -279,7 +245,7 @@ class VimarClimate(ClimateEntity):
         if temperature is None:
             return
 
-        _LOGGER.info("Vimar Climate setting temperature: " + str(temperature))
+        _LOGGER.info("Vimar Climate setting temperature: %s", str(temperature))
 
         self._target_temperature = temperature
 
