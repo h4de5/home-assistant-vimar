@@ -80,7 +80,7 @@ it possible to connect to the webserver via http as well. While it may be necess
       schema: http
       port: 80
 
-`username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file there, the integration will download the current CA certificate from the local vimar webserver and save it under the given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`)
+`username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file there, the integration will download the current CA certificate from the local vimar webserver and save it under the given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and trasmittion of data to the webserver (default 6 seconds)
 
 The hostname or the IP has to match the settings screen on the vimar web server:
 
@@ -88,7 +88,7 @@ The hostname or the IP has to match the settings screen on the vimar web server:
 
 ## limitations
 
-The integration can currently list and control all lights, covers/shades, fans, switches and climates. Other devices (audio, KNX, RGB dimmers) are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
+The integration can currently list and control all lights, covers/shades, fans, switches, climates and scenes. Other devices (audio, KNX, RGB dimmers) are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
 
 ## contribution
 
@@ -122,3 +122,10 @@ have a look into your home-assistant log files - usually named `home-assitant.lo
       ERROR (SyncWorker_4) [custom_components.vimar_platform.vimarlink] Other error occurred: SSLError(MaxRetryError('HTTPSConnectionPool(host='***', port=443): Max retries exceeded with url: /vimarbyweb/modules/system/user_login.php?sessionid=&username=***&password=***&remember=0&op=login (Caused by SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")))'))
       
 > There seems to a problem with the SSL connection. Try if it works with the config setting `certificate: ` (empty certificate option)
+
+      ERROR (SyncWorker_5) [custom_components.vimar_platform.vimarlink] Error parsing XML: TypeError("a bytes-like object is required, not 'bool'")
+
+> This message paired with a web server that needs manual restarting: You may have too many devices connected to the installation. I am currently working on a fix. Latest version will simple limit it to 300 devices (and status attributes of those devices)
+
+
+
