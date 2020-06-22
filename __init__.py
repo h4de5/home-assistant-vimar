@@ -28,6 +28,7 @@ from .const import (
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_SWITCHES,
     DEVICE_TYPE_CLIMATES,
+    DEVICE_TYPE_SCENES,
     DEVICE_TYPE_FANS,
     DEVICE_TYPE_OTHERS)
 
@@ -48,6 +49,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60)
     })
 }, extra=vol.ALLOW_EXTRA)
+
 
 @asyncio.coroutine
 async def async_setup(hass: HomeAssistantType, config: ConfigType):
@@ -140,7 +142,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
                 lights[device_id] = device
             elif device_type == DEVICE_TYPE_COVERS:
                 covers[device_id] = device
-            elif device_type == DEVICE_TYPE_SWITCHES:
+            elif device_type in [DEVICE_TYPE_SWITCHES, DEVICE_TYPE_SCENES]:
                 switches[device_id] = device
             elif device_type == DEVICE_TYPE_CLIMATES:
                 climates[device_id] = device
@@ -158,6 +160,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     hass.data[DOMAIN][DEVICE_TYPE_COVERS] = covers
     hass.data[DOMAIN][DEVICE_TYPE_SWITCHES] = switches
     hass.data[DOMAIN][DEVICE_TYPE_CLIMATES] = climates
+    # hass.data[DOMAIN][DEVICE_TYPE_FANS] = fans
     # there should not be too many requests per second
     # limit scan_interval depending on items
     scan_interval = max(3, int(len(devices) / 500 * 60))
@@ -293,7 +296,11 @@ def parse_device_type(device):
             device_type = DEVICE_TYPE_COVERS
     elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra"]:
         device_type = DEVICE_TYPE_CLIMATES
-    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Scene", "CH_Carichi", "CH_SAI", "CH_Event"]:
+    elif device["object_type"] == "CH_Scene":
+        device_type = DEVICE_TYPE_SCENES
+        device_class = "plug"
+        icon = "mdi:home-assistant"
+    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Carichi", "CH_SAI", "CH_Event"]:
         _LOGGER.info(
             "Unsupported object returned from web server: "
             + device["object_type"]
@@ -326,8 +333,8 @@ def format_name(name):
                 level_name += " " + parts[i]
         elif len(parts) >= 2:
             device_type = parts[0]
-            entity_number = '0'
-            room_name = 'ALL'
+            entity_number = ''
+            room_name = ''
             level_name = parts[1]
 
             for i in range(2, len(parts)):
@@ -337,8 +344,8 @@ def format_name(name):
                 "Found a device with an uncommon naming schema: %s", name)
 
             device_type = parts[0]
-            entity_number = '0'
-            room_name = 'ALL'
+            entity_number = ''
+            room_name = ''
             level_name = 'LEVEL'
 
             for i in range(2, len(parts)):

@@ -310,9 +310,9 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
 o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
 o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
-INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX" AND o2.values_type NOT IN ("CH_Scene")
+INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX"
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
-INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
+INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.NAME != ""
 WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
 LIMIT 300;""" % (VimarLink._maingroup_ids)
@@ -560,7 +560,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             # _LOGGER.error(f'HTTP error occurred: {http_err}') # Python 3.6
             _LOGGER.error('HTTP error occurred: %s', str(http_err))
             return False
-        except ReadTimeoutError:
+        # except ReadTimeoutError:
+        except requests.exceptions.Timeout:
             return False
         except BaseException as err:
             # _LOGGER.error(f'Other error occurred: {err}') # Python 3.6

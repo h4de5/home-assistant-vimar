@@ -18,6 +18,7 @@ DEVICE_TYPE_LIGHTS = "lights"
 DEVICE_TYPE_COVERS = "covers"
 DEVICE_TYPE_SWITCHES = "switches"
 DEVICE_TYPE_CLIMATES = "climates"
+DEVICE_TYPE_SCENES = "scenes"
 DEVICE_TYPE_FANS = "fans"
 DEVICE_TYPE_OTHERS = "others"
 

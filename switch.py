@@ -12,7 +12,7 @@ import logging
 # import variables set in __init__.py
 # from . import vimarconnection
 # from . import vimarlink
-from .const import DOMAIN
+from .const import (DOMAIN)
 from . import format_name
 
 _LOGGER = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class VimarSwitch(ToggleEntity):
-    """ Provides a Vimar switches. """
+    """Provides a Vimar switches. """
 
     ICON = "mdi:power-plug"
 
@@ -170,6 +170,13 @@ class VimarSwitch(ToggleEntity):
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
                 self.async_schedule_update_ha_state()
 
+            if 'comando' in self._device['status']:
+                self._state = True
+                self._device['status']['comando']['status_value'] = '1'
+                # for some reason we are sending 0 on activation
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['comando']['status_id'], 0)
+                self.async_schedule_update_ha_state()
+
     async def async_turn_off(self, **kwargs):
         """ Turn the Vimar switch off. """
         if 'status' in self._device and self._device['status']:
@@ -179,6 +186,7 @@ class VimarSwitch(ToggleEntity):
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
                 self.async_schedule_update_ha_state()
+            # no turn off for scenes
 
     # private helper methods
 
@@ -188,11 +196,17 @@ class VimarSwitch(ToggleEntity):
             if 'on/off' in self._device['status']:
                 self._state = (False, True)[
                     self._device['status']['on/off']['status_value'] != '0']
-
-    def format_name(self, name):
-        name = name.replace('VENTILATOR', '')
-        name = name.replace('STECKDOSE', '')
-        # change case
-        return name.title()
+            if 'comando' in self._device['status']:
+                self._state = (False, True)[
+                    self._device['status']['comando']['status_value'] != '0']
 
 # end class VimarSwitch
+
+    # async def async_toggle(self, **kwargs):
+    #     """ Turn the Vimar switch on. """
+    #     if 'status' in self._device and self._device['status']:
+    #         if 'comando' in self._device['status']:
+    #             self._state = True
+    #             self._device['status']['comando']['status_value'] = '1'
+    #             await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['comando']['status_id'], 0)
+    #             self.async_schedule_update_ha_state()
