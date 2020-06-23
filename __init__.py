@@ -30,6 +30,7 @@ from .const import (
     DEVICE_TYPE_CLIMATES,
     DEVICE_TYPE_SCENES,
     DEVICE_TYPE_FANS,
+    DEVICE_TYPE_SENSORS,
     DEVICE_TYPE_OTHERS)
 
 # from . import vimarlink
@@ -125,6 +126,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     switches = {}
     climates = {}
     fans = {}
+    sensors = {}
     others = {}
 
     if len(devices) != 0:
@@ -148,6 +150,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
                 climates[device_id] = device
             elif device_type == DEVICE_TYPE_FANS:
                 fans[device_id] = device
+            elif device_type == DEVICE_TYPE_SENSORS:
+                sensors[device_id] = device
             else:
                 # _LOGGER.info("Found unknown device: " +
                 #              device_type + "/" +
@@ -160,6 +164,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     hass.data[DOMAIN][DEVICE_TYPE_COVERS] = covers
     hass.data[DOMAIN][DEVICE_TYPE_SWITCHES] = switches
     hass.data[DOMAIN][DEVICE_TYPE_CLIMATES] = climates
+    hass.data[DOMAIN][DEVICE_TYPE_SENSORS] = sensors
+
     # hass.data[DOMAIN][DEVICE_TYPE_FANS] = fans
     # there should not be too many requests per second
     # limit scan_interval depending on items
@@ -199,7 +205,9 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     if switches and len(switches) > 0:
         hass.async_create_task(hass.helpers.discovery.async_load_platform(
             "switch", DOMAIN, {"hass_data_key": DEVICE_TYPE_SWITCHES}, config))
-
+    if sensors and len(sensors) > 0:
+        hass.async_create_task(hass.helpers.discovery.async_load_platform(
+            "sensor", DOMAIN, {"hass_data_key": DEVICE_TYPE_SENSORS}, config))
     # if fans and len(fans) > 0:
     #     hass.async_create_task(hass.helpers.discovery.async_load_platform(
     #         "fan", DOMAIN, {"hass_data_key": DEVICE_TYPE_FANS}, config))
@@ -261,21 +269,21 @@ def parse_device_type(device):
         if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find(
                 "FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
-            icon = "mdi:fan"
+            icon = ["mdi:fan", "mdi:fan-off"]
         elif device["object_name"].find("LAMPE") != -1:
             device_type = DEVICE_TYPE_LIGHTS
-            icon = "mdi:lightbulb"
+            icon = ["mdi:lightbulb", "mdi:lightbulb-off"]
         elif device["object_name"].find("LICHT") != -1:
             device_type = DEVICE_TYPE_LIGHTS
             icon = "mdi:ceiling-light"
         elif device["object_name"].find("STECKDOSE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
             device_class = "plug"
-            icon = "mdi:power-plug"
+            icon = ["mdi:power-plug", "mdi:power-plug-off"]
         elif device["object_name"].find("PULSANTE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
             device_class = "plug"
-            icon = "mdi:power-plug"
+            icon = ["mdi:power-plug", "mdi:power-plug-off"]
         else:
             # fallback to lights
             device_type = DEVICE_TYPE_LIGHTS
@@ -294,12 +302,22 @@ def parse_device_type(device):
             # see: https://www.home-assistant.io/integrations/cover/
             device_class = DEVICE_CLASS_SHUTTER
             device_type = DEVICE_TYPE_COVERS
+        icon = ["mdi:window-closed", "mdi:window-open"]
+
     elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra"]:
         device_type = DEVICE_TYPE_CLIMATES
+        icon = "mdi:thermometer-lines"
+
     elif device["object_type"] == "CH_Scene":
         device_type = DEVICE_TYPE_SCENES
         device_class = "plug"
         icon = "mdi:home-assistant"
+
+    elif device["object_type"] == "CH_Misuratore":
+        device_type = DEVICE_TYPE_SENSORS
+        device_class = "sensor"
+        icon = "mdi:home-analytics"
+
     elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Carichi", "CH_SAI", "CH_Event"]:
         _LOGGER.info(
             "Unsupported object returned from web server: "

@@ -23,9 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
-PARALLEL_UPDATES = 5
-
-# see: https://developers.home-assistant.io/docs/en/entity_cover.html
+PARALLEL_UPDATES = 3
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -38,67 +36,32 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("Vimar Cover started!")
     covers = []
 
-    # _LOGGER.info("Vimar Plattform Config: ")
-    # _LOGGER.info(config)
-    # _LOGGER.info("discovery_info")
-    # _LOGGER.info(discovery_info)
-    # _LOGGER.info(hass.config)
-    # this will give you overall hass config, not configuration.yml
-    # hassconfig = hass.config.as_dict()
-
-    # vimarconfig = config
-
-    # # Verify that passed in configuration works
-    # if not vimarconnection.is_valid_login():
-    #     _LOGGER.error("Could not connect to Vimar Webserver "+ host)
-    #     return False
-
-    # _LOGGER.info(config)
     vimarconnection = hass.data[DOMAIN]['connection']
 
-    # # load Main Groups
-    # vimarconnection.getMainGroups()
-
-    # # load devices
-    # devices = vimarconnection.getDevices()
-    # devices = hass.data[DOMAIN]['devices']
     devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
 
     if len(devices) != 0:
-        # for device_id, device_config in config.get(CONF_DEVICES, {}).items():
-        # for device_id, device_config in devices.items():
-        #     name = device_config['name']
-        #     covers.append(VimarCover(name, device_id, vimarconnection))
         for device_id, device in devices.items():
             covers.append(VimarCover(device, device_id, vimarconnection))
 
-    # fallback
-    # if len(lights) == 0:
-    #     # Config is empty so generate a default set of switches
-    #     for room in range(1, 2):
-    #         for device in range(1, 2):
-    #             name = "Room " + str(room) + " Device " + str(device)
-    #             device_id = "R" + str(room) + "D" + str(device)
-    #             covers.append(VimarCover({'object_name': name}, device_id, link))
-
     if len(covers) != 0:
+        # If your entities need to fetch data before being written to Home
+        # Assistant for the first time, pass True to the add_entities method:
+        # add_entities([MyEntity()], True).
         async_add_entities(covers)
     _LOGGER.info("Vimar Cover complete!")
 
-# CoverDevice is deprecated, modify VimarCover to extend CoverEntity
-# class VimarCover(CoverDevice):
 
-
+# see: https://developers.home-assistant.io/docs/core/entity/cover
 class VimarCover(VimarEntity, CoverEntity):
-    """ Provides a Vimar cover. """
+    """Provides a Vimar cover."""
 
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
-    """ Return True if the state is based on our assumption instead of reading it from the device."""
-    """ this will ignore is_closed state ? """
+    # Return True if the state is based on our assumption instead of reading it from the device. this will ignore is_closed state
     assumed_state = True
 
-    """ set entity_id, object_id manually due to possible duplicates """
+    # Set entity_id, object_id manually due to possible duplicates
     entity_id = "cover." + "unset"
 
     # pylint: disable=no-self-use
@@ -106,32 +69,23 @@ class VimarCover(VimarEntity, CoverEntity):
         """Initialize the cover."""
 
         VimarEntity.__init__(self, device, device_id, vimarconnection)
-
-        # self._device = device
-        # self._name = format_name(self._device['object_name'])
-        # self._device_id = device_id
+        # set device type specific attributes
 
         # _state = False .. 0, stop has not been pressed
         # _state = True .. 1, stop has been pressed
-        # self._state = False
 
         # _direction = 0 .. upwards
         # _direction = 1 .. downards
-
-        # self._reset_status()
-        # self._vimarconnection = vimarconnection
-
-        # set device type specific attributes
         self._direction = 0
         self.entity_id = "cover." + self._name.lower() + "_" + self._device_id
 
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        if 'icon' in self._device and self._device['icon']:
-            return self._device['icon']
-        # return self.ICON
-        return ("mdi:window-open", "mdi:window-closed")[self.is_closed]
+    # @property
+    # def icon(self):
+    #     """Icon to use in the frontend, if any."""
+    #     if 'icon' in self._device and self._device['icon']:
+    #         return self._device['icon']
+    #     # return self.ICON
+    #     return (ICON, ICON_ALT)[self.is_closed]
 
     @property
     def is_closed(self):
@@ -223,5 +177,10 @@ class VimarCover(VimarEntity, CoverEntity):
                 self._direction = int(
                     self._device['status']['up/down']['status_value'])
                 # self.assumed_state = False
+
+    @property
+    def is_default_state(self):
+        """Returns True of in default state - resulting in default icon"""
+        return self.is_closed
 
 # end class VimarCover

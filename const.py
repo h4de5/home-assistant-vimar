@@ -20,6 +20,7 @@ DEVICE_TYPE_SWITCHES = "switches"
 DEVICE_TYPE_CLIMATES = "climates"
 DEVICE_TYPE_SCENES = "scenes"
 DEVICE_TYPE_FANS = "fans"
+DEVICE_TYPE_SENSORS = "sensors"
 DEVICE_TYPE_OTHERS = "others"
 
 

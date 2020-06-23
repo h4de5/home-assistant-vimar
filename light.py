@@ -1,14 +1,10 @@
 """Platform for light integration."""
-# credits to
-# https://github.com/GeoffAtHome/lightwaverf-home-assistant-lights/blob/master/lightwave.py
-
 import logging
 from datetime import timedelta
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS
 from homeassistant.util import Throttle
 
-# from . import format_name
 from .const import DOMAIN
 from .vimar_entity import VimarEntity
 
@@ -16,14 +12,12 @@ try:
     from homeassistant.components.light import LightEntity
 except ImportError:
     from homeassistant.components.light import Light as LightEntity
-# import asyncio
-
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
-PARALLEL_UPDATES = 5
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
+PARALLEL_UPDATES = 3
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -36,37 +30,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("Vimar Light started!")
     lights = []
 
-    # _LOGGER.info("Vimar Plattform Config: ")
-    # # _LOGGER.info(config)
-    # _LOGGER.info("discovery_info")
-    # _LOGGER.info(discovery_info)
-    # _LOGGER.info(hass.config)
-    # this will give you overall hass config, not configuration.yml
-    # hassconfig = hass.config.as_dict()
-
-    # vimarconfig = config
-
-    # # Verify that passed in configuration works
-    # if not vimarconnection.is_valid_login():
-    #     _LOGGER.error("Could not connect to Vimar Webserver "+ host)
-    #     return False
-
-    # _LOGGER.info(config)
     vimarconnection = hass.data[DOMAIN]['connection']
 
-    # # load Main Groups
-    # vimarconnection.getMainGroups()
-
-    # # load devices
-    # devices = vimarconnection.getDevices()
-    # devices = hass.data[DOMAIN]['devices']
     devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
 
     if len(devices) != 0:
-        # for device_id, device_config in config.get(CONF_DEVICES, {}).items():
-        # for device_id, device_config in devices.items():
-        #     name = device_config['name']
-        #     lights.append(VimarLight(name, device_id, vimarconnection))
         for device_id, device in devices.items():
             lights.append(VimarLight(device, device_id, vimarconnection))
 
@@ -95,14 +63,12 @@ def recalculate_brightness(brightness):
 class VimarLight(VimarEntity, LightEntity):
     """ Provides a Vimar lights. """
 
-    ICON = "mdi:ceiling-light"
-
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
-    """ Return True if the state is based on our assumption instead of reading it from the device."""
+    # Return True if the state is based on our assumption instead of reading it from the device
     # assumed_state = False
 
-    """ set entity_id, object_id manually due to possible duplicates """
+    # set entity_id, object_id manually due to possible duplicates
     entity_id = "light." + "unset"
 
     def __init__(self, device, device_id, vimarconnection):

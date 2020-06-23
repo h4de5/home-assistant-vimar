@@ -1,35 +1,32 @@
-"""Platform for switch integration."""
+"""Platform for sensor integration."""
 
 import logging
 from datetime import timedelta
 
-from homeassistant.helpers.entity import ToggleEntity
+from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
 from . import format_name
 from .const import DOMAIN
-# import variables set in __init__.py
-# from . import vimarconnection
-# from . import vimarlink
 from .vimar_entity import VimarEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=20)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 PARALLEL_UPDATES = 3
 
 
 # @asyncio.coroutine
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Vimar Switch platform."""
+    """Set up the Vimar Sensor platform."""
 
     # We only want this platform to be set up via discovery.
     if discovery_info is None:
         return
 
-    _LOGGER.info("Vimar Switch started!")
-    switches = []
+    _LOGGER.info("Vimar Sensor started!")
+    sensors = []
 
     vimarconnection = hass.data[DOMAIN]['connection']
 
@@ -37,18 +34,19 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     if len(devices) != 0:
         for device_id, device in devices.items():
-            switches.append(VimarSwitch(device, device_id, vimarconnection))
+            sensors.append(VimarSensor(device, device_id, vimarconnection))
 
-    if len(switches) != 0:
+    if len(sensors) != 0:
         # If your entities need to fetch data before being written to Home
         # Assistant for the first time, pass True to the add_entities method:
         # add_entities([MyEntity()], True).
-        async_add_entities(switches)
-    _LOGGER.info("Vimar Switch complete!")
+        async_add_entities(sensors, True)
+    _LOGGER.info("Vimar Sensor complete!")
 
 
-class VimarSwitch(VimarEntity, ToggleEntity):
-    """Provides a Vimar switches. """
+# see: https://developers.home-assistant.io/docs/core/entity/sensor/
+class VimarSensor(VimarEntity, Entity):
+    """Provides a Vimar Sensors. """
 
     # set entity_id, object_id manually due to possible duplicates
     entity_id = "switch." + "unset"

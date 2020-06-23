@@ -33,8 +33,8 @@ from .vimar_entity import VimarEntity
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
-PARALLEL_UPDATES = 5
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
+PARALLEL_UPDATES = 3
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -47,66 +47,27 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("Vimar Climate started!")
     climates = []
 
-    # _LOGGER.info("Vimar Plattform Config: ")
-    # # _LOGGER.info(config)
-    # _LOGGER.info("discovery_info")
-    # _LOGGER.info(discovery_info)
-    # _LOGGER.info(hass.config)
-    # this will give you overall hass config, not configuration.yml
-    # hassconfig = hass.config.as_dict()
-
-    # vimarconfig = config
-
-    # # Verify that passed in configuration works
-    # if not vimarconnection.is_valid_login():
-    #     _LOGGER.error("Could not connect to Vimar Webserver "+ host)
-    #     return False
-
-    # _LOGGER.info(config)
     vimarconnection = hass.data[DOMAIN]['connection']
 
-    # # load Main Groups
-    # vimarconnection.getMainGroups()
-
-    # # load devices
-    # devices = vimarconnection.getDevices()
-    # devices = hass.data[DOMAIN]['devices']
     devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
 
     if len(devices) != 0:
-        # for device_id, device_config in config.get(CONF_DEVICES, {}).items():
-        # for device_id, device_config in devices.items():
-        #     name = device_config['name']
-        #     climates.append(VimarClimate(name, device_id, vimarconnection))
         for device_id, device in devices.items():
             climates.append(VimarClimate(device, device_id, vimarconnection))
 
-    # fallback
-    # if len(climates) == 0:
-    #     # Config is empty so generate a default set of switches
-    #     for room in range(1, 2):
-    #         for device in range(1, 2):
-    #             name = "Room " + str(room) + " Device " + str(device)
-    #             device_id = "R" + str(room) + "D" + str(device)
-    #             climates.append(VimarClimate({'object_name': name}, device_id, link))
-
     if len(climates) != 0:
-        async_add_entities(climates)
+        # If your entities need to fetch data before being written to Home
+        # Assistant for the first time, pass True to the add_entities method:
+        # add_entities([MyEntity()], True).
+        async_add_entities(climates, True)
     _LOGGER.info("Vimar Climate complete!")
 
 
 class VimarClimate(VimarEntity, ClimateEntity):
     """ Provides a Vimar climates. """
 
-    ICON = "mdi:ceiling-climate"
-
-    # see:
-    # https://developers.home-assistant.io/docs/entity_index/#generic-properties
-    """ Return True if the state is based on our assumption instead of reading it from the device."""
-    # assumed_state = False
-
-    """ set entity_id, object_id manually due to possible duplicates """
-    entity_id = "climate." + "unset"
+    # set entity_id, object_id manually due to possible duplicates
+    entity_id = "sensor." + "unset"
 
     # 20.3
     _temperature = None

@@ -19,6 +19,8 @@ class VimarEntity(Entity):
     _device = []
     _device_id = 0
 
+    ICON = "mdi:checkbox-marked"
+
     def __init__(self, device, device_id, vimarconnection):
         """Initialize the base entity."""
         self._device = device
@@ -28,8 +30,6 @@ class VimarEntity(Entity):
         self._vimarconnection = vimarconnection
 
         self._reset_status()
-
-    ICON = "mdi:checkbox-marked"
 
     @property
     def should_poll(self):
@@ -44,8 +44,15 @@ class VimarEntity(Entity):
     @property
     def icon(self):
         """Icon to use in the frontend, if any."""
-        if 'icon' in self._device and self._device['icon']:
+        # if 'icon' in self._device and self._device['icon']:
+        #     return self._device['icon']
+        #     # mdi-fan-off
+
+        if isinstance(self._device['icon'], str):
             return self._device['icon']
+        elif isinstance(self._device['icon'], list):
+            return (self._device['icon'][1], self._device['icon'][0])[self.is_default_state]
+
         return self.ICON
 
     @property
@@ -64,4 +71,9 @@ class VimarEntity(Entity):
         return True
 
     def _reset_status(self):
-        """ set status from _device to class variables  """
+        """set status from _device to class variables"""
+
+    @property
+    def is_default_state(self):
+        """Returns True of in default state - resulting in default icon"""
+        return self._state
