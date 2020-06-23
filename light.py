@@ -3,7 +3,6 @@ import logging
 from datetime import timedelta
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS
-from homeassistant.util import Throttle
 
 from .const import DOMAIN
 from .vimar_entity import VimarEntity
@@ -16,7 +15,7 @@ except ImportError:
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
+# MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
 PARALLEL_UPDATES = 3
 
 
@@ -102,33 +101,33 @@ class VimarLight(VimarEntity, LightEntity):
 
     # async getter and setter
 
-    # def update(self):
-    # see:
-    # https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    async def async_update(self):
-        """Fetch new state data for this light.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        # starttime = localtime()
-        # strftime("%Y-%m-%d %H:%M:%S",
-        # self._light.update()
-        # self._state = self._light.is_on()
-        # self._brightness = self._light.brightness
-        # self._device = self._vimarconnection.getDevice(self._device_id)
-        # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
-        old_status = self._device['status']
-        self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
-        self._reset_status()
-        if old_status != self._device['status']:
-            self.async_schedule_update_ha_state()
-        # _LOGGER.debug("Vimar Light update finished after " +
-        # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+    # # def update(self):
+    # # see:
+    # # https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
+    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    # async def async_update(self):
+    #     """Fetch new state data for this light.
+    #     This is the only method that should fetch new data for Home Assistant.
+    #     """
+    #     # starttime = localtime()
+    #     # strftime("%Y-%m-%d %H:%M:%S",
+    #     # self._light.update()
+    #     # self._state = self._light.is_on()
+    #     # self._brightness = self._light.brightness
+    #     # self._device = self._vimarconnection.getDevice(self._device_id)
+    #     # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+    #     old_status = self._device['status']
+    #     self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
+    #     self._reset_status()
+    #     if old_status != self._device['status']:
+    #         self.async_schedule_update_ha_state()
+    #     # _LOGGER.debug("Vimar Light update finished after " +
+    #     # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
-        # for status_name, status_dict in self._device['status'].items():
-        #     _LOGGER.info("Vimar light update id: " +
-        # status_name + " = " + status_dict['status_value'] + " / " +
-        # status_dict['status_id'])
+    #     # for status_name, status_dict in self._device['status'].items():
+    #     #     _LOGGER.info("Vimar light update id: " +
+    #     # status_name + " = " + status_dict['status_value'] + " / " +
+    #     # status_dict['status_id'])
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar light on. """
@@ -165,11 +164,6 @@ class VimarLight(VimarEntity, LightEntity):
 
                 self.async_schedule_update_ha_state()
 
-    async def async_added_to_hass(self, **kwargs):
-        return 0
-
-    async def async_will_remove_from_hass(self, **kwargs):
-        return 0
 
     # private helper methods
 

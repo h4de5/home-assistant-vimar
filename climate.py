@@ -2,11 +2,6 @@
 # credits to
 # https://github.com/GeoffAtHome/climatewaverf-home-assistant-climates/blob/master/climatewave.py
 
-try:
-    from homeassistant.components.climate import ClimateEntity
-except ImportError:
-    from homeassistant.components.climate import ClimateDevice as ClimateEntity
-# import homeassistant.helpers.config_validation as cv
 import logging
 from datetime import timedelta
 
@@ -20,20 +15,22 @@ from homeassistant.components.climate.const import (CURRENT_HVAC_COOL,
                                                     HVAC_MODE_OFF,
                                                     SUPPORT_TARGET_TEMPERATURE)
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
-# from time import gmtime, strftime, localtime, mktime
-from homeassistant.util import Throttle
 
-from . import format_name
 from .const import (DOMAIN, VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_COOL,
                     VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_MANUAL,
                     VIMAR_CLIMATE_OFF)
 from .vimar_entity import VimarEntity
 
+try:
+    from homeassistant.components.climate import ClimateEntity
+except ImportError:
+    from homeassistant.components.climate import ClimateDevice as ClimateEntity
+
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
+# MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
 PARALLEL_UPDATES = 3
 
 
@@ -248,17 +245,17 @@ class VimarClimate(VimarEntity, ClimateEntity):
     # see: https://github.com/samueldumont/home-assistant/blob/added_vaillant/homeassistant/components/climate/vaillant.py
     # see:
     # https://github.com/home-assistant/home-assistant/blob/master/homeassistant/components/dweet/__init__.py
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    async def async_update(self):
-        """Fetch new state data for this climate.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        # starttime = localtime()
-        old_status = self._device['status']
-        self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
-        self._reset_status()
-        if old_status != self._device['status']:
-            self.async_schedule_update_ha_state()
+    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    # async def async_update(self):
+    #     """Fetch new state data for this climate.
+    #     This is the only method that should fetch new data for Home Assistant.
+    #     """
+    #     # starttime = localtime()
+    #     old_status = self._device['status']
+    #     self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
+    #     self._reset_status()
+    #     if old_status != self._device['status']:
+    #         self.async_schedule_update_ha_state()
 
         # for status_name, status_dict in self._device['status'].items():
         #     _LOGGER.info("Vimar Climate update id: " +
@@ -362,6 +359,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
 # differenziale = 2 / 1845
 # variazione = 2 / 1846
 # forzatura off = 0 / 3331
+
 
     def _reset_status(self):
         """ set status from _device to class variables  """

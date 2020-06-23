@@ -7,9 +7,7 @@ from datetime import timedelta
 
 from homeassistant.components.cover import (SUPPORT_CLOSE, SUPPORT_OPEN,
                                             SUPPORT_STOP)
-from homeassistant.util import Throttle
 
-# from . import format_name
 from .const import DOMAIN
 from .vimar_entity import VimarEntity
 
@@ -22,7 +20,6 @@ except ImportError:
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
 PARALLEL_UPDATES = 3
 
 
@@ -111,24 +108,24 @@ class VimarCover(VimarEntity, CoverEntity):
     # async getter and setter
 
     # def update(self):
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    async def async_update(self):
-        """Fetch new state data for this cover.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        # starttime = localtime()
-        # self._light.update()
-        # self._state = self._light.is_on()
-        # self._brightness = self._light.brightness
-        # self._device = self._vimarconnection.getDevice(self._device_id)
-        # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
-        old_status = self._device['status']
-        self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
-        self._reset_status()
-        if old_status != self._device['status']:
-            self.async_schedule_update_ha_state()
-        # _LOGGER.debug("Vimar Cover update finished after " +
-        # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    # async def async_update(self):
+    #     """Fetch new state data for this cover.
+    #     This is the only method that should fetch new data for Home Assistant.
+    #     """
+    #     # starttime = localtime()
+    #     # self._light.update()
+    #     # self._state = self._light.is_on()
+    #     # self._brightness = self._light.brightness
+    #     # self._device = self._vimarconnection.getDevice(self._device_id)
+    #     # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+    #     old_status = self._device['status']
+    #     self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
+    #     self._reset_status()
+    #     if old_status != self._device['status']:
+    #         self.async_schedule_update_ha_state()
+    #     # _LOGGER.debug("Vimar Cover update finished after " +
+    #     # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""

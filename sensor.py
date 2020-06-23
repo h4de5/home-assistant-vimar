@@ -4,16 +4,14 @@ import logging
 from datetime import timedelta
 
 from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle
 
-from . import format_name
 from .const import DOMAIN
 from .vimar_entity import VimarEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=20)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
+# MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 PARALLEL_UPDATES = 3
 
 
@@ -68,21 +66,21 @@ class VimarSensor(VimarEntity, Entity):
     # async getter and setter
 
     # def update(self):
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    async def async_update(self):
-        """Fetch new state data for this switch.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        # starttime = localtime()
-        # self._device = self._vimarconnection.getDevice(self._device_id)
-        # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
-        old_status = self._device['status']
-        self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
-        self._reset_status()
-        if old_status != self._device['status']:
-            self.async_schedule_update_ha_state()
-        # _LOGGER.debug("Vimar Switch update finished after " +
-        # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
+    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    # async def async_update(self):
+    #     """Fetch new state data for this switch.
+    #     This is the only method that should fetch new data for Home Assistant.
+    #     """
+    #     # starttime = localtime()
+    #     # self._device = self._vimarconnection.getDevice(self._device_id)
+    #     # self._device['status'] = self._vimarconnection.getDeviceStatus(self._device_id)
+    #     old_status = self._device['status']
+    #     self._device['status'] = await self.hass.async_add_executor_job(self._vimarconnection.get_device_status, self._device_id)
+    #     self._reset_status()
+    #     if old_status != self._device['status']:
+    #         self.async_schedule_update_ha_state()
+    #     # _LOGGER.debug("Vimar Switch update finished after " +
+    #     # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_turn_on(self, **kwargs):
         """ Turn the Vimar switch on. """
