@@ -47,18 +47,19 @@ The way to find out how attributes are set, is similar. The main difference is, 
     > e.g. change the dimming value of the light
 8. the network tab will show many requests that do look almost identical
     > in addition to the status updates (see above) that we still get regulary, every status change trigger another request
+9. instead of switching to the response tab as above, stay in the `Headers` or the `Request` tab to see what the browser sends to the webserver
     > such a change request should include the following:
     1.    `<operation>SETVALUE</operation>` to indicate that it is a actual change and not a status update request
     2.    `<idobject>712</idobject>` a status identifier that define which attribute should be changed
     3.    `<payload>36</payload>` and the payload or the value to which we change that attribute (e.g. dimm the light to 36%)
     > it is possible that a single click in the webserver, changes multible attributes at once. In this case we need all the change details
-9. again copy that text into the ticket and try to explain what the values mean
+10. again copy that text into the ticket and try to explain what the values mean
         
 > this was done in the chrome browser - name of tabs and shortcuts may be different in other browsers but usually all modern browsers should support this
 
 and wait for the next status update from the webserver
-6. select one of the requests and switch to the "preview" or the "response" tab
-7. check if the given response includes "familiar" values for the device you try to add 
+11. select one of the requests and switch to the "preview" or the "response" tab
+12. check if the given response includes "familiar" values for the device you try to add 
 
 
 ## Home Assistant / HACS Support
