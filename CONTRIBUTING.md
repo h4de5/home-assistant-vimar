@@ -57,11 +57,6 @@ The way to find out how attributes are set, is similar. The main difference is, 
         
 > this was done in the chrome browser - name of tabs and shortcuts may be different in other browsers but usually all modern browsers should support this
 
-and wait for the next status update from the webserver
-11. select one of the requests and switch to the "preview" or the "response" tab
-12. check if the given response includes "familiar" values for the device you try to add 
-
-
 ## Home Assistant / HACS Support
 
 Anything you can ;)
