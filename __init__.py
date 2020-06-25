@@ -5,7 +5,7 @@ import asyncio
 import os
 from homeassistant.helpers.typing import HomeAssistantType, ConfigType
 from homeassistant.const import (
-    CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_TIMEOUT)
+    CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_TIMEOUT, DEVICE_CLASS_POWER)
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.cover import (
     DEVICE_CLASS_SHUTTER,
@@ -282,7 +282,7 @@ def parse_device_type(device):
             icon = ["mdi:power-plug", "mdi:power-plug-off"]
         elif device["object_name"].find("PULSANTE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
-            device_class = "plug"
+            # device_class = "plug"
             icon = ["mdi:power-plug", "mdi:power-plug-off"]
         else:
             # fallback to lights
@@ -310,12 +310,12 @@ def parse_device_type(device):
 
     elif device["object_type"] == "CH_Scene":
         device_type = DEVICE_TYPE_SCENES
-        device_class = "plug"
+        # device_class = "plug"
         icon = "mdi:home-assistant"
 
     elif device["object_type"] == "CH_Misuratore":
         device_type = DEVICE_TYPE_SENSORS
-        device_class = "sensor"
+        device_class = DEVICE_CLASS_POWER
         icon = "mdi:home-analytics"
 
     elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Carichi", "CH_SAI", "CH_Event"]:

@@ -7,10 +7,8 @@ from datetime import timedelta
 
 from homeassistant.components.cover import (SUPPORT_CLOSE, SUPPORT_OPEN,
                                             SUPPORT_STOP)
-
 from .const import DOMAIN
 from .vimar_entity import VimarEntity
-
 try:
     from homeassistant.components.cover import CoverEntity
 except ImportError:

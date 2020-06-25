@@ -121,14 +121,3 @@ class VimarSwitch(VimarEntity, ToggleEntity):
             if 'comando' in self._device['status']:
                 self._state = (False, True)[
                     self._device['status']['comando']['status_value'] != '0']
-
-# end class VimarSwitch
-
-    # async def async_toggle(self, **kwargs):
-    #     """ Turn the Vimar switch on. """
-    #     if 'status' in self._device and self._device['status']:
-    #         if 'comando' in self._device['status']:
-    #             self._state = True
-    #             self._device['status']['comando']['status_value'] = '1'
-    #             await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['comando']['status_id'], 0)
-    #             self.async_schedule_update_ha_state()

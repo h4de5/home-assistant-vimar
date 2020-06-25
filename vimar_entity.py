@@ -22,6 +22,7 @@ class VimarEntity(Entity):
     _name = ''
     _device = []
     _device_id = 0
+    _vimarconnection = None
 
     ICON = "mdi:checkbox-marked"
 
