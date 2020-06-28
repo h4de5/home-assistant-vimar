@@ -320,7 +320,10 @@ def parse_device_type(device):
         device_class = DEVICE_CLASS_POWER
         icon = "mdi:home-analytics"
 
-    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_Carichi", "CH_SAI", "CH_Event"]:
+    elif device["object_type"] in ["CH_Carichi_Custom", "CH_Carichi"]:
+        pass
+
+    elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
         _LOGGER.info(
             "Unsupported object returned from web server: "
             + device["object_type"]
@@ -360,7 +363,7 @@ def format_name(name):
             for i in range(2, len(parts)):
                 level_name += " " + parts[i]
         else:
-            _LOGGER.info(
+            _LOGGER.debug(
                 "Found a device with an uncommon naming schema: %s", name)
 
             device_type = parts[0]
