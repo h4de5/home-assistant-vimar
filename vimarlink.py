@@ -200,56 +200,56 @@ ORDER BY o3.ID;""" % (object_id)
 
         return {}
 
-    def get_device(self, object_id):
-        """Get all parameter status from a single device"""
+#     def get_device(self, object_id):
+#         """Get all parameter status from a single device"""
 
-        single_device = {}
+#         single_device = {}
 
-# , o3.OPTIONALP AS status_range
-        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
-o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
-o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
-FROM DPADD_OBJECT_RELATION r2
-INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX"
-INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
-INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
-WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
-GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
-ORDER BY o2.NAME, o3.ID;""" % (object_id)
+# # , o3.OPTIONALP AS status_range
+#         select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
+# o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
+# o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
+# FROM DPADD_OBJECT_RELATION r2
+# INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX"
+# INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
+# INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
+# WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
+# GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
+# ORDER BY o2.NAME, o3.ID;""" % (object_id)
 
-        payload = self._request_vimar_sql(select)
-        if payload is not None:
-            # there will be multible times the same device
-            # each having a different status part (on/off + dimming etc.)
-            for device in payload:
-                if single_device == {}:
-                    single_device = {
-                        'room_ids': device['room_ids'].split(','),
-                        'object_id': device['object_id'],
-                        'object_name': device['object_name'],
-                        'object_type': device['object_type'],
-                        'status': {
-                            device['status_name']: {
-                                'status_id': device['status_id'],
-                                'status_value': device['status_value'],
-                                # 'status_range': device['status_range'],
-                            }
-                        }
-                    }
-                else:
-                    if device['status_name'] != '':
-                        single_device['status'][device['status_name']] = {
-                            'status_id': device['status_id'],
-                            'status_value': device['status_value'],
-                            # 'status_range': device['status_range'],
-                        }
+#         payload = self._request_vimar_sql(select)
+#         if payload is not None:
+#             # there will be multible times the same device
+#             # each having a different status part (on/off + dimming etc.)
+#             for device in payload:
+#                 if single_device == {}:
+#                     single_device = {
+#                         'room_ids': device['room_ids'].split(','),
+#                         'object_id': device['object_id'],
+#                         'object_name': device['object_name'],
+#                         'object_type': device['object_type'],
+#                         'status': {
+#                             device['status_name']: {
+#                                 'status_id': device['status_id'],
+#                                 'status_value': device['status_value'],
+#                                 # 'status_range': device['status_range'],
+#                             }
+#                         }
+#                     }
+#                 else:
+#                     if device['status_name'] != '':
+#                         single_device['status'][device['status_name']] = {
+#                             'status_id': device['status_id'],
+#                             'status_value': device['status_value'],
+#                             # 'status_range': device['status_range'],
+#                         }
 
-            # _LOGGER.info("getDevice")
-            # _LOGGER.info(single_device)
+#             # _LOGGER.info("getDevice")
+#             # _LOGGER.info(single_device)
 
-            return single_device
+#             return single_device
 
-        return None
+#         return None
 
 # Device example:
 #   'room_id' => string '439' (length=3)
@@ -288,23 +288,12 @@ ORDER BY o2.NAME, o3.ID;""" % (object_id)
 #   'IS_WRITABLE' => string '1' (length=1)
 #   'IS_VISIBLE' => string '1' (length=1)
 
-    def get_devices(self):
-        """Get a list of all available devices and its parameters"""
-
-        _LOGGER.info("get_devices started")
+    def get_devices(self, devices={}):
 
         if VimarLink._maingroup_ids is None:
             return None
 
-        devices = {}
-
-        # o3.OPTIONALP AS status_range
-        # AND o3.OPTIONALP IS NOT NULL
-        #
-        #
-        # AND
-        # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE =
-        # "1" AND o2.IS_VISIBLE = "1"
+        _LOGGER.info("get_scenes started")
 
         select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
 o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
@@ -315,7 +304,51 @@ INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_W
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.NAME != ""
 WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
-LIMIT 300;""" % (VimarLink._maingroup_ids)
+LIMIT 300; """ % (VimarLink._maingroup_ids)
+
+        # o3.OPTIONALP AS status_range
+        # AND o3.OPTIONALP IS NOT NULL
+        #
+        #
+        # AND
+        # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE =
+        # "1" AND o2.IS_VISIBLE = "1"
+
+        return self.load_from_select(select, devices)
+
+    def get_scenes(self, devices={}):
+        """get all available scenes"""
+
+        _LOGGER.info("get_scenes started")
+
+        select = """SELECT '' AS room_ids, o2.id AS object_id, o2.name AS object_name, o2.VALUES_TYPE AS object_type,
+o2.NAME AS object_name, o2.VALUES_TYPE AS object_type,
+o3.ID AS status_id, o3.NAME AS status_name, o3.DESCRIPTION, o3.CURRENT_VALUE AS status_value
+FROM DPADD_OBJECT AS o2
+INNER JOIN (SELECT CLASSNAME,IS_EVENT,IS_EXECUTABLE FROM DPAD_WEB_PHPCLASS) AS D_WP ON o2.PHPCLASS=D_WP.CLASSNAME
+INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
+INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type IN ('BYMETVAL','BYMEOBJ') AND o3.NAME != ""
+WHERE o2.OPTIONALP NOT LIKE "%restricted%" AND
+o2.IS_VISIBLE=1 AND o2.OWNED_BY!="SYSTEM" AND o2.OPTIONALP LIKE "%category=4%";"""
+
+#         select = """SELECT D_O.*, D_WP.IS_EVENT AS IS_EVENT, D_WP.IS_EXECUTABLE AS IS_EXECUTABLE
+# FROM DPADD_OBJECT AS D_O
+# LEFT JOIN (SELECT CLASSNAME, IS_EVENT, IS_EXECUTABLE FROM DPAD_WEB_PHPCLASS) AS D_WP ON(D_O.PHPCLASS=D_WP.CLASSNAME)
+# WHERE D_O.OPTIONALP NOT LIKE "%restricted%" AND
+# IS_VISIBLE = 1 AND
+# D_O.OWNED_BY != "SYSTEM" AND
+# D_O.OPTIONALP LIKE "%category=4%"
+# ORDER BY ID ASC """
+
+        return self.load_from_select(select, devices)
+
+    def load_from_select(self, select, devices={}):
+        """load devices from given sql statements"""
+
+        if VimarLink._maingroup_ids is None:
+            return None
+
+        # devices = {}
 
         payload = self._request_vimar_sql(select)
         if payload is not None:
@@ -347,7 +380,7 @@ LIMIT 300;""" % (VimarLink._maingroup_ids)
                             # 'status_range': device['status_range'],
                         }
 
-            _LOGGER.info("get_devices ends - found %d devices", len(devices))
+            _LOGGER.info("load sql ends - found %d devices", len(devices))
 
             if len(payload) >= 300:
                 _LOGGER.warning(

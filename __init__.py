@@ -115,7 +115,9 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
         return False
 
     # load devices
-    devices = await hass.async_add_executor_job(vimarconnection.get_devices)
+    devices = await hass.async_add_executor_job(vimarconnection.get_devices, devices)
+    # add scenes to existing devices
+    devices = await hass.async_add_executor_job(vimarconnection.get_scenes, devices)
 
     if not devices or len(devices) == 0:
         _LOGGER.error("Could not find any devices on Vimar Webserver %s", host)
