@@ -116,6 +116,32 @@ class VimarSensor(VimarEntity, Entity):
 
         return self._measurements
 
+    @property
+    def state(self):
+        """The value of the sensor."""
+
+        # get the first available value in the measurements dict
+        values_view = self._measurements.values()
+        value_iterator = iter(values_view)
+        first_value = next(value_iterator)
+
+        return first_value
+
+        # if 'scambio_totale' in self._device['status']:
+        #     return self._measurements['scambio_totale'] = float(self._device['status']['scambio_totale']['status_value'])
+        # if 'consumo_totale' in self._device['status']:
+        #     self._measurements['consumo_totale'] = float(self._device['status']['consumo_totale']['status_value'])
+        # if 'produzione_totale' in self._device['status']:
+        #     self._measurements['produzione_totale'] = float(self._device['status']['produzione_totale']['status_value'])
+        # if 'immissione_totale' in self._device['status']:
+        #     self._measurements['immissione_totale'] = float(self._device['status']['immissione_totale']['status_value'])
+        # if 'prelievo_totale' in self._device['status']:
+        #     self._measurements['prelievo_totale'] = float(self._device['status']['prelievo_totale']['status_value'])
+        # if 'autoconsumo_totale' in self._device['status']:
+        #     self._measurements['autoconsumo_totale'] = float(self._device['status']['autoconsumo_totale']['status_value'])
+
+        # return None
+
     # private helper methods
 
     # def get_sensor_value(self, measurement):
@@ -141,10 +167,10 @@ class VimarSensor(VimarEntity, Entity):
     def _reset_status(self):
         """ set status from _device to class variables  """
         if 'status' in self._device and self._device['status']:
-            if 'scambio_totale' in self._device['status']:
-                self._measurements['scambio_totale'] = float(self._device['status']['scambio_totale']['status_value'])
             if 'consumo_totale' in self._device['status']:
                 self._measurements['consumo_totale'] = float(self._device['status']['consumo_totale']['status_value'])
+            if 'scambio_totale' in self._device['status']:
+                self._measurements['scambio_totale'] = float(self._device['status']['scambio_totale']['status_value'])
             if 'produzione_totale' in self._device['status']:
                 self._measurements['produzione_totale'] = float(self._device['status']['produzione_totale']['status_value'])
             if 'immissione_totale' in self._device['status']:
