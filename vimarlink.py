@@ -193,63 +193,9 @@ ORDER BY o3.ID;""" % (object_id)
                             # 'status_range': device['status_range'],
                         }
 
-            # _LOGGER.info("getDevice")
-            # _LOGGER.info(single_device)
-
             return status_list
 
         return {}
-
-#     def get_device(self, object_id):
-#         """Get all parameter status from a single device"""
-
-#         single_device = {}
-
-# # , o3.OPTIONALP AS status_range
-#         select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
-# o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
-# o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
-# FROM DPADD_OBJECT_RELATION r2
-# INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX"
-# INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
-# INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
-# WHERE o2.ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
-# GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
-# ORDER BY o2.NAME, o3.ID;""" % (object_id)
-
-#         payload = self._request_vimar_sql(select)
-#         if payload is not None:
-#             # there will be multible times the same device
-#             # each having a different status part (on/off + dimming etc.)
-#             for device in payload:
-#                 if single_device == {}:
-#                     single_device = {
-#                         'room_ids': device['room_ids'].split(','),
-#                         'object_id': device['object_id'],
-#                         'object_name': device['object_name'],
-#                         'object_type': device['object_type'],
-#                         'status': {
-#                             device['status_name']: {
-#                                 'status_id': device['status_id'],
-#                                 'status_value': device['status_value'],
-#                                 # 'status_range': device['status_range'],
-#                             }
-#                         }
-#                     }
-#                 else:
-#                     if device['status_name'] != '':
-#                         single_device['status'][device['status_name']] = {
-#                             'status_id': device['status_id'],
-#                             'status_value': device['status_value'],
-#                             # 'status_range': device['status_range'],
-#                         }
-
-#             # _LOGGER.info("getDevice")
-#             # _LOGGER.info(single_device)
-
-#             return single_device
-
-#         return None
 
 # Device example:
 #   'room_id' => string '439' (length=3)

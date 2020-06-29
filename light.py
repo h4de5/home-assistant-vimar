@@ -1,11 +1,11 @@
 """Platform for light integration."""
 import logging
-from datetime import timedelta
+import asyncio
 
+from datetime import timedelta
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS, ATTR_HS_COLOR, SUPPORT_BRIGHTNESS, SUPPORT_COLOR)
 import homeassistant.util.color as color_util
-import asyncio
 
 from .const import DOMAIN
 from .vimar_entity import VimarEntity
@@ -95,7 +95,7 @@ class VimarLight(VimarEntity, LightEntity):
     @property
     def hs_color(self):
         """Return the hue and saturation."""
-        return color_util.color_RGB_to_hs(*self.rgb_color())
+        return color_util.color_RGB_to_hs(*self.rgb_color)
 
     @property
     def supported_features(self):

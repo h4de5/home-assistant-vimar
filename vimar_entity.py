@@ -4,10 +4,6 @@ from datetime import timedelta
 
 # from homeassistant.core import callback
 from homeassistant.util import Throttle
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
 from homeassistant.helpers.entity import Entity
 from . import format_name
 
