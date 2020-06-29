@@ -119,12 +119,13 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def state(self):
         """The value of the sensor."""
-
+        first_value = 0
         # get the first available value in the measurements dict
-        values_view = self._measurements.values()
-        value_iterator = iter(values_view)
-        first_value = next(value_iterator)
-
+        if self._measurements and len(self._measurements) > 0:
+            values_view = self._measurements.values()
+            value_iterator = iter(values_view)
+            first_value = next(value_iterator)
+        
         return first_value
 
         # if 'scambio_totale' in self._device['status']:
