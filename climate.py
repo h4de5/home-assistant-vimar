@@ -17,6 +17,7 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_OFF,
     SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_FAN_MODE,
+    SUPPORT_AUX_HEAT,
     FAN_ON,
     FAN_OFF,
     FAN_LOW,
@@ -109,6 +110,9 @@ class VimarClimate(VimarEntity, ClimateEntity):
     # functional mode, can be VIMAR_CLIMATE_AUTO, or VIMAR_CLIMATE_MANUAL
     _function_mode = None
 
+    # Returns True if an auxiliary heater is on. Requires SUPPORT_AUX_HEAT.
+    _is_aux_heat = None
+
     # TODO - find a way to handle different units from vimar device
     _temperature_unit = TEMP_CELSIUS
 
@@ -157,6 +161,10 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if 'status' in self._device and self._device['status']:
             if 'velocita_fancoil' in self._device['status']:
                 flags |= SUPPORT_FAN_MODE
+        if 'status' in self._device and self._device['status']:
+            if 'stato_principale_riscaldamento on/off' in self._device['status']:
+                flags |= SUPPORT_AUX_HEAT
+
         return flags
 
     @property
@@ -182,6 +190,11 @@ class VimarClimate(VimarEntity, ClimateEntity):
             return HVAC_MODE_OFF
 
         return self._hvac_mode
+
+    @property
+    def is_aux_heat(self):
+        """Returns True if an auxiliary heater is on. Requires SUPPORT_AUX_HEAT."""
+        return self._is_aux_heat
 
     @property
     def fan_modes(self):
@@ -265,6 +278,28 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 )
 
             self.async_schedule_update_ha_state()
+
+    async def async_turn_aux_heat_on(self):
+        """Turn auxiliary heater on."""
+
+        _LOGGER.info("Vimar Climate setting aux_heat: %s", "on")
+
+        if 'status' in self._device and self._device['status']:
+            if 'stato_principale_riscaldamento on/off' in self._device['status']:
+                self._is_aux_heat = True
+                self._device['status']['stato_principale_riscaldamento on/off']['status_value'] = self._is_aux_heat
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stato_principale_riscaldamento on/off']['status_id'], self._is_aux_heat)
+
+    async def async_turn_aux_heat_off(self):
+        """Turn auxiliary heater off."""
+
+        _LOGGER.info("Vimar Climate setting aux_heat: %s", "off")
+
+        if 'status' in self._device and self._device['status']:
+            if 'stato_principale_riscaldamento on/off' in self._device['status']:
+                self._is_aux_heat = False
+                self._device['status']['stato_principale_riscaldamento on/off']['status_value'] = self._is_aux_heat
+                await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stato_principale_riscaldamento on/off']['status_id'], self._is_aux_heat)
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
@@ -493,10 +528,17 @@ class VimarClimate(VimarEntity, ClimateEntity):
                     self._state = (True, False)[
                         self._device['status']['funzionamento']['status_value'] == VIMAR_CLIMATE_OFF_II]
 
+            if 'stato_principale_riscaldamento on/off' in self._device['status']:
+                self._is_aux_heat = (False, True)[
+                    self._device['status']['stato_principale_riscaldamento on/off']['status_value'] != '0']
+
             # whenever the climate is idle or active (heating, cooling)
             if 'on/off' in self._device['status']:
                 self._is_running = (False, True)[
                     self._device['status']['on/off']['status_value'] != '0']
+            if 'stato_principale_condizionamento on/off' in self._device['status']:
+                self._is_running = (False, True)[
+                    self._device['status']['stato_principale_condizionamento on/off']['status_value'] != '0']
 
             # if 'value' in self._device['status']:
             #     self._brightness = recalculate_brightness(
