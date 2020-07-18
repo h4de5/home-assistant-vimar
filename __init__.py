@@ -3,18 +3,24 @@ from datetime import timedelta
 import logging
 import asyncio
 import os
+import async_timeout
+
 from homeassistant.helpers.typing import HomeAssistantType, ConfigType
 from homeassistant.const import (
     CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_TIMEOUT, DEVICE_CLASS_POWER)
 from homeassistant.exceptions import PlatformNotReady
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.components.cover import (
     DEVICE_CLASS_SHUTTER,
     DEVICE_CLASS_WINDOW,
     # DEVICE_CLASS_SHADE
 )
+from homeassistant.components.switch import (DEVICE_CLASS_OUTLET, DEVICE_CLASS_SWITCH)
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from . import vimarlink
+from .vimarlink import (VimarLink, VimarApiError)
+# from . import vimarlink
+
 from .const import (
     DOMAIN,
     CONF_SCHEMA,
@@ -54,19 +60,7 @@ CONFIG_SCHEMA = vol.Schema({
 
 @asyncio.coroutine
 async def async_setup(hass: HomeAssistantType, config: ConfigType):
-    # def setup(hass, config):
     """Connect to the Vimar Webserver, verify login and read all devices."""
-
-    # Data that you want to share with your platforms
-    # hass.data[DOMAIN] = {
-    #     "temperature": 23
-    # }
-
-    # hass.helpers.discovery.load_platform("sensor", DOMAIN, {}, config)
-
-    # _LOGGER.info("Vimar Config: ")
-    # _LOGGER.info(config)
-
     devices = {}
     vimarconfig = config[DOMAIN]
 
@@ -79,7 +73,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     timeout = vimarconfig.get(CONF_TIMEOUT)
 
     # initialize a new VimarLink object
-    vimarconnection = vimarlink.VimarLink(
+    vimarconnection = VimarLink(
         schema, host, port, username, password, certificate, timeout)
 
     # if certificate is set, but file is not there - download it from the
@@ -107,17 +101,61 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN]["connection"] = vimarconnection
 
-    maingroups = await hass.async_add_executor_job(vimarconnection.get_main_groups)
+    # maingroups = await hass.async_add_executor_job(vimarconnection.get_main_groups)
 
-    if not maingroups or len(maingroups) == 0:
-        _LOGGER.error(
-            "Could not find any groups or rooms on Vimar Webserver %s", host)
-        return False
+    # if not maingroups or len(maingroups) == 0:
+    #     _LOGGER.error(
+    #         "Could not find any groups or rooms on Vimar Webserver %s", host)
+    #     return False
 
-    # load devices
-    devices = await hass.async_add_executor_job(vimarconnection.get_devices, devices)
-    # add scenes to existing devices
-    devices = await hass.async_add_executor_job(vimarconnection.get_scenes, devices)
+    # # load devices
+    # devices = await hass.async_add_executor_job(vimarconnection.get_room_devices, devices)
+    # # add scenes to existing devices
+    # devices = await hass.async_add_executor_job(vimarconnection.get_remote_devices, devices)
+
+    async def async_api_update():
+        """Fetch data from API endpoint.
+
+        This is the place to pre-process the data to lookup tables
+        so entities can quickly look up their data.
+        """
+        try:
+            _LOGGER.debug("Updating coordinator..")
+
+            # Note: asyncio.TimeoutError and aiohttp.ClientError are already
+            # handled by the data update coordinator.
+            async with async_timeout.timeout(5):
+                # return await api.fetch_data()
+                # return await hass.async_add_executor_job(vimarconnection.get_remote_devices)
+                return await hass.async_add_executor_job(vimarconnection.get_paged_results, vimarconnection.get_remote_devices)
+
+                # states = vimarconnection.get_scenes()
+                # _LOGGER.debug("states in async_api_update %s", str(states))
+                # return states
+                # self._reset_status()
+                # will yield logger debug message: Finished fetching vimar data in xx seconds
+
+        except VimarApiError as err:
+            raise UpdateFailed(f"Error communicating with API: {err}")
+
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        # Name of the data. For logging purposes.
+        name="vimar",
+        update_method=async_api_update,
+        # Polling interval. Will only be polled if there are subscribers.
+        update_interval=timedelta(seconds=10),
+    )
+
+    hass.data[DOMAIN]["coordinator"] = coordinator
+
+    # initial refresh of all devices - replaces fetch of main groups and room devices
+    await coordinator.async_refresh()
+    # coordinator.async_refresh()
+
+    devices, state_count = coordinator.data
+    # _LOGGER.info("Found devices %s", str(devices))
 
     if not devices or len(devices) == 0:
         _LOGGER.error("Could not find any devices on Vimar Webserver %s", host)
@@ -161,62 +199,42 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
                 #              (icon if icon else '-'))
                 others[device_id] = device
 
-    # save devices into hass data to share it with other platforms
-    hass.data[DOMAIN][DEVICE_TYPE_LIGHTS] = lights
-    hass.data[DOMAIN][DEVICE_TYPE_COVERS] = covers
-    hass.data[DOMAIN][DEVICE_TYPE_SWITCHES] = switches
-    hass.data[DOMAIN][DEVICE_TYPE_CLIMATES] = climates
-    hass.data[DOMAIN][DEVICE_TYPE_SENSORS] = sensors
-
-    # hass.data[DOMAIN][DEVICE_TYPE_FANS] = fans
     # there should not be too many requests per second
     # limit scan_interval depending on items
-    scan_interval = max(3, int(len(devices) / 500 * 60))
-    hass.data[DOMAIN]["scan_interval"] = timedelta(seconds=scan_interval)
+    # scan_interval = max(3, int(len(devices) / 500 * 60))
+    # hass.data[DOMAIN]["scan_interval"] = timedelta(seconds=scan_interval)
 
-    # if len(devices) != 0:
-    #     # for device_id, device_config in config.get(CONF_DEVICES, {}).items():
-    #     # for device_id, device_config in devices.items():
-    #     #     name = device_config["name"]
-    #     #     lights.append(VimarLight(name, device_id, vimarconnection))
-    #     for device_id, device in devices.items():
+    # save devices into hass data to share it with other platforms
+    if climates and len(climates) > 0:
+        hass.data[DOMAIN][DEVICE_TYPE_CLIMATES] = climates
+        hass.async_create_task(hass.helpers.discovery.async_load_platform(
+            "climate", DOMAIN, {"hass_data_key": DEVICE_TYPE_CLIMATES}, config))
+    if lights and len(lights) > 0:
+        hass.data[DOMAIN][DEVICE_TYPE_LIGHTS] = lights
+        hass.async_create_task(hass.helpers.discovery.async_load_platform(
+            "light", DOMAIN, {"hass_data_key": DEVICE_TYPE_LIGHTS}, config))
+    if covers and len(covers) > 0:
+        hass.data[DOMAIN][DEVICE_TYPE_COVERS] = covers
+        hass.async_create_task(hass.helpers.discovery.async_load_platform(
+            "cover", DOMAIN, {"hass_data_key": DEVICE_TYPE_COVERS}, config))
+    if switches and len(switches) > 0:
+        hass.data[DOMAIN][DEVICE_TYPE_SWITCHES] = switches
+        hass.async_create_task(hass.helpers.discovery.async_load_platform(
+            "switch", DOMAIN, {"hass_data_key": DEVICE_TYPE_SWITCHES}, config))
+    if sensors and len(sensors) > 0:
+        hass.data[DOMAIN][DEVICE_TYPE_SENSORS] = sensors
+        hass.async_create_task(hass.helpers.discovery.async_load_platform(
+            "sensor", DOMAIN, {"hass_data_key": DEVICE_TYPE_SENSORS}, config))
+    # if fans and len(fans) > 0:
+    #     hass.data[DOMAIN][DEVICE_TYPE_FANS] = fans
+    #     hass.async_create_task(hass.helpers.discovery.async_load_platform(
+    #         "fan", DOMAIN, {"hass_data_key": DEVICE_TYPE_FANS}, config))
 
     # States are in the format DOMAIN.OBJECT_ID.
     # hass.states.async_set("vimar_platform.Hello_World", "Works!")
 
-    # vimarconnection = vimarlink.VimarLink(host, username, password)
-
-    # # Verify that passed in configuration works
-    # if not vimarconnection.is_valid_login():
-    #     _LOGGER.error("Could not connect to Vimar Webserver "+ host)
-    #     return False
-
-# Use `listen_platform` to register a callback for these events.
-
+    # Use `listen_platform` to register a callback for these events.
     # homeassistant.helpers.discovery.async_load_platform(hass, component, platform, discovered, hass_config)
-
-    if climates and len(climates) > 0:
-        hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "climate", DOMAIN, {"hass_data_key": DEVICE_TYPE_CLIMATES}, config))
-    if lights and len(lights) > 0:
-        hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "light", DOMAIN, {"hass_data_key": DEVICE_TYPE_LIGHTS}, config))
-    if covers and len(covers) > 0:
-        hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "cover", DOMAIN, {"hass_data_key": DEVICE_TYPE_COVERS}, config))
-    if switches and len(switches) > 0:
-        hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "switch", DOMAIN, {"hass_data_key": DEVICE_TYPE_SWITCHES}, config))
-    if sensors and len(sensors) > 0:
-        hass.async_create_task(hass.helpers.discovery.async_load_platform(
-            "sensor", DOMAIN, {"hass_data_key": DEVICE_TYPE_SENSORS}, config))
-    # if fans and len(fans) > 0:
-    #     hass.async_create_task(hass.helpers.discovery.async_load_platform(
-    #         "fan", DOMAIN, {"hass_data_key": DEVICE_TYPE_FANS}, config))
-
-    # hass.helpers.discovery.load_platform("light", DOMAIN, {}, config)
-    # hass.helpers.discovery.load_platform("cover", DOMAIN, {}, config)
-    # hass.helpers.discovery.load_platform("switch", DOMAIN, {}, config)
 
     # Return boolean to indicate that initialization was successfully.
     return True
@@ -240,7 +258,6 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
 def parse_device_type(device):
     """Split up devices into supported groups based on their names."""
-
     device_type = DEVICE_TYPE_OTHERS
     # see:
     # https://www.home-assistant.io/docs/configuration/customizing-devices/#device-class
@@ -271,19 +288,27 @@ def parse_device_type(device):
         if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find(
                 "FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
+            device_class = DEVICE_CLASS_SWITCH
             icon = ["mdi:fan", "mdi:fan-off"]
         elif device["object_name"].find("LAMPE") != -1:
             device_type = DEVICE_TYPE_LIGHTS
+            device_class = DEVICE_CLASS_SWITCH
             icon = ["mdi:lightbulb", "mdi:lightbulb-off"]
         elif device["object_name"].find("LICHT") != -1:
             device_type = DEVICE_TYPE_LIGHTS
             icon = "mdi:ceiling-light"
         elif device["object_name"].find("STECKDOSE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
-            device_class = "plug"
+            device_class = DEVICE_CLASS_OUTLET
             icon = ["mdi:power-plug", "mdi:power-plug-off"]
+
+            # device_type = DEVICE_TYPE_SENSORS
+            # device_class = DEVICE_CLASS_POWER
+            # icon = "mdi:home-analytics"
+
         elif device["object_name"].find("PULSANTE") != -1:
             device_type = DEVICE_TYPE_SWITCHES
+            device_class = DEVICE_CLASS_OUTLET
             # device_class = "plug"
             icon = ["mdi:power-plug", "mdi:power-plug-off"]
         else:
@@ -291,9 +316,18 @@ def parse_device_type(device):
             device_type = DEVICE_TYPE_LIGHTS
             icon = "mdi:ceiling-light"
 
+    elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF"]:
+        device_type = DEVICE_TYPE_SWITCHES
+        device_class = DEVICE_CLASS_OUTLET
+        icon = ["mdi:power-plug", "mdi:power-plug-off"]
+
     elif device["object_type"] in ["CH_Dimmer_Automation", "CH_Dimmer_RGB", "CH_Dimmer_White", "CH_Dimmer_Hue"]:
         device_type = DEVICE_TYPE_LIGHTS
         icon = "mdi:speedometer"  # mdi:rotate-right
+
+        # device_type = DEVICE_TYPE_SENSORS
+        # device_class = DEVICE_CLASS_POWER
+        # icon = "mdi:home-analytics"
 
     elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation"]:
         if device["object_name"].find("F-FERNBEDIENUNG") != -1:
@@ -306,25 +340,22 @@ def parse_device_type(device):
             device_type = DEVICE_TYPE_COVERS
         icon = ["mdi:window-closed", "mdi:window-open"]
 
-    elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra"]:
+    elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_Fancoil"]:
         device_type = DEVICE_TYPE_CLIMATES
         icon = "mdi:thermometer-lines"
 
     elif device["object_type"] == "CH_Scene":
         device_type = DEVICE_TYPE_SCENES
-        # device_class = "plug"
+        device_class = DEVICE_CLASS_SWITCH
         icon = "mdi:home-assistant"
 
-    elif device["object_type"] == "CH_Misuratore":
+    elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F"]:
         device_type = DEVICE_TYPE_SENSORS
         device_class = DEVICE_CLASS_POWER
         icon = "mdi:home-analytics"
 
-    elif device["object_type"] in ["CH_Carichi_Custom", "CH_Carichi"]:
-        pass
-
     elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
-        _LOGGER.info(
+        _LOGGER.debug(
             "Unsupported object returned from web server: "
             + device["object_type"]
             + " / "
@@ -340,7 +371,7 @@ def parse_device_type(device):
 
 
 def format_name(name):
-    """Format device name to get rid of unused terms"""
+    """Format device name to get rid of unused terms."""
     # _LOGGER.info("Splitting name: " + name)
 
     parts = name.split(' ')

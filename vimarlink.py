@@ -10,7 +10,7 @@ from xml.etree import ElementTree
 
 import requests
 from requests.exceptions import HTTPError
-from urllib3.exceptions import ReadTimeoutError
+# from urllib3.exceptions import ReadTimeoutError
 
 # from . import DOMAIN
 
@@ -19,10 +19,29 @@ from urllib3.exceptions import ReadTimeoutError
 # import socket
 
 _LOGGER = logging.getLogger(__name__)
+MAX_ROWS_PER_REQUEST = 300
+
+
+class VimarApiError(Exception):
+    """Vimar API General Exception."""
+
+    pass
+
+
+class VimarConfigError(VimarApiError):
+    """Vimar API Configuration Exception."""
+
+    pass
+
+
+class VimarConnectionError(VimarApiError):
+    """Vimar API Connection Exception."""
+
+    pass
 
 
 class VimarLink():
-    """Link to communicate with the Vimar webserver"""
+    """Link to communicate with the Vimar webserver."""
 
     # the_queue = queue.Queue()
     # thread = None
@@ -34,9 +53,13 @@ class VimarLink():
     _username = ''
     _password = ''
     _session_id = None
-    _maingroup_ids = None
+    _room_ids = None
     _certificate = None
     _timeout = 6
+
+    # todo:
+    # general: on/off,
+    # lights: brightness, rgb
 
     def __init__(
             self,
@@ -47,6 +70,7 @@ class VimarLink():
             password=None,
             certificate=None,
             timeout=None):
+        """Prepare connections instance for vimar webserver."""
         _LOGGER.info("Vimar link initialized")
 
         if schema is not None:
@@ -65,7 +89,7 @@ class VimarLink():
             VimarLink._timeout = timeout
 
     def install_certificate(self):
-        """Downloads the CA certificate from the web server to be used for the next calls"""
+        """Download the CA certificate from the web server to be used for the next calls."""
         # temporarily disable certificate requests
         if len(self._certificate) != 0:
             temp_certificate = self._certificate
@@ -76,8 +100,9 @@ class VimarLink():
             certificate_file = self._request(temp_certificate)
 
             if certificate_file is None:
-                _LOGGER.error("Certificate download failed")
-                return False
+                raise VimarConnectionError("Certificate download failed")
+                # _LOGGER.error("Certificate download failed")
+                # return False
 
             # get it back
             self._certificate = temp_certificate
@@ -88,8 +113,9 @@ class VimarLink():
                 file.close()
 
             except IOError as err:
-                _LOGGER.error("Saving certificate failed: %s", repr(err))
-                return False
+                raise VimarConfigError("Saving certificate failed: %s", repr(err))
+                # _LOGGER.error("Saving certificate failed: %s", repr(err))
+                # return False
 
             _LOGGER.debug("Downloaded Vimar CA certificate to: %s",
                           self._certificate)
@@ -97,7 +123,7 @@ class VimarLink():
         return True
 
     def login(self):
-        """Call login and store the session id"""
+        """Call login and store the session id."""
         loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
             VimarLink._schema, VimarLink._host, VimarLink._port, VimarLink._username, VimarLink._password)
 
@@ -109,9 +135,11 @@ class VimarLink():
             loginmessage = xml.find('message')
             if logincode is not None and logincode.text != "0":
                 if loginmessage is not None:
-                    _LOGGER.error("Error during login: %s", loginmessage.text)
+                    raise VimarConnectionError("Error during login: %s", loginmessage.text)
+                    # _LOGGER.error("Error during login: %s", loginmessage.text)
                 else:
-                    _LOGGER.error("Error during login: %s", logincode.text)
+                    raise VimarConnectionError("Error during login. Code: %s", logincode.text)
+                    # _LOGGER.error("Error during login: %s", logincode.text)
             else:
                 _LOGGER.info("Vimar login ok")
                 loginsession = xml.find('sessionid')
@@ -126,20 +154,29 @@ class VimarLink():
         return result
 
     def check_login(self):
-        """Check if session is available - if not, aquire a new one"""
-        if (VimarLink._session_id is None):
+        """Check if session is available - if not, aquire a new one."""
+        if VimarLink._session_id is None:
             self.login()
 
-        return (VimarLink._session_id is not None)
+        return VimarLink._session_id is not None
 
     def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
-        """ when setting climates optionals should be set to SYNCDB """
-
-        post = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws"><payload>%s</payload><hashcode>NO-HASHCODE</hashcode><optionals>%s</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>10</waittime><idobject>%s</idobject><operation>SETVALUE</operation></service-runonelement></soapenv:Body></soapenv:Envelope>
-        """ % (status,
-               optionals,
-               VimarLink._session_id,
-               object_id)
+        """Set a given status for one device."""
+        # climates optionals should be set to SYNCDB"""
+        post = ("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+                "<soapenv:Body><service-runonelement xmlns=\"urn:xmethods-dpadws\">"
+                "<payload>%s</payload>"
+                "<hashcode>NO-HASHCODE</hashcode>"
+                "<optionals>%s</optionals>"
+                "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
+                "<sessionid>%s</sessionid><waittime>10</waittime>"
+                "<idobject>%s</idobject>"
+                "<operation>SETVALUE</operation>"
+                "</service-runonelement></soapenv:Body></soapenv:Envelope>") % (
+            status,
+            optionals,
+            VimarLink._session_id,
+            object_id)
 
         response = self._request_vimar(post)
         if response is not None and response is not False:
@@ -161,8 +198,7 @@ class VimarLink():
         return None
 
     def get_device_status(self, object_id):
-        """Get attribute status for a single device"""
-
+        """Get attribute status for a single device."""
         status_list = {}
 
 # , o3.OPTIONALP AS status_range
@@ -234,12 +270,29 @@ ORDER BY o3.ID;""" % (object_id)
 #   'IS_WRITABLE' => string '1' (length=1)
 #   'IS_VISIBLE' => string '1' (length=1)
 
-    def get_devices(self, devices={}):
+    def get_paged_results(self, method, objectlist={}, start=0):
+        """Page results from a method automatically."""
+        # define a page size
+        limit = MAX_ROWS_PER_REQUEST
 
-        if VimarLink._maingroup_ids is None:
+        # if hasattr(self, method) and callable(getattr(self, method)):
+        if callable(method):
+            objectlist, state_count = method(objectlist, start, limit)
+            # if method returns excatly page size results - we check for another page
+            if state_count == limit:
+                objectlist, state_count = self.get_paged_results(method, objectlist, start + state_count)
+            return objectlist, start + state_count
+        else:
+            raise VimarApiError("Calling invalid method for paged results: %s", method)
+
+    def get_room_devices(self, devices={}, start: int = None, limit: int = None):
+        """Load all devices that belong to a room."""
+        if VimarLink._room_ids is None:
             return None
 
-        _LOGGER.info("get_scenes started")
+        start, limit = self._sanitaze_limits(start, limit)
+
+        _LOGGER.debug("get_room_devices started - from %d to %d", start, start + limit)
 
         select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
 o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
@@ -250,7 +303,7 @@ INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_W
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.NAME != ""
 WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
-LIMIT 300; """ % (VimarLink._maingroup_ids)
+LIMIT %d, %d;""" % (VimarLink._room_ids, start, limit)
 
         # o3.OPTIONALP AS status_range
         # AND o3.OPTIONALP IS NOT NULL
@@ -260,12 +313,13 @@ LIMIT 300; """ % (VimarLink._maingroup_ids)
         # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE =
         # "1" AND o2.IS_VISIBLE = "1"
 
-        return self.load_from_select(select, devices)
+        return self._generate_device_list(select, devices)
 
-    def get_scenes(self, devices={}):
-        """get all available scenes"""
+    def get_remote_devices(self, devices={}, start: int = None, limit: int = None):
+        """Get all devices that can be triggered remotly (includes scenes)."""
+        _LOGGER.debug("get_remote_devices started - from %d to %d", start, start + limit)
 
-        _LOGGER.info("get_scenes started")
+        start, limit = self._sanitaze_limits(start, limit)
 
         select = """SELECT '' AS room_ids, o2.id AS object_id, o2.name AS object_name, o2.VALUES_TYPE AS object_type,
 o2.NAME AS object_name, o2.VALUES_TYPE AS object_type,
@@ -274,9 +328,8 @@ FROM DPADD_OBJECT AS o2
 INNER JOIN (SELECT CLASSNAME,IS_EVENT,IS_EXECUTABLE FROM DPAD_WEB_PHPCLASS) AS D_WP ON o2.PHPCLASS=D_WP.CLASSNAME
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type IN ('BYMETVAL','BYMEOBJ') AND o3.NAME != ""
-WHERE o2.OPTIONALP NOT LIKE "%restricted%" AND
-o2.IS_VISIBLE=1 AND o2.OWNED_BY!="SYSTEM" AND o2.OPTIONALP LIKE "%category=%"
-LIMIT 300;"""
+WHERE o2.OPTIONALP NOT LIKE "%%restricted%%" AND o2.IS_VISIBLE=1 AND o2.OWNED_BY!="SYSTEM" AND o2.OPTIONALP LIKE "%%category=%%"
+LIMIT %d, %d;""" % (start, limit)
 
 #         select = """SELECT D_O.*, D_WP.IS_EVENT AS IS_EVENT, D_WP.IS_EXECUTABLE AS IS_EXECUTABLE
 # FROM DPADD_OBJECT AS D_O
@@ -287,15 +340,24 @@ LIMIT 300;"""
 # D_O.OPTIONALP LIKE "%category=4%"
 # ORDER BY ID ASC """
 
-        return self.load_from_select(select, devices)
+        return self._generate_device_list(select, devices)
 
-    def load_from_select(self, select, devices={}):
-        """load devices from given sql statements"""
+    def _sanitaze_limits(self, start: int, limit: int):
+        """Check for sane values in start and limit."""
+        # upper limit is hardcoded - too many results will kill webserver
+        if limit is None or limit > MAX_ROWS_PER_REQUEST or limit <= 0:
+            limit = MAX_ROWS_PER_REQUEST
+        if start is None or start < 0:
+            start = 0
+        return start, limit
 
-        if VimarLink._maingroup_ids is None:
-            return None
+    def _generate_device_list(self, select, devices={}):
+        """Generate device list from given sql statements."""
+        # if VimarLink._room_ids is None:
+        #     return None
 
         # devices = {}
+        # _LOGGER.info("_generate_device_list : %s", select)
 
         payload = self._request_vimar_sql(select)
         if payload is not None:
@@ -327,23 +389,25 @@ LIMIT 300;"""
                             # 'status_range': device['status_range'],
                         }
 
-            _LOGGER.info("load sql ends - found %d devices", len(devices))
+            _LOGGER.debug("_generate_device_list ends - found %d devices", len(devices))
 
-            if len(payload) >= 300:
-                _LOGGER.warning(
-                    "Your installation has over %d device parameters. In order to not crash the webserver the query was limited. It is possible, that some devices are missing or not working correctly.",
-                    len(payload))
+            # if len(payload) >= MAX_ROWS_PER_REQUEST:
+            #     _LOGGER.warning(
+            #         "Your installation has over %d device parameters. "
+            #         "In order to not crash the webserver the query was limited. "
+            #         "It is possible, that some devices are missing or not working correctly.",
+            #         len(payload))
             # _LOGGER.info("getDevices")
             # _LOGGER.info(devices)
 
-            return devices
+            return devices, len(payload)
 
         return None
 
-    def get_main_groups(self):
-        """Load main groups"""
-        if VimarLink._maingroup_ids is not None:
-            return VimarLink._maingroup_ids
+    def get_room_ids(self):
+        """Load main rooms - later used in get_room_devices."""
+        if VimarLink._room_ids is not None:
+            return VimarLink._room_ids
 
         _LOGGER.info("get_main_groups start")
 
@@ -354,41 +418,36 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
         payload = self._request_vimar_sql(select)
         if payload is not None:
-            VimarLink._maingroup_ids = payload[0]['MAIN_GROUPS']
+            VimarLink._room_ids = payload[0]['MAIN_GROUPS']
+            _LOGGER.info("get_room_ids ends - found %d rooms", len(VimarLink._room_ids.split(',')))
 
-            _LOGGER.info("get_main_groups ends - found %d groups", len(VimarLink._maingroup_ids.split(',')))
-
-            return VimarLink._maingroup_ids
+            return VimarLink._room_ids
         else:
             return None
 
     def _request_vimar_sql(self, select):
-
+        """Build sql request."""
         select = select.replace('\r\n', ' ').replace(
             '\n', ' ').replace('"', '&apos;').replace('\'', '&apos;')
 
-        post = ('<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body>'
-                '<service-databasesocketoperation xmlns="urn:xmethods-dpadws">'
-                '<payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals>'
-                '<callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>%s</sessionid><waittime>5</waittime>'
-                '<function>DML-SQL</function><type>SELECT</type><statement>%s</statement><statement-len>%d</statement-len>'
-                '</service-databasesocketoperation></soapenv:Body></soapenv:Envelope>') % (
+        post = ("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+                "<soapenv:Body><service-databasesocketoperation xmlns=\"urn:xmethods-dpadws\">"
+                "<payload>NO-PAYLOAD</payload>"
+                "<hashcode>NO-HASCHODE</hashcode>"
+                "<optionals>NO-OPTIONAL</optionals>"
+                "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
+                "<sessionid>%s</sessionid>"
+                "<waittime>5</waittime>"
+                "<function>DML-SQL</function><type>SELECT</type>"
+                "<statement>%s</statement><statement-len>%d</statement-len>"
+                "</service-databasesocketoperation></soapenv:Body></soapenv:Envelope>") % (
             VimarLink._session_id, select, len(select))
 
-        # _LOGGER.info("in _request_vimar_sql")
-        # _LOGGER.info(post)
         response = self._request_vimar(post)
-        # _LOGGER.info("response: ")
-        # _LOGGER.info(response)
         if response is not None and response is not False:
-
-            # if debug:
-            # _LOGGER.info("received payload: %s", str(response))
 
             payload = response.find('.//payload')
             if payload is not None:
-                # if debug:
-                #     _LOGGER.info("Got a new payload: " + payload.text)
                 parsed_data = self._parse_sql_payload(payload.text)
 
                 if parsed_data is None:
@@ -410,7 +469,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         return None
 
     def _parse_sql_payload(self, string):
-        """Split string payload into dictionary array"""
+        """Split string payload into dictionary array."""
         # DONE: we need to move parseSQLPayload over to pyton
         # Example payload string:
         # Response: DBMG-000
@@ -427,9 +486,11 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             keys = []
             for line in lines:
                 if line:
+                    if line.find(':') == -1:
+                        raise Exception('Missing :-character in response line: %s' % line)
+
                     # split prefix from values
                     prefix, values = line.split(':', 1)
-                    # prefix = prefix.split('#', 1)[1].strip()
                     prefix = prefix.strip()
 
                     # skip unused prefixes
@@ -456,22 +517,29 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         except BaseException as err:
             # exc_type, exc_obj, exc_tb = sys.exc_info()
             _, _, exc_tb = sys.exc_info()
-
-            _LOGGER.error(
+            raise VimarConnectionError(
                 "Error parsing SQL: "
                 + repr(err)
                 + " in line: "
-                + exc_tb.tb_lineno
+                + str(exc_tb.tb_lineno)
                 + " - payload: "
                 + string)
-            return None
+
+            # _LOGGER.error(
+            #     "Error parsing SQL: "
+            #     + repr(err)
+            #     + " in line: "
+            #     + str(exc_tb.tb_lineno)
+            #     + " - payload: "
+            #     + string)
+            # return None
 
         # _LOGGER.info("parseSQLPayload")
         # _LOGGER.info(return_list)
         return return_list
 
     def _request_vimar(self, post):
-        """Prepare call to vimar webserver"""
+        """Prepare call to vimar webserver."""
         url = '%s://%s:%s/cgi-bin/dpadws' % (
             VimarLink._schema, VimarLink._host, VimarLink._port)
 
@@ -499,9 +567,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
         return response
 
-    @classmethod
-    def _parse_xml(cls, xml):
-        """Parse xml response from webserver to array"""
+    def _parse_xml(self, xml):
+        """Parse xml response from webserver to array."""
         try:
             root = xmlTree.fromstring(xml)
         except BaseException as err:
@@ -518,7 +585,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             post=None,
             headers=None,
             check_ssl=False):
-        """Call web server using post variables"""
+        """Call web server using post variables."""
         # _LOGGER.info("request to " + url)
         try:
             # connection, read timeout
@@ -569,7 +636,10 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
         return None
 
-    # read out schedule: <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><service-vimarclimateeventgettimeschedule xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode><optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>5e8a5aa99db78</sessionid><waittime>300</waittime><idobject>939</idobject><mode>CLIMATE</mode><type>WEEKLY</type><weekday>2</weekday><season>0</season></service-vimarclimateeventgettimeschedule></soapenv:Body></soapenv:Envelope>
+    # read out schedule: <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body>
+    # <service-vimarclimateeventgettimeschedule xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode>
+    # <optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>5e8a5aa99db78</sessionid><waittime>300</waittime><idobject>939</idobject>
+    # <mode>CLIMATE</mode><type>WEEKLY</type><weekday>2</weekday><season>0</season></service-vimarclimateeventgettimeschedule></soapenv:Body></soapenv:Envelope>
     # read out all climate details: SELECT * FROM DPADD_OBJECT_RELATION WHERE PARENTOBJ_ID IN (939) OR CHILDOBJ_ID IN (939) ORDER BY ORDER_NUM,ID ;
     # read out climate values t1,t2,t3: SELECT ID,NAME,STATUS_ID,CURRENT_VALUE
     # FROM DPADD_OBJECT WHERE ID IN (9187,9188,9189);
@@ -625,3 +695,17 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
     #     return result
 # end class Vimar
+
+
+class VimarProject():
+    """Container that holds all vimar devices and its states."""
+
+    _devices = {}
+    _link = None
+
+    def __init__(
+        self,
+        link: VimarLink
+    ):
+        """Create new container to hold all states."""
+        self._link = link

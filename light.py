@@ -2,13 +2,13 @@
 import logging
 import asyncio
 
-from datetime import timedelta
+# from datetime import timedelta
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS, ATTR_HS_COLOR, SUPPORT_BRIGHTNESS, SUPPORT_COLOR)
 import homeassistant.util.color as color_util
 
-from .const import DOMAIN
-from .vimar_entity import VimarEntity
+# from .const import DOMAIN
+from .vimar_entity import (VimarEntity, vimar_setup_platform)
 
 try:
     from homeassistant.components.light import LightEntity
@@ -17,79 +17,59 @@ except ImportError:
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=30)
+# SCAN_INTERVAL = timedelta(seconds=30)
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
-PARALLEL_UPDATES = 3
+# PARALLEL_UPDATES = 3
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Light platform."""
-
-    # We only want this platform to be set up via discovery.
-    if discovery_info is None:
-        return
-
-    _LOGGER.info("Vimar Light started!")
-    lights = []
-
-    vimarconnection = hass.data[DOMAIN]['connection']
-
-    devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
-
-    if len(devices) != 0:
-        for device_id, device in devices.items():
-            lights.append(VimarLight(device, device_id, vimarconnection))
-
-    if len(lights) != 0:
-        # If your entities need to fetch data before being written to Home
-        # Assistant for the first time, pass True to the add_entities method:
-        # add_entities([MyEntity()], True).
-        async_add_entities(lights)
-    _LOGGER.info("Vimar Light complete!")
+    vimar_setup_platform(VimarLight, hass, async_add_entities, discovery_info)
 
 
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 
 
 class VimarLight(VimarEntity, LightEntity):
-    """ Provides a Vimar lights. """
+    """Provides a Vimar lights."""
 
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     # Return True if the state is based on our assumption instead of reading it from the device
     # assumed_state = False
 
+    _platform = "light"
     # set entity_id, object_id manually due to possible duplicates
-    entity_id = "light." + "unset"
+    # entity_id = "light." + "unset"
     _brightness = None
     _red = None
     _blue = None
     _green = None
 
-    def __init__(self, device, device_id, vimarconnection):
+    def __init__(self, device, device_id, vimarconnection, coordinator):
         """Initialize the light."""
-
-        VimarEntity.__init__(self, device, device_id, vimarconnection)
+        # LightEntity.__init__()
+        VimarEntity.__init__(self, device, device_id, vimarconnection, coordinator)
 
         # set device type specific attributes
         # self._brightness = 255
-        self.entity_id = "light." + self._name.lower() + "_" + self._device_id
+        # self.entity_id = "light." + self._name.lower() + "_" + self._device_id
 
     # light properties
 
     @property
     def is_on(self):
-        """ True if the device is on. """
+        """Set to True if the device is on."""
         return self._state
 
     @property
     def brightness(self):
-        """ Brightness of this light between 0..255. """
+        """Return Brightness of this light between 0..255."""
         return self._brightness
 
     @property
     def rgb_color(self):
-        """Return RGB colors"""
+        """Return RGB colors."""
         return (self._red, self._green, self._blue)
 
     @property
@@ -104,7 +84,6 @@ class VimarLight(VimarEntity, LightEntity):
         if 'status' in self._device and self._device['status']:
             if 'value' in self._device['status']:
                 flags |= SUPPORT_BRIGHTNESS
-        if 'status' in self._device and self._device['status']:
             if 'red' in self._device['status']:
                 flags |= SUPPORT_COLOR
         return flags
@@ -140,8 +119,7 @@ class VimarLight(VimarEntity, LightEntity):
     #     # status_dict['status_id'])
 
     async def async_turn_on(self, **kwargs):
-        """ Turn the Vimar light on. """
-
+        """Turn the Vimar light on."""
         if 'status' in self._device and self._device['status']:
             if not kwargs:
                 if 'on/off' in self._device['status']:
@@ -195,22 +173,22 @@ class VimarLight(VimarEntity, LightEntity):
                     # await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['status']['status_id'], self._green)
                     # await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['blue']['status_id'], self._blue)
 
-            self.async_schedule_update_ha_state()
+            self.request_status_update()
 
-    async def async_turn_off(self, **kwargs):
-        """ Turn the Vimar light off. """
+    async def async_turn_off(self):
+        """Turn the Vimar light off."""
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = False
                 self._device['status']['on/off']['status_value'] = '0'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
-                self.async_schedule_update_ha_state()
+                self.request_status_update()
 
     # private helper methods
 
     def _reset_status(self):
-        """ set status from _device to class variables  """
+        """Set status from _device to class variables."""
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = (False, True)[
@@ -234,12 +212,12 @@ class VimarLight(VimarEntity, LightEntity):
                 self._green = int(self._device['status']['green']['status_value'])
 
     def calculate_brightness(self, brightness):
-        """Scale brightness from 0..255 to 0..100"""
+        """Scale brightness from 0..255 to 0..100."""
         return round((brightness * 100) / 255)
     # end dev calculate_brightness
 
     def recalculate_brightness(self, brightness):
-        """Scale brightness from 0..100 to 0..255"""
+        """Scale brightness from 0..100 to 0..255."""
         return round((brightness * 255) / 100)
     # end dev recalculate_brightness
 

@@ -1,66 +1,43 @@
 """Platform for switch integration."""
 
 import logging
-from datetime import timedelta
-
+# from datetime import timedelta
 from homeassistant.helpers.entity import ToggleEntity
-
-from .const import DOMAIN
-from .vimar_entity import VimarEntity
+# from .const import DOMAIN
+from .vimar_entity import (VimarEntity, vimar_setup_platform)
 
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=20)
+# SCAN_INTERVAL = timedelta(seconds=20)
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=3)
-PARALLEL_UPDATES = 3
+# PARALLEL_UPDATES = 3
 
 
-# @asyncio.coroutine
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Switch platform."""
-
-    # We only want this platform to be set up via discovery.
-    if discovery_info is None:
-        return
-
-    _LOGGER.info("Vimar Switch started!")
-    switches = []
-
-    vimarconnection = hass.data[DOMAIN]['connection']
-
-    devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
-
-    if len(devices) != 0:
-        for device_id, device in devices.items():
-            switches.append(VimarSwitch(device, device_id, vimarconnection))
-
-    if len(switches) != 0:
-        # If your entities need to fetch data before being written to Home
-        # Assistant for the first time, pass True to the add_entities method:
-        # add_entities([MyEntity()], True).
-        async_add_entities(switches)
-    _LOGGER.info("Vimar Switch complete!")
+    vimar_setup_platform(VimarSwitch, hass, async_add_entities, discovery_info)
 
 
 class VimarSwitch(VimarEntity, ToggleEntity):
-    """Provides a Vimar switches. """
+    """Provide a Vimar switches."""
+
+    _platform = "switch"
 
     # set entity_id, object_id manually due to possible duplicates
-    entity_id = "switch." + "unset"
+    # entity_id = "switch." + "unset"
 
-    def __init__(self, device, device_id, vimarconnection):
+    def __init__(self, device, device_id, vimarconnection, coordinator):
         """Initialize the switch."""
+        VimarEntity.__init__(self, device, device_id, vimarconnection, coordinator)
 
-        VimarEntity.__init__(self, device, device_id, vimarconnection)
-
-        self.entity_id = "switch." + self._name.lower() + "_" + self._device_id
+        # self.entity_id = "switch." + self._name.lower() + "_" + self._device_id
 
     # switch properties
 
     @property
     def is_on(self):
-        """ True if the device is on. """
+        """Return True if the device is on."""
         return self._state
 
     # async getter and setter
@@ -83,37 +60,37 @@ class VimarSwitch(VimarEntity, ToggleEntity):
     #     # str(mktime(localtime()) - mktime(starttime)) + "s " + self._name)
 
     async def async_turn_on(self, **kwargs):
-        """ Turn the Vimar switch on. """
+        """Turn the Vimar switch on."""
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = True
                 self._device['status']['on/off']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 1)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 1)
-                self.async_schedule_update_ha_state()
+                self.request_status_update()
 
             if 'comando' in self._device['status']:
                 self._state = True
                 self._device['status']['comando']['status_value'] = '1'
                 # for some reason we are sending 0 on activation
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['comando']['status_id'], 0)
-                self.async_schedule_update_ha_state()
+                self.request_status_update()
 
     async def async_turn_off(self, **kwargs):
-        """ Turn the Vimar switch off. """
+        """Turn the Vimar switch off."""
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = False
                 self._device['status']['on/off']['status_value'] = '0'
                 # self._vimarconnection.set_device_status(self._device['status']['on/off']['status_id'], 0)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['on/off']['status_id'], 0)
-                self.async_schedule_update_ha_state()
+                self.request_status_update()
             # no turn off for scenes
 
     # private helper methods
 
     def _reset_status(self):
-        """ set status from _device to class variables  """
+        """Set status from _device to class variables."""
         if 'status' in self._device and self._device['status']:
             if 'on/off' in self._device['status']:
                 self._state = (False, True)[

@@ -3,12 +3,13 @@
 # https://community.home-assistant.io/t/create-new-cover-component-not-working/50361/5
 
 import logging
-from datetime import timedelta
+# from datetime import timedelta
 
 from homeassistant.components.cover import (SUPPORT_CLOSE, SUPPORT_OPEN,
                                             SUPPORT_STOP)
-from .const import DOMAIN
-from .vimar_entity import VimarEntity
+# from .const import DOMAIN
+from .vimar_entity import (VimarEntity, vimar_setup_platform)
+
 try:
     from homeassistant.components.cover import CoverEntity
 except ImportError:
@@ -17,39 +18,20 @@ except ImportError:
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=30)
-PARALLEL_UPDATES = 3
+# SCAN_INTERVAL = timedelta(seconds=30)
+# PARALLEL_UPDATES = 3
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar Cover platform."""
-
-    # We only want this platform to be set up via discovery.
-    if discovery_info is None:
-        return
-
-    _LOGGER.info("Vimar Cover started!")
-    covers = []
-
-    vimarconnection = hass.data[DOMAIN]['connection']
-
-    devices = hass.data[DOMAIN][discovery_info['hass_data_key']]
-
-    if len(devices) != 0:
-        for device_id, device in devices.items():
-            covers.append(VimarCover(device, device_id, vimarconnection))
-
-    if len(covers) != 0:
-        # If your entities need to fetch data before being written to Home
-        # Assistant for the first time, pass True to the add_entities method:
-        # add_entities([MyEntity()], True).
-        async_add_entities(covers)
-    _LOGGER.info("Vimar Cover complete!")
+    vimar_setup_platform(VimarCover, hass, async_add_entities, discovery_info)
 
 
 # see: https://developers.home-assistant.io/docs/core/entity/cover
 class VimarCover(VimarEntity, CoverEntity):
     """Provides a Vimar cover."""
+
+    _platform = "cover"
 
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
@@ -57,13 +39,12 @@ class VimarCover(VimarEntity, CoverEntity):
     assumed_state = True
 
     # Set entity_id, object_id manually due to possible duplicates
-    entity_id = "cover." + "unset"
+    # entity_id = "cover." + "unset"
 
     # pylint: disable=no-self-use
-    def __init__(self, device, device_id, vimarconnection):
+    def __init__(self, device, device_id, vimarconnection, coordinator):
         """Initialize the cover."""
-
-        VimarEntity.__init__(self, device, device_id, vimarconnection)
+        VimarEntity.__init__(self, device, device_id, vimarconnection, coordinator)
         # set device type specific attributes
 
         # _state = False .. 0, stop has not been pressed
@@ -72,7 +53,7 @@ class VimarCover(VimarEntity, CoverEntity):
         # _direction = 0 .. upwards
         # _direction = 1 .. downards
         self._direction = 0
-        self.entity_id = "cover." + self._name.lower() + "_" + self._device_id
+        # self.entity_id = "cover." + self._name.lower() + "_" + self._device_id
 
     # @property
     # def icon(self):
@@ -134,7 +115,7 @@ class VimarCover(VimarEntity, CoverEntity):
                 self._device['status']['up/down']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 1)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 1)
-                self.async_schedule_update_ha_state()
+                self.request_status_update()
 
     async def async_open_cover(self, **kwargs):
         """Open the cover."""
@@ -145,7 +126,7 @@ class VimarCover(VimarEntity, CoverEntity):
                 self._device['status']['up/down']['status_value'] = '0'
                 # self._vimarconnection.set_device_status(self._device['status']['up/down']['status_id'], 0)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['up/down']['status_id'], 0)
-                self.async_schedule_update_ha_state()
+                self.request_status_update()
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
@@ -156,12 +137,12 @@ class VimarCover(VimarEntity, CoverEntity):
                 self._device['status']['stop up/stop down']['status_value'] = '1'
                 # self._vimarconnection.set_device_status(self._device['status']['stop up/stop down']['status_id'], 1)
                 await self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status']['stop up/stop down']['status_id'], 1)
-                self.async_schedule_update_ha_state()
+                self.request_status_update()
 
     # private helper methods
 
     def _reset_status(self):
-        """ set status from _device to class variables  """
+        """Set status from _device to class variables."""
         if 'status' in self._device and self._device['status']:
             if 'stop up/stop down' in self._device['status']:
                 self._state = (
@@ -175,7 +156,7 @@ class VimarCover(VimarEntity, CoverEntity):
 
     @property
     def is_default_state(self):
-        """Returns True of in default state - resulting in default icon"""
+        """Return True of in default state - resulting in default icon."""
         return self.is_closed
 
 # end class VimarCover
