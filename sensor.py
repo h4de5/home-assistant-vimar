@@ -171,17 +171,17 @@ class VimarSensorContainer():
 
         if 'status' in self._device and self._device['status']:
             for status in self._device['status']:
-                _LOGGER.info("Adding sensor for %s", status)
+                # _LOGGER.info("Adding sensor for %s", status)
 
                 # newsensor = VimarSensor(self._device, self._device_id, self._vimarconnection, status)
                 # _LOGGER.info("sensor id %s", newsensor.entity_id)
                 # sensor_list.append(newsensor)
                 sensor_list.append(VimarSensor(self._device, self._device_id, self._vimarconnection, status, self._coordinator))
 
-        _LOGGER.info("Adding: %d new sensors", len(sensor_list))
+        # _LOGGER.info("Adding: %d new sensors", len(sensor_list))
 
-        for sensor in sensor_list:
-            _LOGGER.info("sensor_list: %s", sensor.entity_id)
+        # for sensor in sensor_list:
+        #     _LOGGER.info("sensor_list: %s", sensor.entity_id)
 
         return sensor_list
 
