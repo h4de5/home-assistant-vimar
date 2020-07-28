@@ -2,15 +2,23 @@
 
 import logging
 import sys
-# import asyncio
-# import time
+
 # for communicating with vimar webserver
 import xml.etree.cElementTree as xmlTree
 from xml.etree import ElementTree
-
 import requests
 from requests.exceptions import HTTPError
 # from urllib3.exceptions import ReadTimeoutError
+
+from .const import (
+    DEVICE_TYPE_LIGHTS,
+    DEVICE_TYPE_COVERS,
+    DEVICE_TYPE_SWITCHES,
+    DEVICE_TYPE_CLIMATES,
+    # DEVICE_TYPE_SCENES,
+    # DEVICE_TYPE_FANS,
+    DEVICE_TYPE_SENSORS,
+    DEVICE_TYPE_OTHERS)
 
 # from . import DOMAIN
 
@@ -21,11 +29,29 @@ from requests.exceptions import HTTPError
 _LOGGER = logging.getLogger(__name__)
 MAX_ROWS_PER_REQUEST = 300
 
+# from homeassistant/components/switch/__init__.py
+DEVICE_CLASS_OUTLET = "outlet"
+DEVICE_CLASS_SWITCH = "switch"
+# from homeassistant/components/cover/__init__.py
+DEVICE_CLASS_SHUTTER = "shutter"
+DEVICE_CLASS_WINDOW = "window"
+# from homeassistant/const.py
+DEVICE_CLASS_POWER = "power"
+
 
 class VimarApiError(Exception):
     """Vimar API General Exception."""
 
-    pass
+    err_args = []
+
+    def __init__(self, *args, **kwargs):
+        """Init a default Vimar api exception."""
+        self.err_args = args
+        super().__init__(*args)
+
+    def __str__(self):
+        """Stringify exception text."""
+        return f'{self.__class__.__name__}: {self.err_args[0]}' % self.err_args[1:]
 
 
 class VimarConfigError(VimarApiError):
@@ -113,7 +139,7 @@ class VimarLink():
                 file.close()
 
             except IOError as err:
-                raise VimarConfigError("Saving certificate failed: %s", repr(err))
+                raise VimarApiError("Saving certificate failed: %s" % err)
                 # _LOGGER.error("Saving certificate failed: %s", repr(err))
                 # return False
 
@@ -130,12 +156,16 @@ class VimarLink():
         result = self._request(loginurl)
 
         if result is not None:
-            xml = self._parse_xml(result)
-            logincode = xml.find('result')
-            loginmessage = xml.find('message')
+            try:
+                xml = self._parse_xml(result)
+                logincode = xml.find('result')
+                loginmessage = xml.find('message')
+            except BaseException as err:
+                raise VimarConnectionError("Error parsing login response: %s - %s", err, str(result))
+
             if logincode is not None and logincode.text != "0":
                 if loginmessage is not None:
-                    raise VimarConnectionError("Error during login: %s", loginmessage.text)
+                    raise VimarConfigError("Error during login: %s", loginmessage.text)
                     # _LOGGER.error("Error during login: %s", loginmessage.text)
                 else:
                     raise VimarConnectionError("Error during login. Code: %s", logincode.text)
@@ -151,6 +181,9 @@ class VimarLink():
                     _LOGGER.warning(
                         "Missing Session id in login response: %s", result)
 
+        else:
+            _LOGGER.warning("Empty Response from webserver login")
+
         return result
 
     def check_login(self):
@@ -162,7 +195,6 @@ class VimarLink():
 
     def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
         """Set a given status for one device."""
-        # climates optionals should be set to SYNCDB"""
         post = ("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
                 "<soapenv:Body><service-runonelement xmlns=\"urn:xmethods-dpadws\">"
                 "<payload>%s</payload>"
@@ -196,6 +228,13 @@ class VimarLink():
 
         # _LOGGER.warning("Empty payload from Status")
         return None
+
+    def get_optionals_param(self, state):
+        """Return SYNCDB for climates states."""
+        if (state in ['setpoint', 'stagione']):
+            return 'SYNCDB'
+        else:
+            return 'NO-OPTIONALS'
 
     def get_device_status(self, object_id):
         """Get attribute status for a single device."""
@@ -317,7 +356,8 @@ LIMIT %d, %d;""" % (VimarLink._room_ids, start, limit)
 
     def get_remote_devices(self, devices={}, start: int = None, limit: int = None):
         """Get all devices that can be triggered remotly (includes scenes)."""
-        _LOGGER.debug("get_remote_devices started - from %d to %d", start, start + limit)
+        if len(devices) == 0:
+            _LOGGER.debug("get_remote_devices started - from %d to %d", start, start + limit)
 
         start, limit = self._sanitaze_limits(start, limit)
 
@@ -382,6 +422,7 @@ LIMIT %d, %d;""" % (start, limit)
                         }
                     }
                 else:
+                    # if object_id is already in the device list, we only update the state
                     if device['status_name'] != '':
                         devices[device['object_id']]['status'][device['status_name']] = {
                             'status_id': device['status_id'],
@@ -389,7 +430,7 @@ LIMIT %d, %d;""" % (start, limit)
                             # 'status_range': device['status_range'],
                         }
 
-            _LOGGER.debug("_generate_device_list ends - found %d devices", len(devices))
+            # _LOGGER.debug("_generate_device_list ends - found %d devices", len(devices))
 
             # if len(payload) >= MAX_ROWS_PER_REQUEST:
             #     _LOGGER.warning(
@@ -518,12 +559,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             # exc_type, exc_obj, exc_tb = sys.exc_info()
             _, _, exc_tb = sys.exc_info()
             raise VimarConnectionError(
-                "Error parsing SQL: "
-                + repr(err)
-                + " in line: "
-                + str(exc_tb.tb_lineno)
-                + " - payload: "
-                + string)
+                "Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
 
             # _LOGGER.error(
             #     "Error parsing SQL: "
@@ -572,8 +608,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         try:
             root = xmlTree.fromstring(xml)
         except BaseException as err:
-            _LOGGER.error("Error parsing XML: %s", repr(err))
-            _LOGGER.error("Problematic XML: %s", str(xml))
+            _LOGGER.error("Error parsing XML: %s", err)
+            _LOGGER.debug("Problematic XML: %s", str(xml))
 
         else:
             return root
@@ -625,7 +661,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return False
         except BaseException as err:
             # _LOGGER.error(f'Other error occurred: {err}') # Python 3.6
-            _LOGGER.error('Other error occurred: %s', repr(err))
+            _LOGGER.error('Error occurred: %s', str(err))
             return False
         else:
             # _LOGGER.info('request Successful!')
@@ -702,10 +738,229 @@ class VimarProject():
 
     _devices = {}
     _link = None
+    _platforms_exists = {}
 
-    def __init__(
-        self,
-        link: VimarLink
-    ):
+    # single device
+    #   'room_ids': number[] (maybe empty, ids of rooms)
+    #   'object_id': number (unique id of entity)
+    #   'object_name': str (name of the device, reformated in format_name)
+    #   'object_type': str (CH_xx channel name of vimar)
+    #   'status':  dict{dict{'status_id': number, 'status_value': str }}
+    #   'device_type': str (mapped type: lights, switches, climates, covers, sensors)
+    #   'device_class': str (mapped class, based on name or attributes: fan, outlet, window, power)
+
+    def __init__(self, link: VimarLink):
         """Create new container to hold all states."""
         self._link = link
+
+    @property
+    def devices(self):
+        """Return all devices in current project."""
+        return self._devices
+
+    def update(self):
+        """Get all devices from the vimar webserver, if object list is already there, only update states."""
+        first_run = True
+
+        # DONE - only update the state - not the actual devices, so we do not need to parse device types again
+        if self._devices is not None and len(self._devices) > 0:
+            first_run = False
+
+        # TODO - check which device states has changed and call device updates
+        self._devices, state_count = self._link.get_paged_results(self._link.get_remote_devices, self._devices)
+
+        # for now we run parse device types and set classes after every update
+        if first_run:
+            self.check_devices()
+
+        return self._devices
+
+    def check_devices(self):
+        """On first run of update, all device types and names are parsed to determin the correct platform."""
+        if self._devices is not None and len(self._devices) > 0:
+            for device_id, device in self._devices.items():
+                # device_type, device_class, icon = self.parse_device_type(device)
+                self.parse_device_type(device)
+            return True
+        else:
+            return False
+
+    def get_by_device_type(self, platform):
+        """Do dictionary comprehension."""
+        return {k: v for (k, v) in self._devices.items() if v['device_type'] == platform}
+
+        # return filter(self.filter_devices, self._devices, platform)
+
+    # def filter_devices(self, device, platform):
+    #     if device['device_type'] == platform:
+    #         return True
+    #     else:
+    #         return False
+
+    def platform_exists(self, platform):
+        """Check if there are devices for a given platform."""
+        if platform in self._platforms_exists:
+            return self._platforms_exists[platform]
+        else:
+            return False
+
+    def parse_device_type(self, device):
+        """Split up devices into supported groups based on their names."""
+        device_type = DEVICE_TYPE_OTHERS
+        device_class = None
+        icon = "mdi:home-assistant"
+
+        # DEVICE_TYPE_LIGHTS, DEVICE_TYPE_COVERS, DEVICE_TYPE_SWITCHES, DEVICE_TYPE_CLIMATES, DEVICE_TYPE_FANS
+
+        if device["object_type"] == "CH_Main_Automation":
+            if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
+                device_type = DEVICE_TYPE_SWITCHES
+                device_class = DEVICE_CLASS_SWITCH
+                icon = ["mdi:fan", "mdi:fan-off"]
+            elif device["object_name"].find("LAMPE") != -1:
+                device_type = DEVICE_TYPE_LIGHTS
+                device_class = DEVICE_CLASS_SWITCH
+                icon = ["mdi:lightbulb-on", "mdi:lightbulb-off"]
+            elif device["object_name"].find("STECKDOSE") != -1 or device["object_name"].find("PULSANTE") != -1:
+                device_type = DEVICE_TYPE_SWITCHES
+                device_class = DEVICE_CLASS_OUTLET
+                icon = ["mdi:power-plug", "mdi:power-plug-off"]
+            else:
+                # fallback to lights
+                device_type = DEVICE_TYPE_LIGHTS
+                icon = "mdi:ceiling-light"
+
+        elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF"]:
+            device_type = DEVICE_TYPE_SWITCHES
+            device_class = DEVICE_CLASS_SWITCH
+            # icon = ["mdi:electric-switch", "mdi:switch-switch-closed"]
+            icon = ["mdi:toggle-switch", "mdi:toggle-switch-closed"]
+            # icon = ["mdi:power-plug", "mdi:power-plug-off"]
+
+        elif device["object_type"] in ["CH_Dimmer_Automation", "CH_Dimmer_RGB", "CH_Dimmer_White", "CH_Dimmer_Hue"]:
+            device_type = DEVICE_TYPE_LIGHTS
+            icon = ["mdi:speedometer", "mdi:speedometer-slow"]
+            # mdi:rotate-right
+
+        elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation"]:
+            if device["object_name"].find("F-FERNBEDIENUNG") != -1:
+                device_type = DEVICE_TYPE_COVERS
+                device_class = DEVICE_CLASS_WINDOW
+                icon = ["mdi:window-closed-variant", "mdi:window-open-variant"]
+            else:
+                # could be: shade, blind, window
+                # see: https://www.home-assistant.io/integrations/cover/
+                device_type = DEVICE_TYPE_COVERS
+                device_class = DEVICE_CLASS_SHUTTER
+                icon = ["mdi:window-shutter", "mdi:window-shutter-open"]
+
+        elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_Fancoil"]:
+            device_type = DEVICE_TYPE_CLIMATES
+            icon = "mdi:thermometer-lines"
+
+        elif device["object_type"] == "CH_Scene":
+            # device_type = DEVICE_TYPE_SCENES
+            device_type = DEVICE_TYPE_SWITCHES
+            device_class = DEVICE_CLASS_SWITCH
+            icon = "mdi:home-assistant"
+
+        elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F"]:
+            device_type = DEVICE_TYPE_SENSORS
+            device_class = DEVICE_CLASS_POWER
+            icon = "mdi:home-analytics"
+
+        elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
+            _LOGGER.debug(
+                "Unsupported object returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"])
+            _LOGGER.debug(
+                "Unsupported object has states: "
+                + str(device["status"]))
+        else:
+            _LOGGER.warning(
+                "Unknown object returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"])
+            _LOGGER.debug(
+                "Unknown object has states: "
+                + str(device["status"]))
+
+        device["device_type"] = device_type
+        device["device_class"] = device_class
+        device["icon"] = icon
+        # TODO - make format name configurable
+        device["object_name"] = self.format_name(device["object_name"])
+
+        if device_type in self._platforms_exists:
+            self._platforms_exists[device_type] += 1
+        else:
+            self._platforms_exists[device_type] = 1
+
+    def format_name(self, name):
+        """Format device name to get rid of unused terms."""
+        # _LOGGER.info("Splitting name: " + name)
+
+        parts = name.split(' ')
+
+        if len(parts) > 0:
+            if len(parts) >= 4:
+                device_type = parts[0]
+                entity_number = parts[1]
+                room_name = parts[2]
+                level_name = parts[3]
+
+                for i in range(4, len(parts)):
+                    level_name += " " + parts[i]
+            elif len(parts) >= 2:
+                device_type = parts[0]
+                entity_number = ''
+                room_name = ''
+                level_name = parts[1]
+
+                for i in range(2, len(parts)):
+                    level_name += " " + parts[i]
+            else:
+                _LOGGER.debug(
+                    "Found a device with an uncommon naming schema: %s", name)
+
+                device_type = parts[0]
+                entity_number = ''
+                room_name = ''
+                level_name = 'LEVEL'
+
+                for i in range(2, len(parts)):
+                    level_name += " " + parts[i]
+
+        # device_type, entity_number, room_name, *level_name = name.split(' ')
+
+        device_type = device_type.replace('LUCE', '')
+        device_type = device_type.replace('TAPPARELLA', '')
+
+        device_type = device_type.replace('LICHT', '')
+        device_type = device_type.replace('ROLLLADEN', '')
+        device_type = device_type.replace('F-FERNBEDIENUNG', 'FENSTER')
+        device_type = device_type.replace('VENTILATORE', '')
+        device_type = device_type.replace('VENTILATOR', '')
+        device_type = device_type.replace('STECKDOSE', '')
+        device_type = device_type.replace('THERMOSTAT', '')
+
+        if len(level_name) != 0:
+            level_name += " "
+        if len(room_name) != 0:
+            room_name += " "
+        if len(device_type) != 0:
+            device_type += " "
+
+        # Erdgeschoss Wohnzimmer Licht 3
+        name = "%s%s%s%s" % (level_name, room_name,
+                             device_type, entity_number)
+
+        # change case
+        return name.title().strip()
+    # TODO
+    # method for setting all devices loaded from link
+    # method for parseing all devices and grouping it by hass platforms
+    # method for cleaning names

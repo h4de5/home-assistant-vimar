@@ -1,6 +1,6 @@
 """Platform for sensor integration."""
 
-import copy
+# import copy
 import logging
 # from datetime import timedelta
 from homeassistant.const import (
@@ -31,139 +31,84 @@ class VimarSensor(VimarEntity, Entity):
     # entity_id = "sensor." + "unset"
 
     _platform = "sensor"
-    _measurement = None
+    _measurement_name = None
     # _parent = None
     _state_value = None
 
-    def __init__(self, device, device_id, vimarconnection, measurement_name, coordinator):
+    def __init__(self, device_id, vimarconnection, vimarproject, coordinator, measurement_name):
         """Initialize the sensor."""
         # copy device - otherwise we will have duplicate keys
-        device_c = copy.copy(device)
+        # device_c = copy.copy(device)
+        # device_c['object_name'] += " " + measurement_name
 
-        device_c['object_name'] += " " + measurement_name
+        self._measurement_name = measurement_name
+        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
 
-        VimarEntity.__init__(self, device_c, device_id, vimarconnection, coordinator)
-
+        # this will override the name for all
+        # self._device['object_name_' + self._measurement_name] = self._device['object_name'] + " " + measurement_name
+        # self.entity_id = self._platform + "." + self.name.lower() + "-" + measurement_name + "_" + self._device_id
         # self.entity_id = "sensor." + self._name.lower() + "-" + measurement_name + "-" + self._device_id
-
         # self._name = format_name(self._device['object_name'] + " " + measurement_name)
-
-        _LOGGER.debug("Creating new sensor for %s", self.entity_id)
-
-        self._measurement = measurement_name
+        # _LOGGER.debug("Creating new sensor for %s", self.entity_id)
         # self._parent = parent
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return self._device['object_name'] + " " + self._measurement_name
 
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        # return self._parent.unit_of_measurement
         return POWER_KILO_WATT
 
     @property
     def unique_id(self):
         """Return the ID of this device and its state."""
-        return self._device_id + '-' + self._device['status'][self._measurement]['status_id']
+        return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
 
     @property
     def state(self):
         """Return the value of the sensor."""
-        # return self._parent.get_sensor_value(self._measurement)
-        return self._state_value
+        return self.get_state(self._measurement_name)
 
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        return self._device
-    #     # state_attr = {ATTR_HOST: self._host}
-    #     # if self._ipcam.status_data is None:
-    #     #     return state_attr
+        return self._device['status'][self._measurement_name]
 
-    #     state_attr[_measurement] =
-
-    #     return state_attr
-
-    def _reset_status(self):
-        """Read data from device and convert it into hass states."""
-        if 'status' in self._device and self._device['status']:
-            if self._measurement in self._device['status']:
-                self._state_value = float(self._device['status'][self._measurement]['status_value'])
+    # def _reset_status(self):
+    #     """Read data from device and convert it into hass states."""
+    #     if 'status' in self._device and self._device['status']:
+    #         if self._measurement_name in self._device['status']:
+    #             self._state_value = float(self._device['status'][self._measurement_name]['status_value'])
 
 
 class VimarSensorContainer():
-    # class VimarSensor(VimarEntity, Entity):
     """Defines a Vimar Sensor device."""
-
-    # different types of sensors
-    # _measurements = {}
-    # _sensor_list = []
 
     _device = []
     _device_id = 0
     _vimarconnection = None
+    _vimarproject = None
+    _coordinator = None
 
     # set entity_id, object_id manually due to possible duplicates
     # entity_id = "sensor." + "unset"
 
-    def __init__(self, device, device_id, vimarconnection, coordinator):
+    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
         """Initialize the sensor."""
-        self._device = device
+        # VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+
         self._device_id = device_id
         self._vimarconnection = vimarconnection
+        self._vimarproject = vimarproject
         self._coordinator = coordinator
 
-        # self._reset_status()
-
-        # VimarEntity.__init__(self, device, device_id, vimarconnection)
-
-        # self.entity_id = "sensor." + self._name.lower() + "_" + self._device_id
-
-    # async getter and setter
-    # @property
-    # def unit_of_measurement(self):
-    #     """Return the unit of measurement."""
-    #     return POWER_KILO_WATT
-
-    # @property
-    # def device_state_attributes(self):
-    #     """Return the state attributes."""
-    #     # state_attr = {ATTR_HOST: self._host}
-    #     # if self._ipcam.status_data is None:
-    #     #     return state_attr
-
-    #     return self._measurements
-
-    # @property
-    # def state(self):
-    #     """The value of the sensor."""
-    #     first_value = 0
-    #     # get the first available value in the measurements dict
-    #     if self._measurements and len(self._measurements) > 0:
-    #         values_view = self._measurements.values()
-    #         value_iterator = iter(values_view)
-    #         first_value = next(value_iterator)
-
-    #     return first_value
-
-        # if 'scambio_totale' in self._device['status']:
-        #     return self._measurements['scambio_totale'] = float(self._device['status']['scambio_totale']['status_value'])
-        # if 'consumo_totale' in self._device['status']:
-        #     self._measurements['consumo_totale'] = float(self._device['status']['consumo_totale']['status_value'])
-        # if 'produzione_totale' in self._device['status']:
-        #     self._measurements['produzione_totale'] = float(self._device['status']['produzione_totale']['status_value'])
-        # if 'immissione_totale' in self._device['status']:
-        #     self._measurements['immissione_totale'] = float(self._device['status']['immissione_totale']['status_value'])
-        # if 'prelievo_totale' in self._device['status']:
-        #     self._measurements['prelievo_totale'] = float(self._device['status']['prelievo_totale']['status_value'])
-        # if 'autoconsumo_totale' in self._device['status']:
-        #     self._measurements['autoconsumo_totale'] = float(self._device['status']['autoconsumo_totale']['status_value'])
-
-        # return None
-
-    # private helper methods
-
-    # def get_sensor_value(self, measurement):
-    #     """Returns the value of a single measurement"""
-    #     return self._measurements[measurement]
+        if self._device_id in self._vimarproject.devices:
+            self._device = self._vimarproject.devices[self._device_id]
+        else:
+            _LOGGER.warning("Cannot find sensor device #%s", self._device_id)
 
     def get_entity_list(self):
         """Return a List of VimarSensors."""
@@ -172,16 +117,7 @@ class VimarSensorContainer():
         if 'status' in self._device and self._device['status']:
             for status in self._device['status']:
                 # _LOGGER.info("Adding sensor for %s", status)
-
-                # newsensor = VimarSensor(self._device, self._device_id, self._vimarconnection, status)
-                # _LOGGER.info("sensor id %s", newsensor.entity_id)
-                # sensor_list.append(newsensor)
-                sensor_list.append(VimarSensor(self._device, self._device_id, self._vimarconnection, status, self._coordinator))
-
-        # _LOGGER.info("Adding: %d new sensors", len(sensor_list))
-
-        # for sensor in sensor_list:
-        #     _LOGGER.info("sensor_list: %s", sensor.entity_id)
+                sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
 
         return sensor_list
 
@@ -193,23 +129,3 @@ class VimarSensorContainer():
 # Row000007: '325','immissione_totale','-1','-0.000'
 # Row000008: '327','prelievo_totale','-1','0.310'
 # Row000009: '329', 'autoconsumo_totale', '-1', '0.000'
-
-    # def _reset_status(self):
-    #     """ set status from _device to class variables  """
-    #     if 'status' in self._device and self._device['status']:
-    #         for status in self._device['status']:
-    #             self._measurements[status] = self._device['status'][status]['status_value']
-
-    #     if 'status' in self._device and self._device['status']:
-    #         if 'consumo_totale' in self._device['status']:
-    #             self._measurements['consumo_totale'] = float(self._device['status']['consumo_totale']['status_value'])
-    #         if 'scambio_totale' in self._device['status']:
-    #             self._measurements['scambio_totale'] = float(self._device['status']['scambio_totale']['status_value'])
-    #         if 'produzione_totale' in self._device['status']:
-    #             self._measurements['produzione_totale'] = float(self._device['status']['produzione_totale']['status_value'])
-    #         if 'immissione_totale' in self._device['status']:
-    #             self._measurements['immissione_totale'] = float(self._device['status']['immissione_totale']['status_value'])
-    #         if 'prelievo_totale' in self._device['status']:
-    #             self._measurements['prelievo_totale'] = float(self._device['status']['prelievo_totale']['status_value'])
-    #         if 'autoconsumo_totale' in self._device['status']:
-    #             self._measurements['autoconsumo_totale'] = float(self._device['status']['autoconsumo_totale']['status_value'])
