@@ -2,13 +2,11 @@
 
 import logging
 import sys
-
 # for communicating with vimar webserver
 import xml.etree.cElementTree as xmlTree
 from xml.etree import ElementTree
 import requests
 from requests.exceptions import HTTPError
-# from urllib3.exceptions import ReadTimeoutError
 
 from .const import (
     DEVICE_TYPE_LIGHTS,
@@ -19,12 +17,6 @@ from .const import (
     # DEVICE_TYPE_FANS,
     DEVICE_TYPE_SENSORS,
     DEVICE_TYPE_OTHERS)
-
-# from . import DOMAIN
-
-# import queue
-# import threading
-# import socket
 
 _LOGGER = logging.getLogger(__name__)
 MAX_ROWS_PER_REQUEST = 300
@@ -69,9 +61,6 @@ class VimarConnectionError(VimarApiError):
 class VimarLink():
     """Link to communicate with the Vimar webserver."""
 
-    # the_queue = queue.Queue()
-    # thread = None
-
     # private
     _host = ''
     _schema = ''
@@ -82,10 +71,6 @@ class VimarLink():
     _room_ids = None
     _certificate = None
     _timeout = 6
-
-    # todo:
-    # general: on/off,
-    # lights: brightness, rgb
 
     def __init__(
             self,
@@ -127,8 +112,6 @@ class VimarLink():
 
             if certificate_file is None:
                 raise VimarConnectionError("Certificate download failed")
-                # _LOGGER.error("Certificate download failed")
-                # return False
 
             # get it back
             self._certificate = temp_certificate
@@ -140,8 +123,6 @@ class VimarLink():
 
             except IOError as err:
                 raise VimarApiError("Saving certificate failed: %s" % err)
-                # _LOGGER.error("Saving certificate failed: %s", repr(err))
-                # return False
 
             _LOGGER.debug("Downloaded Vimar CA certificate to: %s",
                           self._certificate)
@@ -166,10 +147,8 @@ class VimarLink():
             if logincode is not None and logincode.text != "0":
                 if loginmessage is not None:
                     raise VimarConfigError("Error during login: %s", loginmessage.text)
-                    # _LOGGER.error("Error during login: %s", loginmessage.text)
                 else:
                     raise VimarConnectionError("Error during login. Code: %s", logincode.text)
-                    # _LOGGER.error("Error during login: %s", logincode.text)
             else:
                 _LOGGER.info("Vimar login ok")
                 loginsession = xml.find('sessionid')
@@ -223,10 +202,8 @@ class VimarLink():
                     + " from post request: "
                     + post)
                 parsed_data = self._parse_sql_payload(payload.text)
-                # _LOGGER.info("parsed payload: "+ parsed_data)
                 return parsed_data
 
-        # _LOGGER.warning("Empty payload from Status")
         return None
 
     def get_optionals_param(self, state):
@@ -314,7 +291,6 @@ ORDER BY o3.ID;""" % (object_id)
         # define a page size
         limit = MAX_ROWS_PER_REQUEST
 
-        # if hasattr(self, method) and callable(getattr(self, method)):
         if callable(method):
             objectlist, state_count = method(objectlist, start, limit)
             # if method returns excatly page size results - we check for another page
@@ -347,7 +323,6 @@ LIMIT %d, %d;""" % (VimarLink._room_ids, start, limit)
         # o3.OPTIONALP AS status_range
         # AND o3.OPTIONALP IS NOT NULL
         #
-        #
         # AND
         # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE =
         # "1" AND o2.IS_VISIBLE = "1"
@@ -371,15 +346,6 @@ INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type IN ('BYMETVAL',
 WHERE o2.OPTIONALP NOT LIKE "%%restricted%%" AND o2.IS_VISIBLE=1 AND o2.OWNED_BY!="SYSTEM" AND o2.OPTIONALP LIKE "%%category=%%"
 LIMIT %d, %d;""" % (start, limit)
 
-#         select = """SELECT D_O.*, D_WP.IS_EVENT AS IS_EVENT, D_WP.IS_EXECUTABLE AS IS_EXECUTABLE
-# FROM DPADD_OBJECT AS D_O
-# LEFT JOIN (SELECT CLASSNAME, IS_EVENT, IS_EXECUTABLE FROM DPAD_WEB_PHPCLASS) AS D_WP ON(D_O.PHPCLASS=D_WP.CLASSNAME)
-# WHERE D_O.OPTIONALP NOT LIKE "%restricted%" AND
-# IS_VISIBLE = 1 AND
-# D_O.OWNED_BY != "SYSTEM" AND
-# D_O.OPTIONALP LIKE "%category=4%"
-# ORDER BY ID ASC """
-
         return self._generate_device_list(select, devices)
 
     def _sanitaze_limits(self, start: int, limit: int):
@@ -393,20 +359,11 @@ LIMIT %d, %d;""" % (start, limit)
 
     def _generate_device_list(self, select, devices={}):
         """Generate device list from given sql statements."""
-        # if VimarLink._room_ids is None:
-        #     return None
-
-        # devices = {}
-        # _LOGGER.info("_generate_device_list : %s", select)
-
         payload = self._request_vimar_sql(select)
         if payload is not None:
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
             for device in payload:
-                # _LOGGER.info("device %s", str(device))
-
-                # device['status_name'] = device['status_name'].replace('/', '_')
                 if device['object_id'] not in devices:
                     devices[device['object_id']] = {
                         'room_ids': device['room_ids'].split(','),
@@ -429,18 +386,6 @@ LIMIT %d, %d;""" % (start, limit)
                             'status_value': device['status_value'],
                             # 'status_range': device['status_range'],
                         }
-
-            # _LOGGER.debug("_generate_device_list ends - found %d devices", len(devices))
-
-            # if len(payload) >= MAX_ROWS_PER_REQUEST:
-            #     _LOGGER.warning(
-            #         "Your installation has over %d device parameters. "
-            #         "In order to not crash the webserver the query was limited. "
-            #         "It is possible, that some devices are missing or not working correctly.",
-            #         len(payload))
-            # _LOGGER.info("getDevices")
-            # _LOGGER.info(devices)
-
             return devices, len(payload)
 
         return None
@@ -450,7 +395,7 @@ LIMIT %d, %d;""" % (start, limit)
         if VimarLink._room_ids is not None:
             return VimarLink._room_ids
 
-        _LOGGER.info("get_main_groups start")
+        _LOGGER.debug("get_main_groups start")
 
         select = """SELECT GROUP_CONCAT(o1.id) as MAIN_GROUPS FROM DPADD_OBJECT o0
 INNER JOIN DPADD_OBJECT_RELATION r1 ON o0.ID = r1.PARENTOBJ_ID AND r1.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
@@ -561,17 +506,6 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             raise VimarConnectionError(
                 "Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
 
-            # _LOGGER.error(
-            #     "Error parsing SQL: "
-            #     + repr(err)
-            #     + " in line: "
-            #     + str(exc_tb.tb_lineno)
-            #     + " - payload: "
-            #     + string)
-            # return None
-
-        # _LOGGER.info("parseSQLPayload")
-        # _LOGGER.info(return_list)
         return return_list
 
     def _request_vimar(self, post):
@@ -638,11 +572,6 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                                         verify=check_ssl,
                                         timeout=timeouts)
             else:
-                # _LOGGER.info("sending post: ")
-                # _LOGGER.info(post)
-                # _LOGGER.info(headers)
-                # _LOGGER.info(checkSSL)
-
                 response = requests.post(url,
                                          data=post,
                                          headers=headers,
@@ -653,84 +582,18 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             response.raise_for_status()
 
         except HTTPError as http_err:
-            # _LOGGER.error(f'HTTP error occurred: {http_err}') # Python 3.6
             _LOGGER.error('HTTP error occurred: %s', str(http_err))
             return False
         # except ReadTimeoutError:
         except requests.exceptions.Timeout:
             return False
         except BaseException as err:
-            # _LOGGER.error(f'Other error occurred: {err}') # Python 3.6
             _LOGGER.error('Error occurred: %s', str(err))
             return False
         else:
-            # _LOGGER.info('request Successful!')
-            # _LOGGER.info('RAW Response: ')
-            # _LOGGER.info(response.text)
-            # response.encoding = 'utf-8'
             return response.text
 
         return None
-
-    # read out schedule: <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body>
-    # <service-vimarclimateeventgettimeschedule xmlns="urn:xmethods-dpadws"><payload>NO-PAYLOAD</payload><hashcode>NO-HASCHODE</hashcode>
-    # <optionals>NO-OPTIONAL</optionals><callsource>WEB-DOMUSPAD_SOAP</callsource><sessionid>5e8a5aa99db78</sessionid><waittime>300</waittime><idobject>939</idobject>
-    # <mode>CLIMATE</mode><type>WEEKLY</type><weekday>2</weekday><season>0</season></service-vimarclimateeventgettimeschedule></soapenv:Body></soapenv:Envelope>
-    # read out all climate details: SELECT * FROM DPADD_OBJECT_RELATION WHERE PARENTOBJ_ID IN (939) OR CHILDOBJ_ID IN (939) ORDER BY ORDER_NUM,ID ;
-    # read out climate values t1,t2,t3: SELECT ID,NAME,STATUS_ID,CURRENT_VALUE
-    # FROM DPADD_OBJECT WHERE ID IN (9187,9188,9189);
-
-    # methods for async sending and thread
-    # problem: how do i get the response...
-    # def send_message(self, msg):
-    #     VimarLink.the_queue.put_nowait(msg)
-    #     if VimarLink.thread is None or not self.thread.isAlive():
-    #         VimarLink.thread = threading.Thread(target=self._startSending)
-    #         VimarLink.thread.start()
-
-    # def _startSending(self):
-    #     while not VimarLink.the_queue.empty():
-    #         self._send_reliable_message(VimarLink.the_queue.get_nowait())
-
-    # def _send_reliable_message(self, msg):
-    #     return True
-    #     """ Send msg to LightwaveRF hub and only returns after:
-    #          an OK is received | timeout | exception | max_retries """
-    #     result = False
-    #     max_retries = 15
-    #     try:
-    #         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as write_sock:
-    #             write_sock.setsockopt(
-    #                 socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    #             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as read_sock:
-    #                 read_sock.setsockopt(
-    #                     socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    #                 read_sock.settimeout(VimarLink.SOCKET_TIMEOUT)
-    #                 read_sock.bind(('0.0.0.0', VimarLink.RX_PORT))
-    #                 while max_retries:
-    #                     max_retries -= 1
-    #                     write_sock.sendto(msg.encode(
-    #                         'UTF-8'), (VimarLink.link_ip, VimarLink.TX_PORT))
-    #                     result = False
-    #                     while True:
-    #                         response, dummy = read_sock.recvfrom(1024)
-    #                         response = response.decode('UTF-8').split(',')[1]
-    #                         if response.startswith('OK'):
-    #                             result = True
-    #                             break
-    #                         if response.startswith('ERR'):
-    #                             break
-
-    #                     if result:
-    #                         break
-
-    #                     time.sleep(0.25)
-
-    #     except socket.timeout:
-    #         return result
-
-    #     return result
-# end class Vimar
 
 
 class VimarProject():
@@ -779,7 +642,6 @@ class VimarProject():
         """On first run of update, all device types and names are parsed to determin the correct platform."""
         if self._devices is not None and len(self._devices) > 0:
             for device_id, device in self._devices.items():
-                # device_type, device_class, icon = self.parse_device_type(device)
                 self.parse_device_type(device)
             return True
         else:
@@ -788,14 +650,6 @@ class VimarProject():
     def get_by_device_type(self, platform):
         """Do dictionary comprehension."""
         return {k: v for (k, v) in self._devices.items() if v['device_type'] == platform}
-
-        # return filter(self.filter_devices, self._devices, platform)
-
-    # def filter_devices(self, device, platform):
-    #     if device['device_type'] == platform:
-    #         return True
-    #     else:
-    #         return False
 
     def platform_exists(self, platform):
         """Check if there are devices for a given platform."""
@@ -809,8 +663,6 @@ class VimarProject():
         device_type = DEVICE_TYPE_OTHERS
         device_class = None
         icon = "mdi:home-assistant"
-
-        # DEVICE_TYPE_LIGHTS, DEVICE_TYPE_COVERS, DEVICE_TYPE_SWITCHES, DEVICE_TYPE_CLIMATES, DEVICE_TYPE_FANS
 
         if device["object_type"] == "CH_Main_Automation":
             if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
@@ -833,14 +685,12 @@ class VimarProject():
         elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF"]:
             device_type = DEVICE_TYPE_SWITCHES
             device_class = DEVICE_CLASS_SWITCH
-            # icon = ["mdi:electric-switch", "mdi:switch-switch-closed"]
+            # icon = ["mdi:electric-switch", "mdi:electric-switch-closed"]
             icon = ["mdi:toggle-switch", "mdi:toggle-switch-closed"]
-            # icon = ["mdi:power-plug", "mdi:power-plug-off"]
 
         elif device["object_type"] in ["CH_Dimmer_Automation", "CH_Dimmer_RGB", "CH_Dimmer_White", "CH_Dimmer_Hue"]:
             device_type = DEVICE_TYPE_LIGHTS
             icon = ["mdi:speedometer", "mdi:speedometer-slow"]
-            # mdi:rotate-right
 
         elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation"]:
             if device["object_name"].find("F-FERNBEDIENUNG") != -1:
@@ -859,7 +709,6 @@ class VimarProject():
             icon = "mdi:thermometer-lines"
 
         elif device["object_type"] == "CH_Scene":
-            # device_type = DEVICE_TYPE_SCENES
             device_type = DEVICE_TYPE_SWITCHES
             device_class = DEVICE_CLASS_SWITCH
             icon = "mdi:home-assistant"
@@ -901,8 +750,6 @@ class VimarProject():
 
     def format_name(self, name):
         """Format device name to get rid of unused terms."""
-        # _LOGGER.info("Splitting name: " + name)
-
         parts = name.split(' ')
 
         if len(parts) > 0:
@@ -934,8 +781,6 @@ class VimarProject():
                 for i in range(2, len(parts)):
                     level_name += " " + parts[i]
 
-        # device_type, entity_number, room_name, *level_name = name.split(' ')
-
         device_type = device_type.replace('LUCE', '')
         device_type = device_type.replace('TAPPARELLA', '')
 
@@ -960,7 +805,3 @@ class VimarProject():
 
         # change case
         return name.title().strip()
-    # TODO
-    # method for setting all devices loaded from link
-    # method for parseing all devices and grouping it by hass platforms
-    # method for cleaning names
