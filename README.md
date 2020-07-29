@@ -127,5 +127,7 @@ have a look into your home-assistant log files - usually named `home-assitant.lo
 
 > This message paired with a web server that needs manual restarting: You may have too many devices connected to the installation. I am currently working on a fix. Latest version will simple limit it to 300 devices (and status attributes of those devices)
 
-
+      Some entities are listed as "not available" with a red exclamation mark in the entity list.
+      
+> See the explanation and the fix in: https://github.com/h4de5/home-assistant-vimar/issues/15#issuecomment-665635305
 
