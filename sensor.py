@@ -6,7 +6,7 @@ import logging
 from homeassistant.const import (
     POWER_KILO_WATT)
 from homeassistant.helpers.entity import Entity
-# from .const import DOMAIN
+from .const import DOMAIN
 from .vimar_entity import (VimarEntity, vimar_setup_platform)
 # from . import format_name
 
@@ -30,10 +30,10 @@ class VimarSensor(VimarEntity, Entity):
     # set entity_id, object_id manually due to possible duplicates
     # entity_id = "sensor." + "unset"
 
-    _platform = "sensor"
+    # _platform = "sensor"
     _measurement_name = None
     # _parent = None
-    _state_value = None
+    # _state_value = None
 
     def __init__(self, device_id, vimarconnection, vimarproject, coordinator, measurement_name):
         """Initialize the sensor."""
@@ -65,7 +65,8 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def unique_id(self):
         """Return the ID of this device and its state."""
-        return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
+        return DOMAIN + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id']
+        # return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
 
     @property
     def state(self):
@@ -92,6 +93,7 @@ class VimarSensorContainer():
     _vimarconnection = None
     _vimarproject = None
     _coordinator = None
+    _sensor_list = []
 
     # set entity_id, object_id manually due to possible duplicates
     # entity_id = "sensor." + "unset"
@@ -112,14 +114,13 @@ class VimarSensorContainer():
 
     def get_entity_list(self):
         """Return a List of VimarSensors."""
-        sensor_list = []
+        if len(self._sensor_list) == 0:
+            if 'status' in self._device and self._device['status']:
+                for status in self._device['status']:
+                    # _LOGGER.info("Adding sensor for %s", status)
+                    self._sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
 
-        if 'status' in self._device and self._device['status']:
-            for status in self._device['status']:
-                # _LOGGER.info("Adding sensor for %s", status)
-                sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
-
-        return sensor_list
+        return self._sensor_list
 
 # The row is Row000005: '321','consumo_totale','-1','0.310'
 #  (the device is set to consider also your potential production - zero in my case - with row n.6 and the net demand row n.8
