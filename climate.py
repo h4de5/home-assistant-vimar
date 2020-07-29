@@ -169,6 +169,12 @@ class VimarClimate(VimarEntity, ClimateEntity):
             return float(self.get_state('temperatura_misurata'))
 
     @property
+    def current_humidity(self):
+        """Return current humidity."""
+        if self.has_state('umidita'):
+            return float(self.get_state('umidita'))
+
+    @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
         return float(self.get_state('setpoint'))
@@ -181,7 +187,11 @@ class VimarClimate(VimarEntity, ClimateEntity):
     @property
     def temperature_unit(self):
         """Return unit of temperature measurement for the system (TEMP_CELSIUS or TEMP_FAHRENHEIT)."""
-        return (TEMP_FAHRENHEIT, TEMP_CELSIUS)[self.get_state('unita') == '0']
+        # check if device supports unit types
+        if self.has_state('unita'):
+            return (TEMP_FAHRENHEIT, TEMP_CELSIUS)[self.get_state('unita') == '0']
+        else:
+            return TEMP_CELSIUS
 
     @property
     def hvac_mode(self):
@@ -189,7 +199,16 @@ class VimarClimate(VimarEntity, ClimateEntity):
         # HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF,
         if not self.is_on:
             return HVAC_MODE_OFF
-        return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state('stagione') == VIMAR_CLIMATE_COOL]
+
+        if self.climate_type == 'heat_cool':
+            return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state('stagione') == VIMAR_CLIMATE_COOL]
+        else:
+            if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
+                return VIMAR_CLIMATE_COOL
+            elif self.has_state('stato_principale_riscaldamento on/off') and self.get_state('stato_principale_riscaldamento on/off') == '1':
+                return HVAC_MODE_HEAT
+            else:
+                return HVAC_MODE_OFF
 
     @property
     def hvac_modes(self):
@@ -206,8 +225,15 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if not self.is_running:
             return CURRENT_HVAC_IDLE
 
-        return (CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL)[
-            self.get_state('stagione') == VIMAR_CLIMATE_COOL]
+        if self.climate_type == 'heat_cool':
+            return (CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL)[self.get_state('stagione') == VIMAR_CLIMATE_COOL]
+        else:
+            if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
+                return CURRENT_HVAC_HEAT
+            elif self.has_state('stato_principale_riscaldamento on/off') and self.get_state('stato_principale_riscaldamento on/off') == '1':
+                return CURRENT_HVAC_COOL
+            else:
+                return CURRENT_HVAC_IDLE
 
     @property
     def is_aux_heat(self):
@@ -292,14 +318,21 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
             set_function_mode = (VIMAR_CLIMATE_AUTO_II, VIMAR_CLIMATE_AUTO_I)[self.climate_type == 'heat_cool']
             set_hvac_mode = (VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_COOL)[hvac_mode == HVAC_MODE_COOL]
-            # get current set_temparatur
+
+            # DONE - get current set_temparatur and set it again
 
             _LOGGER.info(
                 "Vimar Climate setting setup mode to: %s", set_function_mode)
             _LOGGER.info(
                 "Vimar Climate setting hvac_mode: %s", set_hvac_mode)
 
-            self.change_state('funzionamento', set_function_mode, 'stagione', set_hvac_mode)
+            if self.climate_type == 'heat_cool':
+                self.change_state('funzionamento', set_function_mode, 'setpoint', self.current_temperature, 'stagione', set_hvac_mode)
+            else:
+                if hvac_mode == HVAC_MODE_COOL and self.has_state('stato_principale_condizionamento on/off'):
+                    self.change_state('funzionamento', set_function_mode, 'setpoint', self.current_temperature, 'stato_principale_condizionamento on/off', '1')
+                elif hvac_mode == VIMAR_CLIMATE_HEAT and self.has_state('stato_principale_riscaldamento on/off'):
+                    self.change_state('funzionamento', set_function_mode, 'setpoint', self.current_temperature, 'stato_principale_riscaldamento on/off', '1')
 
         elif hvac_mode in [HVAC_MODE_AUTO]:
             set_function_mode = (VIMAR_CLIMATE_AUTO_II, VIMAR_CLIMATE_AUTO_I)[self.climate_type == 'heat_cool']

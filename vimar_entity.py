@@ -85,12 +85,12 @@ class VimarEntity(Entity):
 
     async def async_added_to_hass(self):
         """Connect to dispatcher listening for entity data notifications."""
-        _LOGGER.debug("async_added_to_hass called for %s", self.name)
+        # _LOGGER.debug("async_added_to_hass %s called for %s", str(self.platform.platform), self.name)
         self._coordinator.async_add_listener(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self):
         """Disconnect from update signal."""
-        _LOGGER.debug("async_will_remove_from_hass called for %s", self.name)
+        _LOGGER.debug("async_will_remove_from_hass %s called for %s", str(self.platform.platform), self.name)
         self._coordinator.async_remove_listener(self.async_write_ha_state)
 
     # async def async_added_to_hass(self):
