@@ -719,11 +719,20 @@ class VimarProject():
             device_class = DEVICE_CLASS_POWER
             icon = "mdi:home-analytics"
 
+            _LOGGER.debug(
+                "Sensor object returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"])
+            _LOGGER.debug(
+                "Sensor object has states: "
+                + str(device["status"]))
+
         elif device["object_type"] in ["CH_Audio"]:
             device_type = DEVICE_TYPE_MEDIA_PLAYERS
             icon = ["mdi:radio", "mdi:radio-off"]
 
-        elif device["object_type"] in [ "CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
+        elif device["object_type"] in ["CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
             _LOGGER.debug(
                 "Unsupported object returned from web server: "
                 + device["object_type"]
