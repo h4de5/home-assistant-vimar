@@ -770,13 +770,14 @@ class VimarProject():
                 for i in range(2, len(parts)):
                     level_name += " " + parts[i]
             else:
-                _LOGGER.debug(
-                    "Found a device with an uncommon naming schema: %s", name)
+                # _LOGGER.debug(
+                #     "Found a device with an uncommon naming schema: %s", name)
 
                 device_type = parts[0]
                 entity_number = ''
                 room_name = ''
-                level_name = 'LEVEL'
+                # level_name = 'LEVEL'
+                level_name = ''
 
                 for i in range(2, len(parts)):
                     level_name += " " + parts[i]
@@ -784,7 +785,9 @@ class VimarProject():
         device_type = device_type.replace('LUCE', '')
         device_type = device_type.replace('TAPPARELLA', '')
 
-        device_type = device_type.replace('LICHT', '')
+        if device_type != 'LICHT':
+            device_type = device_type.replace('LICHT', '')
+
         device_type = device_type.replace('ROLLLADEN', '')
         device_type = device_type.replace('F-FERNBEDIENUNG', 'FENSTER')
         device_type = device_type.replace('VENTILATORE', '')

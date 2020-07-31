@@ -241,20 +241,8 @@ class VimarClimate(VimarEntity, ClimateEntity):
         _LOGGER.info("Vimar Climate setting aux_heat: %s", "off")
         self.change_state('stato_principale_riscaldamento on/off', '0')
 
-        # if 'status' in self._device and self._device['status']:
-        #     if 'stato_principale_riscaldamento on/off' in self._device['status']:
-        #         self._is_aux_heat = False
-        #         self._device['status']['stato_principale_riscaldamento on/off']['status_value'] = self._is_aux_heat
-        #         await self.hass.async_add_executor_job(self._vimarconnection.set_device_status,
-        #                                                self._device['status']['stato_principale_riscaldamento on/off']['status_id'], self._is_aux_heat)
-
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        # if 'stagione' in self._device['status']:
-        #     self._hvac_mode = (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
-        #         self._device['status']['stagione']['status_value'] == '1']
-
-        # self._hvac_mode = hvac_mode
 
         if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
 
@@ -291,60 +279,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 "Vimar Climate setting setup mode to off: %s", set_function_mode)
 
             self.change_state('funzionamento', set_function_mode)
-
-        # if 'status' in self._device and self._device['status']:
-        #     if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
-
-        #         if 'stagione' in self._device['status']:
-
-        #             self._hvac_mode = hvac_mode
-        #             if self._climate_type == 'heat_cool':
-        #                 self._function_mode = VIMAR_CLIMATE_AUTO_I
-        #             else:
-        #                 self._function_mode = VIMAR_CLIMATE_AUTO_II
-
-        #             self._device['status']['stagione']['status_value'] = (
-        #                 VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_COOL)[self._hvac_mode == HVAC_MODE_COOL]
-        #             self._device['status']['funzionamento']['status_value'] = self._function_mode
-
-        #             _LOGGER.info(
-        #                 "Vimar Climate setting hvac_mode: %s", self._hvac_mode)
-        #             _LOGGER.info(
-        #                 "Vimar Climate setting setup mode to: %s", self._function_mode)
-
-        #             await asyncio.gather(
-        #                 self.hass.async_add_executor_job(
-        #                     self._vimarconnection.set_device_status,
-        #                     self._device['status']['stagione']['status_id'],
-        #                     self._device['status']['stagione']['status_value'], 'SYNCDB'),
-        #                 self.hass.async_add_executor_job(
-        #                     self._vimarconnection.set_device_status,
-        #                     self._device['status']['funzionamento']['status_id'],
-        #                     self._device['status']['funzionamento']['status_value'], 'NO-OPTIONALS')
-        #             )
-
-            # # we always set current function mode
-            # elif 'funzionamento' in self._device['status']:
-
-            #     if hvac_mode in (HVAC_MODE_AUTO, HVAC_MODE_OFF):
-            #         if self._climate_type == 'heat_cool':
-            #             self._function_mode = (VIMAR_CLIMATE_AUTO_I, VIMAR_CLIMATE_OFF_I)[
-            #                 hvac_mode == HVAC_MODE_OFF]
-            #         else:
-            #             self._function_mode = (VIMAR_CLIMATE_AUTO_II, VIMAR_CLIMATE_OFF_II)[
-            #                 hvac_mode == HVAC_MODE_OFF]
-
-            #     self._device['status']['funzionamento']['status_value'] = self._function_mode
-
-            #     _LOGGER.info(
-            #         "Vimar Climate setting setup mode to: %s", self._function_mode)
-
-            #     await self.hass.async_add_executor_job(
-            #         self._vimarconnection.set_device_status,
-            #         self._device['status']['funzionamento']['status_id'],
-            #         self._device['status']['funzionamento']['status_value'], 'NO-OPTIONALS')
-
-            # self.request_statemachine_update()
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""

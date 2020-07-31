@@ -65,6 +65,9 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def unique_id(self):
         """Return the ID of this device and its state."""
+
+        _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id'] + " - " + self.name)
+
         return DOMAIN + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id']
         # return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
 
@@ -117,7 +120,8 @@ class VimarSensorContainer():
         if len(self._sensor_list) == 0:
             if 'status' in self._device and self._device['status']:
                 for status in self._device['status']:
-                    # _LOGGER.info("Adding sensor for %s", status)
+                    # _LOGGER.debug("Adding sensor for %s", status)
+                    _LOGGER.debug("Adding sensor %s from id %s", status, self._device_id)
                     self._sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
 
         return self._sensor_list
