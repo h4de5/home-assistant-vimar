@@ -65,7 +65,6 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def unique_id(self):
         """Return the ID of this device and its state."""
-
         _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id'] + " - " + self.name)
 
         return DOMAIN + '_' + self._platform + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id']

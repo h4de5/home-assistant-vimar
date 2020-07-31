@@ -55,4 +55,4 @@ class VimarSwitch(VimarEntity, ToggleEntity):
 
         # no turn off for scenes
 
-# end class VimerSwtich
+# end class VimarSwitch

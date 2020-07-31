@@ -243,7 +243,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-
         if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
 
             set_function_mode = (VIMAR_CLIMATE_AUTO_II, VIMAR_CLIMATE_AUTO_I)[self.climate_type == 'heat_cool']

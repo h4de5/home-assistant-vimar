@@ -13,6 +13,7 @@ from .const import (
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_SWITCHES,
     DEVICE_TYPE_CLIMATES,
+    DEVICE_TYPE_MEDIA_PLAYERS,
     # DEVICE_TYPE_SCENES,
     # DEVICE_TYPE_FANS,
     DEVICE_TYPE_SENSORS,
@@ -718,7 +719,11 @@ class VimarProject():
             device_class = DEVICE_CLASS_POWER
             icon = "mdi:home-analytics"
 
-        elif device["object_type"] in ["CH_Audio", "CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
+        elif device["object_type"] in ["CH_Audio"]:
+            device_type = DEVICE_TYPE_MEDIA_PLAYERS
+            icon = ["mdi:radio", "mdi:radio-off"]
+
+        elif device["object_type"] in [ "CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
             _LOGGER.debug(
                 "Unsupported object returned from web server: "
                 + device["object_type"]
