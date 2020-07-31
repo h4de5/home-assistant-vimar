@@ -149,8 +149,8 @@ class VimarEntity(Entity):
     @property
     def unique_id(self):
         """Return the ID of this device."""
-        _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._device_id + " - " + self.name)
-        return DOMAIN + '_' + self._device_id
+        _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
+        return DOMAIN + '_' + self._platform + '_' + self._device_id
 
     def _reset_status(self):
         """Set status from _device to class variables."""

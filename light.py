@@ -21,7 +21,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class VimarLight(VimarEntity, LightEntity):
     """Provides a Vimar lights."""
 
-    # _platform = "light"
+    _platform = "light"
 
     def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
         """Initialize the light."""

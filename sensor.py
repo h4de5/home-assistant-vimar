@@ -30,7 +30,7 @@ class VimarSensor(VimarEntity, Entity):
     # set entity_id, object_id manually due to possible duplicates
     # entity_id = "sensor." + "unset"
 
-    # _platform = "sensor"
+    _platform = "sensor"
     _measurement_name = None
     # _parent = None
     # _state_value = None
@@ -66,9 +66,9 @@ class VimarSensor(VimarEntity, Entity):
     def unique_id(self):
         """Return the ID of this device and its state."""
 
-        _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id'] + " - " + self.name)
+        _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id'] + " - " + self.name)
 
-        return DOMAIN + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id']
+        return DOMAIN + '_' + self._platform + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id']
         # return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
 
     @property

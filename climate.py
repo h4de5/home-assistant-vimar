@@ -50,7 +50,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class VimarClimate(VimarEntity, ClimateEntity):
     """Provides a Vimar climates."""
 
-    # _platform = "climate"
+    _platform = "climate"
 
     # thermostat I
     # 8 .. auto, 7 .. manual timed, 6 .. manual  NO-OPTIONALS

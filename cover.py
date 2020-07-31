@@ -21,7 +21,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class VimarCover(VimarEntity, CoverEntity):
     """Provides a Vimar cover."""
 
-    # _platform = "cover"
+    _platform = "cover"
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     # Return True if the state is based on our assumption instead of reading it from the device. this will ignore is_closed state
