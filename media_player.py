@@ -12,6 +12,11 @@ from homeassistant.components.media_player.const import (
     SUPPORT_NEXT_TRACK,
     SUPPORT_PREVIOUS_TRACK
 )
+from homeassistant.const import (
+    # STATE_IDLE,
+    STATE_OFF,
+    STATE_PLAYING
+)
 from .vimar_entity import (VimarEntity, vimar_setup_platform)
 try:
     from homeassistant.components.media_player import MediaPlayerEntity
@@ -40,8 +45,17 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
 
     # media player properties
     @property
+    def state(self):
+        """State of the player."""
+        if self.is_on:
+            return STATE_PLAYING
+        else:
+            return STATE_OFF
+
+    @property
     def is_on(self):
         """Return True if the device is on."""
+        # _LOGGER.info("Vimar media player is_on: %s", self.get_state('on/off') == '1')
         return self.get_state('on/off') == '1'
 
     @property
@@ -61,29 +75,42 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         """Channel currently playing."""
         if self.has_state('channel'):
             return self.get_state('channel')
+        else:
+            return None
 
     @property
     def source(self):
         """Name of the current input source."""
         if self.has_state('source'):
-            if self.get_state('source') == 4:
-                return "Source " + self.get_state('source') + ": Radio"
-            else:
-                return "Source " + self.get_state('source')
+            return self.get_state('source')
+        else:
+            return None
+            # if self.get_state('source') == 4:
+            #     return "Source " + self.get_state('source') + ": Radio"
+            # else:
+            #     return "Source " + self.get_state('source')
 
     @property
     def source_list(self):
         """List of available input sources."""
-        return {'1': 'Source 1', '2': 'Source 2', '3': 'Source 3', '4': 'Source 4 - Radio'}
+        # return {'1': 'Source 1', '2': 'Source 2', '3': 'Source 3', '4': 'Source 4 - Radio'}
+        return ['1', '2', '3', '4']
 
     @property
     def media_content_type(self):
         """Content type of current playing media."""
+        if self.has_state('source') and self.get_state('source') == 4:
+            return MEDIA_TYPE_CHANNEL
+        else:
+            return MEDIA_TYPE_MUSIC
+
+    @property
+    def media_title(self):
+        """Title of current playing media."""
         if self.has_state('source'):
-            if self.get_state('source') == 4:
-                return MEDIA_TYPE_CHANNEL
-            else:
-                return MEDIA_TYPE_MUSIC
+            return "Playing from source: " + self.get_state('source')
+        else:
+            return None
 
     @property
     def is_default_state(self):
@@ -103,11 +130,14 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
             flags |= SUPPORT_TURN_ON | SUPPORT_TURN_OFF
         if self.has_state('volume'):
             flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE
-        # if self.has_state('source'):
-        flags |= SUPPORT_SELECT_SOURCE
-        # channel only available on source == 4
-        if self.get_state('source') == 4 and self.has_state('channel'):
-            flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
+        if self.has_state('source'):
+            flags |= SUPPORT_SELECT_SOURCE
+            # channel only available on source == 4
+            if self.get_state('source') == 4 and self.has_state('channel'):
+                flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
+
+        # fixed - remove me in live
+        # flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
 
         return flags
 
@@ -130,7 +160,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         channel = int(self.media_channel) + 1
         if channel > 7:
             channel = 0
-        _LOGGER.info("Vimar media player setting next source: %d", channel)
+        # _LOGGER.info("Vimar media player setting next channel: %d", channel)
         self.change_state('channel', str(channel))
 
     async def async_media_previous_track(self):
@@ -138,22 +168,26 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         channel = int(self.media_channel) - 1
         if channel < 0:
             channel = 7
-        _LOGGER.info("Vimar media player setting previous source: %d", channel)
+        # _LOGGER.info("Vimar media player setting previous channel: %d", channel)
         self.change_state('channel', str(channel))
 
     async def async_select_source(self, source):
         """Select input source."""
-        _LOGGER.info("Vimar media player setting source: %s", source)
+        # _LOGGER.info("Vimar media player setting source: %s", source)
         if int(source) >= 0 and int(source) <= 4:
             self.change_state('source', str(source))
 
-    async def async_turn_on(self, **kwargs):
+    # def turn_on(self):
+    #     """Turn the Vimar media player on."""
+    #     _LOGGER.info("Vimar media player setting on 2")
+    #     self.change_state('on/off', '1')
+
+    async def async_turn_on(self):
         """Turn the Vimar media player on."""
-        # if self.has_state('on/off'):
         _LOGGER.info("Vimar media player setting on")
         self.change_state('on/off', '1')
 
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self):
         """Turn the Vimar media player off."""
         # if self.has_state('on/off'):
         _LOGGER.info("Vimar media player setting off")

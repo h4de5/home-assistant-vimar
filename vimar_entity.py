@@ -95,21 +95,21 @@ class VimarEntity(Entity):
                 for state, value in zip(iter_args, iter_args):
                     if state in self._device['status']:
                         state_changed = True
-                        self._device['status'][state]['status_value'] = value
                         optionals = self._vimarconnection.get_optionals_param(state)
-                        self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status'][state]['status_id'], value, optionals)
+                        self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status'][state]['status_id'], str(value), optionals)
+                        self._device['status'][state]['status_value'] = str(value)
                     else:
-                        _LOGGER.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self._name, self._device_id, value)
+                        _LOGGER.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self.name, self._device_id, value)
 
             if kwargs and len(kwargs) > 0:
                 for state, value in kwargs.items():
                     if state in self._device['status']:
                         state_changed = True
-                        self._device['status'][state]['status_value'] = value
                         optionals = self._vimarconnection.get_optionals_param(state)
-                        self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status'][state]['status_id'], value, optionals)
+                        self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device['status'][state]['status_id'], str(value), optionals)
+                        self._device['status'][state]['status_value'] = str(value)
                     else:
-                        _LOGGER.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self._name, self._device_id, value)
+                        _LOGGER.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self.name, self._device_id, value)
 
             if state_changed:
                 self.request_statemachine_update()
@@ -149,7 +149,7 @@ class VimarEntity(Entity):
     @property
     def unique_id(self):
         """Return the ID of this device."""
-        _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
+        # _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
         return DOMAIN + '_' + self._platform + '_' + self._device_id
 
     def _reset_status(self):
