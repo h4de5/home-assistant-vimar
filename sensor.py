@@ -95,7 +95,7 @@ class VimarSensorContainer():
     _vimarconnection = None
     _vimarproject = None
     _coordinator = None
-    _sensor_list = []
+    # _sensor_list = []
 
     # set entity_id, object_id manually due to possible duplicates
     # entity_id = "sensor." + "unset"
@@ -116,14 +116,15 @@ class VimarSensorContainer():
 
     def get_entity_list(self):
         """Return a List of VimarSensors."""
-        if len(self._sensor_list) == 0:
-            if 'status' in self._device and self._device['status']:
-                for status in self._device['status']:
-                    # _LOGGER.debug("Adding sensor for %s", status)
-                    _LOGGER.debug("Adding sensor %s from id %s", status, self._device_id)
-                    self._sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
+        # if len(self._sensor_list) == 0:
+        sensor_list = []
+        if 'status' in self._device and self._device['status']:
+            for status in self._device['status']:
+                # _LOGGER.debug("Adding sensor for %s", status)
+                _LOGGER.debug("Adding sensor %s from id %s", status, self._device_id)
+                sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
 
-        return self._sensor_list
+        return sensor_list
 
 # The row is Row000005: '321','consumo_totale','-1','0.310'
 #  (the device is set to consider also your potential production - zero in my case - with row n.6 and the net demand row n.8
