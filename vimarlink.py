@@ -667,12 +667,12 @@ class VimarProject():
 
         if device["object_type"] == "CH_Main_Automation":
             if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
-                # device_type = DEVICE_TYPE_SWITCHES
-                # device_class = DEVICE_CLASS_SWITCH
-                # icon = ["mdi:fan", "mdi:fan-off"]
+                device_type = DEVICE_TYPE_SWITCHES
+                device_class = DEVICE_CLASS_SWITCH
+                icon = ["mdi:fan", "mdi:fan-off"]
 
-                device_type = DEVICE_TYPE_MEDIA_PLAYERS
-                icon = ["mdi:radio", "mdi:radio-off"]
+                # device_type = DEVICE_TYPE_MEDIA_PLAYERS
+                # icon = ["mdi:radio", "mdi:radio-off"]
 
             elif device["object_name"].find("LAMPE") != -1:
                 device_type = DEVICE_TYPE_LIGHTS
