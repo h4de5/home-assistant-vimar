@@ -667,9 +667,13 @@ class VimarProject():
 
         if device["object_type"] == "CH_Main_Automation":
             if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
-                device_type = DEVICE_TYPE_SWITCHES
-                device_class = DEVICE_CLASS_SWITCH
-                icon = ["mdi:fan", "mdi:fan-off"]
+                # device_type = DEVICE_TYPE_SWITCHES
+                # device_class = DEVICE_CLASS_SWITCH
+                # icon = ["mdi:fan", "mdi:fan-off"]
+
+                device_type = DEVICE_TYPE_MEDIA_PLAYERS
+                icon = ["mdi:radio", "mdi:radio-off"]
+
             elif device["object_name"].find("LAMPE") != -1:
                 device_type = DEVICE_TYPE_LIGHTS
                 device_class = DEVICE_CLASS_SWITCH
@@ -683,11 +687,20 @@ class VimarProject():
                 device_type = DEVICE_TYPE_LIGHTS
                 icon = "mdi:ceiling-light"
 
-        elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF"]:
+        elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF", "CH_KNX_GENERIC_TIME_S"]:
             device_type = DEVICE_TYPE_SWITCHES
             device_class = DEVICE_CLASS_SWITCH
             # icon = ["mdi:electric-switch", "mdi:electric-switch-closed"]
             icon = ["mdi:toggle-switch", "mdi:toggle-switch-closed"]
+
+            _LOGGER.debug(
+                "KNX object returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"])
+            _LOGGER.debug(
+                "KNX object has states: "
+                + str(device["status"]))
 
         elif device["object_type"] in ["CH_Dimmer_Automation", "CH_Dimmer_RGB", "CH_Dimmer_White", "CH_Dimmer_Hue"]:
             device_type = DEVICE_TYPE_LIGHTS
@@ -732,7 +745,7 @@ class VimarProject():
             device_type = DEVICE_TYPE_MEDIA_PLAYERS
             icon = ["mdi:radio", "mdi:radio-off"]
 
-        elif device["object_type"] in ["CH_KNX_GENERIC_TIME_S", "CH_SAI", "CH_Event"]:
+        elif device["object_type"] in ["CH_SAI", "CH_Event"]:
             _LOGGER.debug(
                 "Unsupported object returned from web server: "
                 + device["object_type"]
