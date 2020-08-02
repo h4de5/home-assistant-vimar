@@ -11,7 +11,7 @@ Hardware:
 
 Software:
 [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
-I have only tested it with the firmware version v1.25 - if you plan to update the firmware, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
+I have only tested it with the firmware version v1.25 and v1.26 - if you plan to update the firmware, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
 
 ## home-assistant requirements
 
