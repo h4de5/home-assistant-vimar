@@ -732,18 +732,27 @@ class VimarProject():
             device_class = DEVICE_CLASS_POWER
             icon = "mdi:home-analytics"
 
-            _LOGGER.debug(
-                "Sensor object returned from web server: "
-                + device["object_type"]
-                + " / "
-                + device["object_name"])
-            _LOGGER.debug(
-                "Sensor object has states: "
-                + str(device["status"]))
+            # _LOGGER.debug(
+            #     "Sensor object returned from web server: "
+            #     + device["object_type"]
+            #     + " / "
+            #     + device["object_name"])
+            # _LOGGER.debug(
+            #     "Sensor object has states: "
+            #     + str(device["status"]))
 
         elif device["object_type"] in ["CH_Audio"]:
             device_type = DEVICE_TYPE_MEDIA_PLAYERS
             icon = ["mdi:radio", "mdi:radio-off"]
+
+            _LOGGER.debug(
+                "Audio object returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"])
+            _LOGGER.debug(
+                "Audio object has states: "
+                + str(device["status"]))
 
         elif device["object_type"] in ["CH_SAI", "CH_Event"]:
             _LOGGER.debug(
