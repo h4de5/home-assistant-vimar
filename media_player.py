@@ -174,8 +174,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     async def async_select_source(self, source):
         """Select input source."""
         # _LOGGER.info("Vimar media player setting source: %s", source)
-        if int(source) >= 0 and int(source) <= 4:
-            self.change_state('source', str(source))
+        self.change_state('source', str(source))
 
     # def turn_on(self):
     #     """Turn the Vimar media player on."""
