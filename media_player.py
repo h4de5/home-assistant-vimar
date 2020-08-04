@@ -94,7 +94,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     def source_list(self):
         """List of available input sources."""
         # return {'1': 'Source 1', '2': 'Source 2', '3': 'Source 3', '4': 'Source 4 - Radio'}
-        return ['1', '2', '3', '4']
+        return ['1', '2', '3', '4', '5', '6', '7', '8']
 
     @property
     def media_content_type(self):
