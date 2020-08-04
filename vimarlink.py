@@ -339,7 +339,7 @@ LIMIT %d, %d;""" % (VimarLink._room_ids, start, limit)
 
         select = """SELECT '' AS room_ids, o2.id AS object_id, o2.name AS object_name, o2.VALUES_TYPE AS object_type,
 o2.NAME AS object_name, o2.VALUES_TYPE AS object_type,
-o3.ID AS status_id, o3.NAME AS status_name, o3.DESCRIPTION, o3.CURRENT_VALUE AS status_value
+o3.ID AS status_id, o3.NAME AS status_name, o3.OPTIONALP as status_range, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT AS o2
 INNER JOIN (SELECT CLASSNAME,IS_EVENT,IS_EXECUTABLE FROM DPAD_WEB_PHPCLASS) AS D_WP ON o2.PHPCLASS=D_WP.CLASSNAME
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
@@ -375,7 +375,7 @@ LIMIT %d, %d;""" % (start, limit)
                             device['status_name']: {
                                 'status_id': device['status_id'],
                                 'status_value': device['status_value'],
-                                # 'status_range': device['status_range'],
+                                'status_range': device['status_range'],
                             }
                         }
                     }
@@ -385,7 +385,7 @@ LIMIT %d, %d;""" % (start, limit)
                         devices[device['object_id']]['status'][device['status_name']] = {
                             'status_id': device['status_id'],
                             'status_value': device['status_value'],
-                            # 'status_range': device['status_range'],
+                            'status_range': device['status_range'],
                         }
             return devices, len(payload)
 
