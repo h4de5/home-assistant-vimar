@@ -99,7 +99,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     @property
     def media_content_type(self):
         """Content type of current playing media."""
-        if self.has_state('source') and self.get_state('source') == 4:
+        if self.has_state('source') and self.get_state('source') == 5:
             return MEDIA_TYPE_CHANNEL
         else:
             return MEDIA_TYPE_MUSIC
@@ -132,8 +132,8 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
             flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE
         if self.has_state('source'):
             flags |= SUPPORT_SELECT_SOURCE
-            # channel only available on source == 4
-            if self.get_state('source') == 4 and self.has_state('channel'):
+            # channel only available on source == 5
+            if self.get_state('source') == 5 and self.has_state('channel'):
                 flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
 
         # fixed - remove me in live
@@ -173,7 +173,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
 
     async def async_select_source(self, source):
         """Select input source."""
-        # _LOGGER.info("Vimar media player setting source: %s", source)
+        _LOGGER.info("Vimar media player setting source: %s", source)
         self.change_state('source', str(source))
 
     # def turn_on(self):
