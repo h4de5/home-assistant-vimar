@@ -76,7 +76,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         if self.has_state('channel'):
             return self.get_state('channel')
         else:
-            return None
+            return 0
 
     @property
     def source(self):
@@ -136,13 +136,12 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
             if self.get_state('source') == 5 and self.has_state('channel'):
                 flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
 
-        # fixed - remove me in live
+        # FIXED FIX ME - remove me in live
         # flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
 
         return flags
 
     # async getter and setter
-
     async def async_mute_volume(self, mute):
         """Mute the volume."""
         if mute:
@@ -160,7 +159,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         channel = int(self.media_channel) + 1
         if channel > 7:
             channel = 0
-        # _LOGGER.info("Vimar media player setting next channel: %d", channel)
+        _LOGGER.debug("Vimar media player setting next channel: %d", channel)
         self.change_state('channel', str(channel))
 
     async def async_media_previous_track(self):
@@ -168,12 +167,12 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         channel = int(self.media_channel) - 1
         if channel < 0:
             channel = 7
-        # _LOGGER.info("Vimar media player setting previous channel: %d", channel)
+        _LOGGER.info("Vimar media player setting previous channel: %d", channel)
         self.change_state('channel', str(channel))
 
     async def async_select_source(self, source):
         """Select input source."""
-        _LOGGER.info("Vimar media player setting source: %s", source)
+        _LOGGER.debug("Vimar media player setting source: %s", source)
         self.change_state('source', str(source))
 
     # def turn_on(self):
@@ -183,14 +182,18 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
 
     async def async_turn_on(self):
         """Turn the Vimar media player on."""
-        _LOGGER.info("Vimar media player setting on")
+        _LOGGER.debug("Vimar media player setting on")
         self.change_state('on/off', '1')
 
     async def async_turn_off(self):
         """Turn the Vimar media player off."""
         # if self.has_state('on/off'):
-        _LOGGER.info("Vimar media player setting off")
+        _LOGGER.debug("Vimar media player setting off")
         self.change_state('on/off', '0')
 
+    async def async_media_stop(self):
+        """Send stop command."""
+        _LOGGER.debug("Vimar media player setting off")
+        self.change_state('on/off', '0')
 
 # end class VimarMediaplayer
