@@ -718,7 +718,7 @@ class VimarProject():
                 device_class = DEVICE_CLASS_SHUTTER
                 icon = ["mdi:window-shutter", "mdi:window-shutter-open"]
 
-        elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_Fancoil"]:
+        elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_HVAC_RiscaldamentoNoZonaNeutra", "CH_Fancoil"]:
             device_type = DEVICE_TYPE_CLIMATES
             icon = "mdi:thermometer-lines"
 
