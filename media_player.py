@@ -129,7 +129,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         if self.has_state('on/off'):
             flags |= SUPPORT_TURN_ON | SUPPORT_TURN_OFF
         if self.has_state('volume'):
-            flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE
+            flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_VOLUME_STEP
         if self.has_state('source'):
             flags |= SUPPORT_SELECT_SOURCE
             # channel only available on source == 5
@@ -193,7 +193,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
 
     async def async_media_stop(self):
         """Send stop command."""
-        _LOGGER.debug("Vimar media player setting off")
+        _LOGGER.debug("Vimar media player setting off via stop button")
         self.change_state('on/off', '0')
 
 # end class VimarMediaplayer
