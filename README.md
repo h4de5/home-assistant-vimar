@@ -105,7 +105,7 @@ Enable more logging for vimar_platform - add to your `configuration.yaml`:
     logger:
       default: warning
       logs:
-        custom_components.vimar_platform: info
+        custom_components.vimar_platform: debug
 
 have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where your `configuration.yaml` is located.
 
