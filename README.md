@@ -13,7 +13,7 @@ Hardware:
 
 Software:
 [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
-I have only tested it with the firmware version v1.25 and v1.26 - if you plan to update the firmware, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
+I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
 
 ## home-assistant requirements
 
@@ -105,7 +105,7 @@ Enable more logging for vimar_platform - add to your `configuration.yaml`:
     logger:
       default: warning
       logs:
-        custom_components.vimar_platform: info
+        custom_components.vimar_platform: debug
 
 have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where your `configuration.yaml` is located.
 
