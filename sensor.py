@@ -134,3 +134,6 @@ class VimarSensorContainer():
 # Row000007: '325','immissione_totale','-1','-0.000'
 # Row000008: '327','prelievo_totale','-1','0.310'
 # Row000009: '329', 'autoconsumo_totale', '-1', '0.000'
+#
+# CH_KNX_GENERIC_POWER_KW
+# Unknown object has states: {'value': {'status_id': '58240', 'status_value': '0.00', 'status_range': 'min=-670760|max=670760'}}

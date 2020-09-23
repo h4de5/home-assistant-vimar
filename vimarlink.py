@@ -687,20 +687,20 @@ class VimarProject():
                 device_type = DEVICE_TYPE_LIGHTS
                 icon = "mdi:ceiling-light"
 
-        elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF", "CH_KNX_GENERIC_TIME_S"]:
+        elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF", "CH_KNX_GENERIC_TIME_S", "CH_KNX_RELE"]:
             device_type = DEVICE_TYPE_SWITCHES
             device_class = DEVICE_CLASS_SWITCH
             # icon = ["mdi:electric-switch", "mdi:electric-switch-closed"]
             icon = ["mdi:toggle-switch", "mdi:toggle-switch-closed"]
 
-            _LOGGER.debug(
-                "KNX object returned from web server: "
-                + device["object_type"]
-                + " / "
-                + device["object_name"])
-            _LOGGER.debug(
-                "KNX object has states: "
-                + str(device["status"]))
+            # _LOGGER.debug(
+            #     "KNX object returned from web server: "
+            #     + device["object_type"]
+            #     + " / "
+            #     + device["object_name"])
+            # _LOGGER.debug(
+            #     "KNX object has states: "
+            #     + str(device["status"]))
 
         elif device["object_type"] in ["CH_Dimmer_Automation", "CH_Dimmer_RGB", "CH_Dimmer_White", "CH_Dimmer_Hue"]:
             device_type = DEVICE_TYPE_LIGHTS
@@ -727,7 +727,7 @@ class VimarProject():
             device_class = DEVICE_CLASS_SWITCH
             icon = "mdi:home-assistant"
 
-        elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F"]:
+        elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
             device_type = DEVICE_TYPE_SENSORS
             device_class = DEVICE_CLASS_POWER
             icon = "mdi:home-analytics"
