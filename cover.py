@@ -2,7 +2,7 @@
 
 import logging
 from homeassistant.components.cover import (SUPPORT_CLOSE, SUPPORT_OPEN,
-                                            SUPPORT_STOP)
+                                            SUPPORT_STOP, SUPPORT_SET_POSITION)
 from .vimar_entity import (VimarEntity, vimar_setup_platform)
 try:
     from homeassistant.components.cover import CoverEntity
@@ -54,6 +54,17 @@ class VimarCover(VimarEntity, CoverEntity):
             return None
 
     @property
+    def current_cover_position(self):
+        """Return current position of cover.
+
+        None is unknown, 0 is closed, 100 is fully open.
+        """
+        if self.has_state('position'):
+            return self.get_state('position')
+        else:
+            return None
+
+    @property
     def is_default_state(self):
         """Return True of in default state - resulting in default icon."""
         return (self.is_closed, True)[self.is_closed is None]
@@ -61,7 +72,10 @@ class VimarCover(VimarEntity, CoverEntity):
     @property
     def supported_features(self):
         """Flag supported features."""
-        return SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
+        flags = SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
+        if self.has_state('position'):
+            flags |= SUPPORT_SET_POSITION
+        return flags
 
     # async getter and setter
 
@@ -76,6 +90,12 @@ class VimarCover(VimarEntity, CoverEntity):
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
         self.change_state('stop up/stop down', '1')
+
+    async def async_set_cover_position(self, **kwargs):
+        """Move the cover to a specific position."""
+        if kwargs:
+            if ATTR_POSITION in kwargs and self.has_state('position'):
+                self.change_state('position', int(kwargs[ATTR_POSITION])
 
     # private helper methods
 
