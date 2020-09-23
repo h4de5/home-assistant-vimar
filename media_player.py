@@ -6,6 +6,7 @@ from homeassistant.components.media_player.const import (
     MEDIA_TYPE_CHANNEL,
     SUPPORT_VOLUME_MUTE,
     SUPPORT_VOLUME_SET,
+    SUPPORT_VOLUME_STEP,
     SUPPORT_TURN_ON,
     SUPPORT_TURN_OFF,
     SUPPORT_SELECT_SOURCE,
