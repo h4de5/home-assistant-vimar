@@ -46,7 +46,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
 
         # self.entity_id = "media_player." + self._name.lower() + "_" + self._device_id
         self._device['status']['global_channel'] = {
-            'status_id': _global_channel_status_id,
+            'status_id': self._global_channel_status_id,
             'status_value': '0',
             'status_range': '0-7',
         }
