@@ -2,7 +2,8 @@
 
 import logging
 from homeassistant.components.cover import (SUPPORT_CLOSE, SUPPORT_OPEN,
-                                            SUPPORT_STOP, SUPPORT_SET_POSITION)
+                                            SUPPORT_STOP, SUPPORT_SET_POSITION,
+                                            ATTR_POSITION)
 from .vimar_entity import (VimarEntity, vimar_setup_platform)
 try:
     from homeassistant.components.cover import CoverEntity
@@ -60,7 +61,7 @@ class VimarCover(VimarEntity, CoverEntity):
         None is unknown, 0 is closed, 100 is fully open.
         """
         if self.has_state('position'):
-            return self.get_state('position')
+            return 100 - self.get_state('position')
         else:
             return None
 
@@ -95,7 +96,7 @@ class VimarCover(VimarEntity, CoverEntity):
         """Move the cover to a specific position."""
         if kwargs:
             if ATTR_POSITION in kwargs and self.has_state('position'):
-                self.change_state('position', int(kwargs[ATTR_POSITION]))
+                self.change_state('position', 100 - int(kwargs[ATTR_POSITION]))
 
     # private helper methods
 
