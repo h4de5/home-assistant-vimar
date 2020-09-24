@@ -95,7 +95,7 @@ class VimarCover(VimarEntity, CoverEntity):
         """Move the cover to a specific position."""
         if kwargs:
             if ATTR_POSITION in kwargs and self.has_state('position'):
-                self.change_state('position', int(kwargs[ATTR_POSITION])
+                self.change_state('position', int(kwargs[ATTR_POSITION]))
 
     # private helper methods
 
