@@ -209,7 +209,7 @@ class VimarLink():
 
     def get_optionals_param(self, state):
         """Return SYNCDB for climates states."""
-        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione']):
+        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione', 'channel']):
             return 'SYNCDB'
         else:
             return 'NO-OPTIONALS'

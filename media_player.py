@@ -37,12 +37,20 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
 
     _platform = "media_player"
     _last_volume = 0.1
+    _channel_source_id = 0
+    _global_channel_status_id = 1545
 
     def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
         """Initialize the media players."""
         VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
 
         # self.entity_id = "media_player." + self._name.lower() + "_" + self._device_id
+        self._device['status']['global_channel'] = {
+            'status_id': _global_channel_status_id,
+            'status_value': '0',
+            'status_range': '0-7',
+        }
+
 
     # media player properties
     @property
@@ -100,7 +108,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     @property
     def media_content_type(self):
         """Content type of current playing media."""
-        if self.has_state('source') and self.get_state('source') == 5:
+        if self.has_state('source') and self.get_state('source') == self._channel_source_id:
             return MEDIA_TYPE_CHANNEL
         else:
             return MEDIA_TYPE_MUSIC
@@ -134,7 +142,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         if self.has_state('source'):
             flags |= SUPPORT_SELECT_SOURCE
             # channel only available on source == 5
-            if self.get_state('source') == 5 and self.has_state('channel'):
+            if self.get_state('source') == 0 and self.has_state('channel'):
                 flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
 
         # FIXED FIX ME - remove me in live
@@ -169,7 +177,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         if channel < 0:
             channel = 7
         _LOGGER.info("Vimar media player setting previous channel: %d", channel)
-        self.change_state('channel', str(channel))
+        self.change_state('channel', str(channel), 'global_channel', str(channel))
 
     async def async_select_source(self, source):
         """Select input source."""
