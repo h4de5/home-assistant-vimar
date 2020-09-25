@@ -209,7 +209,7 @@ class VimarLink():
 
     def get_optionals_param(self, state):
         """Return SYNCDB for climates states."""
-        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione', 'channel']):
+        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione', 'channel', 'source', 'global_channel']):
             return 'SYNCDB'
         else:
             return 'NO-OPTIONALS'
@@ -417,6 +417,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         select = select.replace('\r\n', ' ').replace(
             '\n', ' ').replace('"', '&apos;').replace('\'', '&apos;')
 
+        # optionals is set to NO-OPTIONAL (singular) for sql only
         post = ("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
                 "<soapenv:Body><service-databasesocketoperation xmlns=\"urn:xmethods-dpadws\">"
                 "<payload>NO-PAYLOAD</payload>"
@@ -603,6 +604,7 @@ class VimarProject():
     _devices = {}
     _link = None
     _platforms_exists = {}
+    global_channel_id = None
 
     # single device
     #   'room_ids': number[] (maybe empty, ids of rooms)

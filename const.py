@@ -5,6 +5,7 @@ DOMAIN = "vimar_platform"
 
 CONF_SCHEMA = "schema"
 CONF_CERTIFICATE = "certificate"
+CONF_GLOBAL_CHANNEL_ID = "global_channel_id"
 
 DEFAULT_USERNAME = "admin"
 DEFAULT_SCHEMA = "https"

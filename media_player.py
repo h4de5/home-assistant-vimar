@@ -38,18 +38,22 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     _platform = "media_player"
     _last_volume = 0.1
     _channel_source_id = 0
-    _global_channel_status_id = 1545
+    _global_channel_id = 1545
 
     def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
         """Initialize the media players."""
         VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
 
         # self.entity_id = "media_player." + self._name.lower() + "_" + self._device_id
-        self._device['status']['global_channel'] = {
-            'status_id': self._global_channel_status_id,
-            'status_value': '0',
-            'status_range': '0-7',
-        }
+
+        # CH_Audio somehow uses a global status id for all radios
+        if (vimarproject.global_channel_id is not None):
+            self._global_channel_id = vimarproject.global_channel_id
+            self._device['status']['global_channel'] = {
+                'status_id': str(self._global_channel_id),
+                'status_value': '0',
+                'status_range': '0-7',
+            }
 
     # media player properties
     @property
@@ -120,12 +124,13 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     @property
     def media_title(self):
         """Title of current playing media."""
+        play = "Playing"
         # if self.has_state('source'):
         if self.has_state('channel'):
-            # return "Playing from source: " + self.get_state('source')
-            return "Playing from source: " + self.get_state('channel')
-        else:
-            return None
+            play += " source: " + self.get_state('channel')
+        if self.has_state('source'):
+            play += " channel: " + self.get_state('source')
+        return play
 
     @property
     def is_default_state(self):
@@ -148,10 +153,13 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         # if self.has_state('source'):
         if self.has_state('channel'):
             flags |= SUPPORT_SELECT_SOURCE
-            # channel only available on source == 5
+            # channel only available on source == 0 /
             # if self.get_state('source') == 0 and self.has_state('channel'):
-            if self.get_state('channel') == 0 and self.has_state('source'):
-                flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
+            # if self.get_state('channel') == self._channel_source_id and self.has_state('source'):
+            #     flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
+        # allow  channel change all the time
+        if self.has_state('source'):
+            flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
 
         # FIXED FIX ME - remove me in live
         # flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
@@ -178,7 +186,9 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
             channel = 0
         _LOGGER.debug("Vimar media player setting next channel: %d", channel)
         self.change_state('source', str(channel))
-        # self.change_state('channel', str(channel))
+        if self.has_state('global_channel'):
+            _LOGGER.info("Vimar media player setting global channel: %d", channel)
+            self.change_state('global_channel', str(channel))
 
     async def async_media_previous_track(self):
         """Send previous track command."""
@@ -186,8 +196,10 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         if channel < 0:
             channel = 8
         _LOGGER.info("Vimar media player setting previous channel: %d", channel)
-        # self.change_state('channel', str(channel), 'global_channel', str(channel))
-        self.change_state('source', str(channel), 'global_channel', str(channel))
+        self.change_state('source', str(channel))
+        if self.has_state('global_channel'):
+            _LOGGER.info("Vimar media player setting global channel: %d", channel)
+            self.change_state('global_channel', str(channel))
 
     async def async_select_source(self, source):
         """Select input source."""

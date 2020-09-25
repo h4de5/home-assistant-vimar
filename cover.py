@@ -61,7 +61,7 @@ class VimarCover(VimarEntity, CoverEntity):
         None is unknown, 0 is closed, 100 is fully open.
         """
         if self.has_state('position'):
-            return 100 - self.get_state('position')
+            return 100 - int(self.get_state('position'))
         else:
             return None
 

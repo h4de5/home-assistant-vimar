@@ -18,6 +18,7 @@ from .const import (
     DOMAIN,
     CONF_SCHEMA,
     CONF_CERTIFICATE,
+    CONF_GLOBAL_CHANNEL_ID,
     DEFAULT_USERNAME,
     DEFAULT_SCHEMA,
     DEFAULT_PORT,
@@ -44,7 +45,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
         vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
-        vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60)
+        vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
+        vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999)
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -74,6 +76,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     password = vimarconfig.get(CONF_PASSWORD)
     certificate = vimarconfig.get(CONF_CERTIFICATE)
     timeout = vimarconfig.get(CONF_TIMEOUT)
+    global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
 
     # initialize a new VimarLink object
     vimarconnection = VimarLink(
@@ -82,22 +85,21 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     # will hold all the devices and their states
     vimarproject = VimarProject(vimarconnection)
 
+    if global_channel_id is not None:
+        vimarproject.global_channel_id = global_channel_id
+
     # if certificate is set, but file is not there - download it from the
     # webserver
     if schema == "https" and certificate is not None and len(certificate) != 0:
         if os.path.isfile(certificate) is False:
             try:
                 valid_certificate = await hass.async_add_executor_job(vimarconnection.install_certificate)
-
             except VimarApiError as err:
                 _LOGGER.error("Certificate download error: %s", err)
                 valid_certificate = False
-
             if not valid_certificate:
                 raise PlatformNotReady
-
         else:
-
             _LOGGER.info(
                 "Vimar CA Certificate is already in place: %s", certificate)
 
