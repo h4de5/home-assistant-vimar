@@ -724,6 +724,15 @@ class VimarProject():
             device_type = DEVICE_TYPE_CLIMATES
             icon = "mdi:thermometer-lines"
 
+            _LOGGER.debug(
+                "Climate object returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"])
+            _LOGGER.debug(
+                "Climate object has states: "
+                + str(device["status"]))
+
         elif device["object_type"] == "CH_Scene":
             device_type = DEVICE_TYPE_SWITCHES
             device_class = DEVICE_CLASS_SWITCH
