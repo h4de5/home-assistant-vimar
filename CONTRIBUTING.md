@@ -7,7 +7,29 @@ I can only support and test those devices I have currently in my installation.
 If you want to use new devices I need to know which attributes this device have and what they mean.
 See below a short video of how I currently check for those attributes:
 
-### Read out attributes
+### Read out attributes from Home-Assistant Log
+
+Most of the devices are forwarded to home-assistant already - therefore the first place to look at the data should be the home-assistant log file. This is usually located in the config directory having the name `home-assistant.log`. To increase the verbosity for the Vimar extension add this to your `configuration.yaml`:
+
+```
+logger:
+  default: warning
+  logs:
+    custom_components.vimar_platform: debug
+```
+
+this will output lots of additional information of how vimar devices are handled by the integration. What we are looking is something like this:
+
+```
+WARNING (SyncWorker_10) [custom_components.vimar_platform.vimarlink] Unknown object returned from web server: CH_HVAC_RiscaldamentoNoZonaNeutra / NAME OF CLIMATE
+DEBUG (SyncWorker_10) [custom_components.vimar_platform.vimarlink] Unknown object has states: {'allarme_massetto': {'status_id': '2129', 'status_value': '0', 'status_range': 'min=0|max=1'}, 'regolazione': {'status_id': '2131', 'status_value': '2', 'status_range': ''}, 'modalita_fancoil': {'status_id': '2135', 'status_value': '0', 'status_range': 'min=0|max=1'}, 'velocita_fancoil': {'status_id': '2137', 'status_value': '0', 'status_range': 'min=0|max=100'}, 'funzionamento': {'status_id': '2139', 'status_value': '6', 'status_range': ''}, 'setpoint': {'status_id': '2146', 'status_value': '21.00', 'status_range': 'min=-273|max=670760'}, 'temporizzazione': {'status_id': '2152', 'status_value': '1', 'status_range': 'min=0|max=65535'}, 'temperatura_misurata': {'status_id': '2160', 'status_value': '24.40', 'status_range': 'min=-273|max=670760'}, 'stato_boost on/off': {'status_id': '2163', 'status_value': '0', 'status_range': 'min=0|max=1'}, 'stato_principale_condizionamento on/off': {'status_id': '2164', 'status_value': '0', 'status_range': 'min=0|max=1'}, 'stato_principale_riscaldamento on/off': {'status_id': '2165', 'status_value': '0', 'status_range': 'min=0|max=1'}, 'uscita4': {'status_id': '2944', 'status_value': 'non_utilizzata', 'status_range': 'principale_riscaldamento=0|boost_riscaldamento=0|principale_condizionamento=0|boost_condizionamento=0'}, 'uscita3': {'status_id': '2945', 'status_value': 'non_utilizzata', 'status_range': 'principale_riscaldamento=0|boost_riscaldamento=0|principale_condizionamento=0|boost_condizionamento=0'}, 'uscita2': {'status_id': '2946', 'status_value': 'non_utilizzata', 'status_range': 'principale_riscaldamento=0|boost_riscaldamento=0|principale_condizionamento=0|boost_condizionamento=0'}, 'uscita1': {'status_id': '2947', 'status_value': 'CH_Uscita_ValvolaOnOff', 'status_range': 'principale_riscaldamento=1|boost_riscaldamento=0|principale_condizionamento=0|boost_condizionamento=0'}, 'forzatura off': {'status_id': '3282', 'status_value': '0', 'status_range': ''}}
+```
+
+it says there was an unknown object returned from the vimar web server and it shows all available attributes and its current values. This would be a great starting point for me to add it to the integration. Next you can check for yourself and try to give an explanation and possible values for each of the attributes. Also you can try to change the state of an attribute through the Vimar Webserver, restart Home-assistant and see which how the `status_value` has adapted.
+
+Please note that is log entry only shows up during home-assistant start up.
+
+### Read out attributes from Vimar Webserver
 
 The Webserver will update the status of all devices currently shown on screen regulary.
 We are trying to monitor that communication to see how that device is used internally.
