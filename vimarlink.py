@@ -708,7 +708,7 @@ class VimarProject():
             device_type = DEVICE_TYPE_LIGHTS
             icon = ["mdi:speedometer", "mdi:speedometer-slow"]
 
-        elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation"]:
+        elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation", "CH_Shutter_Slat_Automation"]:
             if device["object_name"].find("F-FERNBEDIENUNG") != -1:
                 device_type = DEVICE_TYPE_COVERS
                 device_class = DEVICE_CLASS_WINDOW
