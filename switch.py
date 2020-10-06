@@ -29,8 +29,8 @@ class VimarSwitch(VimarEntity, ToggleEntity):
         """Return True if the device is on."""
         if self.has_state('on/off'):
             return self.get_state('on/off') == '1'
-        elif self.has_state('comando'):
-            return self.get_state('comando') == '1'
+        # elif self.has_state('comando'):
+        #     return self.get_state('comando') == '1'
         return None
 
     @property
@@ -45,8 +45,9 @@ class VimarSwitch(VimarEntity, ToggleEntity):
         if self.has_state('on/off'):
             self.change_state('on/off', '1')
 
-        elif self.has_state('comando'):
-            self.change_state('comando', '1')
+        # moved scenes into scene.py
+        # elif self.has_state('comando'):
+        #     self.change_state('comando', '1')
 
     async def async_turn_off(self, **kwargs):
         """Turn the Vimar switch off."""

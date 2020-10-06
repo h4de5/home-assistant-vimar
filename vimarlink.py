@@ -14,7 +14,7 @@ from .const import (
     DEVICE_TYPE_SWITCHES,
     DEVICE_TYPE_CLIMATES,
     DEVICE_TYPE_MEDIA_PLAYERS,
-    # DEVICE_TYPE_SCENES,
+    DEVICE_TYPE_SCENES,
     # DEVICE_TYPE_FANS,
     DEVICE_TYPE_SENSORS,
     DEVICE_TYPE_OTHERS)
@@ -734,9 +734,18 @@ class VimarProject():
                 + str(device["status"]))
 
         elif device["object_type"] == "CH_Scene":
-            device_type = DEVICE_TYPE_SWITCHES
-            device_class = DEVICE_CLASS_SWITCH
-            icon = "mdi:home-assistant"
+            device_type = DEVICE_TYPE_SCENES
+            # device_class = DEVICE_CLASS_SWITCH
+            icon = "mdi:google-pages"
+
+            _LOGGER.debug(
+                "Scene returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"])
+            _LOGGER.debug(
+                "Scene object has states: "
+                + str(device["status"]))
 
         elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
             device_type = DEVICE_TYPE_SENSORS
