@@ -292,15 +292,15 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 self.change_state('modalita_fancoil', '1', 'velocita_fancoil', fancoil_speed)
 
     # aux heating is just an output status
-    # async def async_turn_aux_heat_on(self):
-    #     """Turn auxiliary heater on."""
-    #     _LOGGER.info("Vimar Climate setting aux_heat: %s", "on")
-    #     self.change_state('stato_boost on/off', '1')
+    async def async_turn_aux_heat_on(self):
+        """Turn auxiliary heater on."""
+        _LOGGER.info("Vimar Climate setting aux_heat: %s", "on")
+        self.change_state('stato_boost on/off', '1')
 
-    # async def async_turn_aux_heat_off(self):
-    #     """Turn auxiliary heater off."""
-    #     _LOGGER.info("Vimar Climate setting aux_heat: %s", "off")
-    #     self.change_state('stato_boost on/off', '0')
+    async def async_turn_aux_heat_off(self):
+        """Turn auxiliary heater off."""
+        _LOGGER.info("Vimar Climate setting aux_heat: %s", "off")
+        self.change_state('stato_boost on/off', '0')
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
