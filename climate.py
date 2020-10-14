@@ -222,9 +222,9 @@ class VimarClimate(VimarEntity, ClimateEntity):
             return (CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL)[self.get_state('stagione') == self.get_const_value(VIMAR_CLIMATE_COOL)]
         else:
             if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
-                return CURRENT_HVAC_HEAT
-            elif self.has_state('stato_principale_riscaldamento on/off') and self.get_state('stato_principale_riscaldamento on/off') == '1':
                 return CURRENT_HVAC_COOL
+            elif self.has_state('stato_principale_riscaldamento on/off') and self.get_state('stato_principale_riscaldamento on/off') == '1':
+                return CURRENT_HVAC_HEAT
             else:
                 return CURRENT_HVAC_IDLE
 
