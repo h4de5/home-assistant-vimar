@@ -9,7 +9,7 @@ This is an integration of the VIMAR bus system into the home-assistant environme
 ## Vimar requirements
 
 Hardware:
-[Vimar - 01945 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/01945)
+[Vimar - 01945/01946 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/01945)
 
 Software:
 [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
@@ -47,7 +47,7 @@ this will try to connect to your webserver using https, will save the webservers
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
-      
+
 #### existing CA certificate
 
 You can manualy download the CA certificate from the webserver (see settings > network) and place it in the home-assistants directory. If the file does not exist on the given filename, the integration will try to download and place it there. (Advanced usage: If you have placed your webserver behind a reverse proxy you may need to place whatever CA certificate you used to generate your proxy servers certificate.)
@@ -57,10 +57,11 @@ You can manualy download the CA certificate from the webserver (see settings > n
       password: your-login-password
       host: IP-OR-HOSTNAME
       certificate: rootCA.VIMAR.crt
-      
+
 #### problems with ssl connection
 
-if the above settings do not work for you and you keep getting errors like 
+if the above settings do not work for you and you keep getting errors like
+
 > SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")
 
 you can try to force ignoring any ssl errors during communicating to the webserver by keeping the path to the certificate empty.
@@ -69,7 +70,7 @@ you can try to force ignoring any ssl errors during communicating to the webserv
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
-      certificate: 
+      certificate:
 
 #### trying to connect via http
 
@@ -94,7 +95,7 @@ The integration can currently list and control all lights, rgb dimmers, audio de
 
 ## contribution
 
-If you want to help see some examples of how to read out data for new devies in [contribution](CONTRIBUTING.md). 
+If you want to help see some examples of how to read out data for new devies in [contribution](CONTRIBUTING.md).
 
 ## troubleshooting
 
@@ -122,7 +123,7 @@ have a look into your home-assistant log files - usually named `home-assitant.lo
 > You have put the content of this repository into the wrong directory - see above for an example.
 
       ERROR (SyncWorker_4) [custom_components.vimar_platform.vimarlink] Other error occurred: SSLError(MaxRetryError('HTTPSConnectionPool(host='***', port=443): Max retries exceeded with url: /vimarbyweb/modules/system/user_login.php?sessionid=&username=***&password=***&remember=0&op=login (Caused by SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")))'))
-      
+
 > There seems to a problem with the SSL connection. Try if it works with the config setting `certificate: ` (empty certificate option)
 
       ERROR (SyncWorker_5) [custom_components.vimar_platform.vimarlink] Error parsing XML: TypeError("a bytes-like object is required, not 'bool'")
@@ -130,11 +131,9 @@ have a look into your home-assistant log files - usually named `home-assitant.lo
 > This message paired with a web server that needs manual restarting: You may have too many devices connected to the installation. I am currently working on a fix. Latest version will simple limit it to 300 devices (and status attributes of those devices)
 
       Some entities are listed as "not available" with a red exclamation mark in the entity list.
-      
+
 > See the explanation and the fix in: https://github.com/h4de5/home-assistant-vimar/issues/15#issuecomment-665635305
 
 ## thanks
 
 thanks to everybody who was helping me developing and testing this integration. special thanks to user @felisida for his endless patience ;)
-
-

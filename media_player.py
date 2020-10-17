@@ -32,6 +32,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     vimar_setup_platform(VimarMediaplayer, hass, async_add_entities, discovery_info)
 
 
+
 class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     """Provide Vimar media player."""
 
@@ -39,6 +40,14 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     _last_volume = 0.1
     _channel_source_id = 0
     _global_channel_id = 1545
+
+    # bus attributes, documentation and home-assistant have different
+    # wordings for source and channel
+    # vimar can only do next track (0), and next channel (1)
+    # bus       | doc       | hass
+    # ----------------------------
+    # channel   | channel   | source
+    # source    | track     | channel
 
     def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
         """Initialize the media players."""
@@ -159,7 +168,9 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
             #     flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
         # allow  channel change all the time
         if self.has_state('source'):
-            flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
+            # we can only do next track
+            # flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
+            flags |= SUPPORT_NEXT_TRACK
 
         # FIXED FIX ME - remove me in live
         # flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
@@ -188,8 +199,11 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         self.change_state('source', str(channel))
         if self.has_state('global_channel'):
             _LOGGER.info("Vimar media player setting global channel: %d", channel)
-            self.change_state('global_channel', str(channel))
+            # self.change_state('global_channel', str(channel))
+            # according to docs, choosing next track, needs to send 0
+            self.change_state('global_channel', "0")
 
+    # no longer available
     async def async_media_previous_track(self):
         """Send previous track command."""
         channel = int(self.media_channel) - 1
@@ -206,6 +220,8 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         _LOGGER.debug("Vimar media player setting source: %s", source)
         # self.change_state('source', str(source))
         self.change_state('channel', str(source))
+        # according to docs, choosing next channel, needs to send 1
+        self.change_state('global_channel', "1")
 
     # def turn_on(self):
     #     """Turn the Vimar media player on."""
