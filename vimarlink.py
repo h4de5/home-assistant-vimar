@@ -684,6 +684,24 @@ class VimarProject():
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_OUTLET
                 icon = ["mdi:power-plug", "mdi:power-plug-off"]
+            elif device["object_name"].find("HEIZUNG") != -1:
+                device_type = DEVICE_TYPE_SWITCHES
+                device_class = DEVICE_CLASS_SWITCH
+                icon = ["mdi:radiator", "mdi:radiator-off"]
+            elif device["object_name"].find(" IR ") != -1:
+                device_type = DEVICE_TYPE_SWITCHES
+                device_class = DEVICE_CLASS_SWITCH
+                icon = ["mdi:motion-sensor", "mdi:motion-sensor-off"]
+
+                _LOGGER.debug(
+                    "IR Sensor object returned from web server: "
+                    + device["object_type"]
+                    + " / "
+                    + device["object_name"])
+                _LOGGER.debug(
+                    "IR Sensor object has states: "
+                    + str(device["status"]))
+
             else:
                 # fallback to lights
                 device_type = DEVICE_TYPE_LIGHTS
