@@ -670,7 +670,9 @@ class VimarProject():
         icon = "mdi:home-assistant"
 
         if device["object_type"] == "CH_Main_Automation":
-            if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
+            # if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
+            # if "VENTILATOR" in device["object_name"] or "FANCOIL" in device["object_name"] or "VENTILATORE" in device["object_name"]:
+            if any(x in device["object_name"].upper() for x in ["VENTILATOR", "FANCOIL"]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:fan", "mdi:fan-off"]
@@ -678,19 +680,26 @@ class VimarProject():
                 # device_type = DEVICE_TYPE_MEDIA_PLAYERS
                 # icon = ["mdi:radio", "mdi:radio-off"]
 
-            elif device["object_name"].find("LAMPE") != -1:
+            # elif device["object_name"].find("LAMPE") != -1:
+            elif any(x in device["object_name"].upper() for x in ["LAMPE"]):
                 device_type = DEVICE_TYPE_LIGHTS
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:lightbulb-on", "mdi:lightbulb-off"]
-            elif device["object_name"].find("STECKDOSE") != -1 or device["object_name"].find("PULSANTE") != -1:
+            # elif device["object_name"].find("STECKDOSE") != -1 or device["object_name"].find("PULSANTE") != -1:
+            # elif "STECKDOSE" in device["object_name"] or "PULSANTE" in device["object_name"]:
+            elif any(x in device["object_name"].upper() for x in ["STECKDOSE", "PULSANTE"]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_OUTLET
                 icon = ["mdi:power-plug", "mdi:power-plug-off"]
-            elif device["object_name"].find("HEIZUNG") != -1:
+            # elif device["object_name"].find("HEIZUNG") != -1:
+            # elif "HEIZUNG" in device["object_name"].upper():
+            elif any(x in device["object_name"].upper() for x in ["HEIZUNG"]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:radiator", "mdi:radiator-off"]
-            elif device["object_name"].find(" IR ") != -1:
+            # elif device["object_name"].find(" IR ") != -1:
+            # elif " IR " in device["object_name"].upper():
+            elif any(x in device["object_name"].upper() for x in [" IR "]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:motion-sensor", "mdi:motion-sensor-off"]
@@ -731,7 +740,9 @@ class VimarProject():
             icon = ["mdi:speedometer", "mdi:speedometer-slow"]
 
         elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation", "CH_Shutter_Slat_Automation"]:
-            if device["object_name"].find("F-FERNBEDIENUNG") != -1:
+            # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
+            # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
+            if any(x in device["object_name"].upper() for x in ["FERNBEDIENUNG"]):
                 device_type = DEVICE_TYPE_COVERS
                 device_class = DEVICE_CLASS_WINDOW
                 icon = ["mdi:window-closed-variant", "mdi:window-open-variant"]

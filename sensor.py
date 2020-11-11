@@ -4,7 +4,7 @@
 import logging
 # from datetime import timedelta
 from homeassistant.const import (
-    POWER_KILO_WATT)
+    POWER_KILO_WATT, TEMP_CELSIUS, SPEED_METERS_PER_SECOND)
 from homeassistant.helpers.entity import Entity
 from .const import DOMAIN
 from .vimar_entity import (VimarEntity, vimar_setup_platform)
@@ -60,7 +60,34 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        return POWER_KILO_WATT
+        if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
+            return POWER_KILO_WATT
+        elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(x in self._measurement_name for x in ['temperature']):
+            # see: https://github.com/h4de5/home-assistant-vimar/issues/20
+            return TEMP_CELSIUS
+        elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(x in self._measurement_name for x in ['wind_speed']):
+            # see: https://github.com/h4de5/home-assistant-vimar/issues/20
+            return SPEED_METERS_PER_SECOND
+        elif any(x in self._measurement_name for x in ['brightness']):
+            # see: https://github.com/h4de5/home-assistant-vimar/issues/20
+            return "lm"
+        else:
+            return None
+
+        # ‘its_night’: {‘status_id’: ‘3369’, ‘status_value’: ‘1’, ‘status_range’: ‘’},
+        # ‘its_raining’: {‘status_id’: ‘3371’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
+        # ‘temperature’: {‘status_id’: ‘3373’, ‘status_value’: ‘11.00’, ‘status_range’: ‘’},
+        # ‘temperature_min’: {‘status_id’: ‘3375’, ‘status_value’: ‘5.30’, ‘status_range’: ‘’},
+        # ‘temperature_max’: {‘status_id’: ‘3377’, ‘status_value’: ‘8.10’, ‘status_range’: ‘’},
+        # ‘temperature_request_minmax’: {‘status_id’: ‘3379’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
+        # ‘temperature_reset’: {‘status_id’: ‘3381’, ‘status_value’: ‘1’, ‘status_range’: ‘’},
+        # ‘temperature_alarm’: {‘status_id’: ‘3383’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
+        # ‘wind_speed’: {‘status_id’: ‘3409’, ‘status_value’: ‘3.24’, ‘status_range’: ‘’},
+        # ‘wind_speed_max’: {‘status_id’: ‘3411’, ‘status_value’: ‘0.00’, ‘status_range’: ‘’},
+        # ‘wind_speed_request_minmax’: {‘status_id’: ‘3413’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
+        # ‘wind_speed_reset’: {‘status_id’: ‘3415’, ‘status_value’: ‘1’, ‘status_range’: ‘’},
+        # ‘wind_speed_alarm’: {‘status_id’: ‘3417’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
+        # ‘brightness’: {‘status_id’: ‘3437’, ‘status_value’: ‘0.00’, ‘status_range’: ‘’},
 
     @property
     def unique_id(self):
@@ -120,6 +147,9 @@ class VimarSensorContainer():
         sensor_list = []
         if 'status' in self._device and self._device['status']:
             for status in self._device['status']:
+                # if status.find('_setpoint') != -1 or status.find('_output') != -1:
+                if any(x in status for x in ['_setpoint', '_output']):
+                    continue
                 # _LOGGER.debug("Adding sensor for %s", status)
                 # _LOGGER.debug("Adding sensor %s from id %s", status, self._device_id)
                 sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
