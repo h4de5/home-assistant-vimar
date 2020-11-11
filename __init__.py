@@ -69,53 +69,30 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     devices = {}
     vimarconfig = config[DOMAIN]
 
-    schema = vimarconfig.get(CONF_SCHEMA)
-    host = vimarconfig.get(CONF_HOST)
-    port = vimarconfig.get(CONF_PORT)
-    username = vimarconfig.get(CONF_USERNAME)
-    password = vimarconfig.get(CONF_PASSWORD)
-    certificate = vimarconfig.get(CONF_CERTIFICATE)
-    timeout = vimarconfig.get(CONF_TIMEOUT)
-    global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
+    # schema = vimarconfig.get(CONF_SCHEMA)
+    # host = vimarconfig.get(CONF_HOST)
+    # port = vimarconfig.get(CONF_PORT)
+    # username = vimarconfig.get(CONF_USERNAME)
+    # password = vimarconfig.get(CONF_PASSWORD)
+    # certificate = vimarconfig.get(CONF_CERTIFICATE)
+    # timeout = vimarconfig.get(CONF_TIMEOUT)
+    # global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
 
-    # initialize a new VimarLink object
-    vimarconnection = VimarLink(
-        schema, host, port, username, password, certificate, timeout)
+    # # initialize a new VimarLink object
+    # vimarconnection = VimarLink(
+    #     schema, host, port, username, password, certificate, timeout)
 
-    # will hold all the devices and their states
-    vimarproject = VimarProject(vimarconnection)
+    # # will hold all the devices and their states
+    # vimarproject = VimarProject(vimarconnection)
 
-    if global_channel_id is not None:
-        vimarproject.global_channel_id = global_channel_id
+    # if global_channel_id is not None:
+    #     vimarproject.global_channel_id = global_channel_id
 
-    # if certificate is set, but file is not there - download it from the
-    # webserver
-    if schema == "https" and certificate is not None and len(certificate) != 0:
-        if os.path.isfile(certificate) is False:
-            try:
-                valid_certificate = await hass.async_add_executor_job(vimarconnection.install_certificate)
-            except VimarApiError as err:
-                _LOGGER.error("Certificate download error: %s", err)
-                valid_certificate = False
-            if not valid_certificate:
-                raise PlatformNotReady
-        else:
-            _LOGGER.info(
-                "Vimar CA Certificate is already in place: %s", certificate)
+    vimarproject, vimarconnection = await _validate_vimar_credentials(hass, vimarconfig)
 
-    # Verify that passed in configuration works
-    # starting it outside MainThread
-    try:
-        valid_login = await hass.async_add_executor_job(vimarconnection.check_login)
-    except VimarApiError as err:
-        _LOGGER.error("Webserver %s: %s", host, err)
-        valid_login = False
-    except BaseException as err:
-        _LOGGER.error("Login Exception: %s", err)
-        valid_login = False
-
-    if not valid_login:
-        raise PlatformNotReady
+    # done, pending = await asyncio.wait(
+    # [vimarproject, vimarconnection],
+    # return_when=asyncio.FIRST_COMPLETED)
 
     # save vimar connection into hass data to share it with other platforms
     hass.data[DOMAIN] = {}
@@ -165,7 +142,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     devices = coordinator.data
 
     if not devices or len(devices) == 0:
-        _LOGGER.error("Could not find any devices on Vimar Webserver %s", host)
+        # _LOGGER.error("Could not find any devices on Vimar Webserver %s", host)
+        _LOGGER.error("Could not find any devices on Vimar Webserver")
         return False
 
     # TODO: rework platform registration
@@ -187,3 +165,77 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     # Return boolean to indicate that initialization was successfully.
     return True
+
+
+async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: ConfigType) -> [VimarProject, VimarLink]:
+    """Validate Vimar credential config."""
+    # vimar_config = vimarconfig.copy()
+    # del vimar_config[CONF_NAME]
+    # del vimar_config[CONF_VALIDATE]
+
+    schema = vimarconfig.get(CONF_SCHEMA)
+    host = vimarconfig.get(CONF_HOST)
+    port = vimarconfig.get(CONF_PORT)
+    username = vimarconfig.get(CONF_USERNAME)
+    password = vimarconfig.get(CONF_PASSWORD)
+    certificate = vimarconfig.get(CONF_CERTIFICATE)
+    timeout = vimarconfig.get(CONF_TIMEOUT)
+    global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
+
+    # initialize a new VimarLink object
+    vimarconnection = VimarLink(
+        schema, host, port, username, password, certificate, timeout)
+
+    # will hold all the devices and their states
+    vimarproject = VimarProject(vimarconnection)
+
+    if global_channel_id is not None:
+        vimarproject.global_channel_id = global_channel_id
+
+    # if certificate is set, but file is not there - download it from the
+    # webserver
+    if schema == "https" and certificate is not None and len(certificate) != 0:
+        if os.path.isfile(certificate) is False:
+            try:
+                valid_certificate = await hass.async_add_executor_job(vimarconnection.install_certificate)
+            except VimarApiError as err:
+                _LOGGER.error("Certificate download error: %s", err)
+                valid_certificate = False
+            if not valid_certificate:
+                raise PlatformNotReady
+        else:
+            _LOGGER.info(
+                "Vimar CA Certificate is already in place: %s", certificate)
+
+    # Verify that passed in configuration works
+    # starting it outside MainThread
+    try:
+        valid_login = await hass.async_add_executor_job(vimarconnection.check_login)
+    except VimarApiError as err:
+        _LOGGER.error("Webserver %s: %s", host, err)
+        valid_login = False
+    except BaseException as err:
+        _LOGGER.error("Login Exception: %s", err)
+        valid_login = False
+
+    if not valid_login:
+        raise PlatformNotReady
+
+    return [vimarproject, vimarconnection]
+
+    # # profile = aws_config.get(CONF_PROFILE_NAME)
+
+    # if profile is not None:
+    #     session = aiobotocore.AioSession(profile=profile)
+    #     del aws_config[CONF_PROFILE_NAME]
+    #     if CONF_ACCESS_KEY_ID in aws_config:
+    #         del aws_config[CONF_ACCESS_KEY_ID]
+    #     if CONF_SECRET_ACCESS_KEY in aws_config:
+    #         del aws_config[CONF_SECRET_ACCESS_KEY]
+    # else:
+    #     session = aiobotocore.AioSession()
+
+    # if credential[CONF_VALIDATE]:
+    #     async with session.create_client("iam", **aws_config) as client:
+    #         await client.get_user()
+    # return session

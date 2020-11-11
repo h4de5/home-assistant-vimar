@@ -189,21 +189,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
         # button for auto is still there, to clear manual mode, but will not change highlighted icon
         return [HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF, HVAC_MODE_AUTO]
 
-    # @property
-    # def is_running(self):
-    #     """Return True when climate is currently cooling or heating, idle if not."""
-    #     # was only used for hvac_action
-    #     # heat_cool
-    #     if self.has_state('on/off'):
-    #         return self.get_state('on/off') == '1'
-    #     # heat_cool_fancoil
-    #     if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
-    #         return True
-    #     if self.has_state('stato_principale_riscaldamento on/off') and self.get_state('stato_principale_riscaldamento on/off') == '1':
-    #         return True
-    #     # all other options fallback to not running = idle
-    #     return False
-
     @property
     def hvac_action(self):
         """Return current HVAC action (heating, cooling, idle, off)."""
@@ -228,7 +213,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
             else:
                 return CURRENT_HVAC_IDLE
 
-    # @property
+    @property
     def is_aux_heat(self):
         """Return True if an auxiliary heater is on. Requires SUPPORT_AUX_HEAT."""
         if self.has_state('stato_boost on/off'):
@@ -320,10 +305,10 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 "Vimar Climate resetting target temperature: %s", self.target_temperature)
 
             if self.climate_type == 'heat_cool':
-                self.change_state('funzionamento', set_function_mode, 'stagione', set_hvac_mode, 'setpoint', self.target_temperature)
+                self.change_state('funzionamento', set_function_mode, 'setpoint', self.target_temperature, 'stagione', set_hvac_mode)
             elif self.climate_type == 'heat_cool_fancoil':
                 # stato_principale_condizionamento and stato_principale_riscaldamento are results not states - i think
-                self.change_state('funzionamento', set_function_mode, 'regolazione', set_hvac_mode, 'setpoint', self.target_temperature)
+                self.change_state('funzionamento', set_function_mode, 'setpoint', self.target_temperature, 'regolazione', set_hvac_mode)
 
             # elif self.has_state('stato_principale_condizionamento on/off'):
             #     if hvac_mode == HVAC_MODE_COOL:
@@ -349,7 +334,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
             self.change_state('funzionamento', set_function_mode)
 
-    async def async_set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
         set_temperature = kwargs.get(ATTR_TEMPERATURE)
         if set_temperature is None:
