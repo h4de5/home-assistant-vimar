@@ -64,12 +64,16 @@ class VimarSensor(VimarEntity, Entity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         class_and_unit = self.class_and_units()
+        _LOGGER.warning("DEBUG units for %s %s %s", self._device["object_type"], self._measurement_name, class_and_unit[0]);
+
         return class_and_unit[0]
 
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         class_and_unit = self.class_and_units()
+        _LOGGER.warning("DEBUG class for %s %s %s", self._device["object_type"], self._measurement_name, class_and_unit[1]);
+
         return class_and_unit[1]
 
     def class_and_units(self):
