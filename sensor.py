@@ -70,7 +70,7 @@ class VimarSensor(VimarEntity, Entity):
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         class_and_unit = self.class_and_units()
-        return class_and_unit[0]
+        return class_and_unit[1]
 
     def class_and_units(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
