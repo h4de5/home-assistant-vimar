@@ -4,7 +4,10 @@
 import logging
 # from datetime import timedelta
 from homeassistant.const import (
-    POWER_KILO_WATT, ENERGY_KILO_WATT_HOUR, TEMP_CELSIUS, SPEED_METERS_PER_SECOND)
+    POWER_KILO_WATT, ENERGY_KILO_WATT_HOUR, TEMP_CELSIUS, SPEED_METERS_PER_SECOND, VOLT,
+    DEVICE_CLASS_ENERGY, DEVICE_CLASS_CURRENT, DEVICE_CLASS_TIMESTAMP, DEVICE_CLASS_POWER,
+    DEVICE_CLASS_TEMPERATURE, DEVICE_CLASS_ILLUMINANCE)
+
 from homeassistant.helpers.entity import Entity
 from .const import DOMAIN
 from .vimar_entity import (VimarEntity, vimar_setup_platform)
@@ -60,22 +63,37 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
+        class_and_unit = self.class_and_units()
+        return class_and_unit[0]
+
+    @property
+    def device_class(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        class_and_unit = self.class_and_units()
+        return class_and_unit[0]
+
+    def class_and_units(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
         if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
-            if any(x in self._measurement_name for x in ['energia_']):
-                return ENERGY_KILO_WATT_HOUR
+            if any(x in self._measurement_name for x in ['_energia']):
+                return [ENERGY_KILO_WATT_HOUR, DEVICE_CLASS_ENERGY]
+            elif any(x in self._measurement_name for x in ['_fase']):
+                return [VOLT, DEVICE_CLASS_CURRENT]
+            elif any(x in self._measurement_name for x in ['_date', '_time', '_datetime']):
+                return ['', DEVICE_CLASS_TIMESTAMP]
             else:
-                return POWER_KILO_WATT
+                return [POWER_KILO_WATT, DEVICE_CLASS_POWER]
         elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(x in self._measurement_name for x in ['temperature']):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
-            return TEMP_CELSIUS
+            return [TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE]
         elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(x in self._measurement_name for x in ['wind_speed']):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
-            return SPEED_METERS_PER_SECOND
+            return [SPEED_METERS_PER_SECOND, self._device['device_class']]
         elif any(x in self._measurement_name for x in ['brightness']):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
-            return "lm"
+            return ["lm", DEVICE_CLASS_ILLUMINANCE]
         else:
-            return None
+            return [None, self._device['device_class']]
 
         # ‘its_night’: {‘status_id’: ‘3369’, ‘status_value’: ‘1’, ‘status_range’: ‘’},
         # ‘its_raining’: {‘status_id’: ‘3371’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
