@@ -4,20 +4,20 @@
 import logging
 # from datetime import timedelta
 from homeassistant.const import (
-    POWER_KILO_WATT, TEMP_CELSIUS, SPEED_METERS_PER_SECOND)
+    POWER_KILO_WATT, ENERGY_KILO_WATT_HOUR, TEMP_CELSIUS, SPEED_METERS_PER_SECOND)
 from homeassistant.helpers.entity import Entity
 from .const import DOMAIN
 from .vimar_entity import (VimarEntity, vimar_setup_platform)
 # from . import format_name
 
+
 _LOGGER = logging.getLogger(__name__)
+
 
 # SCAN_INTERVAL = timedelta(seconds=20)
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 # PARALLEL_UPDATES = 2
-
 # see: https://developers.home-assistant.io/docs/core/entity/sensor/
-
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar sensor platform."""
@@ -61,7 +61,10 @@ class VimarSensor(VimarEntity, Entity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
-            return POWER_KILO_WATT
+            if any(x in self._measurement_name for x in ['energia_']):
+                return ENERGY_KILO_WATT_HOUR
+            else:
+                return POWER_KILO_WATT
         elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(x in self._measurement_name for x in ['temperature']):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
             return TEMP_CELSIUS
