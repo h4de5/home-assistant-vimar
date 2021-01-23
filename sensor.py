@@ -75,9 +75,9 @@ class VimarSensor(VimarEntity, Entity):
     def class_and_units(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
-            if any(x in self._measurement_name for x in ['_energia']):
+            if any(x in self._measurement_name for x in ['energia']):
                 return [ENERGY_KILO_WATT_HOUR, DEVICE_CLASS_ENERGY]
-            elif any(x in self._measurement_name for x in ['_fase']):
+            elif any(x in self._measurement_name for x in ['fase']):
                 return [VOLT, DEVICE_CLASS_CURRENT]
             elif any(x in self._measurement_name for x in ['_date', '_time', '_datetime']):
                 return ['', DEVICE_CLASS_TIMESTAMP]
