@@ -19,6 +19,7 @@ from .const import (
     CONF_SCHEMA,
     CONF_CERTIFICATE,
     CONF_GLOBAL_CHANNEL_ID,
+    CONF_IGNORE_PLATFORM,
     DEFAULT_USERNAME,
     DEFAULT_SCHEMA,
     DEFAULT_PORT,
@@ -46,7 +47,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
         vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
         vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
-        vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999)
+        vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999),
+        vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(cv.ensure_list, [cv.string])
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -69,33 +71,11 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     devices = {}
     vimarconfig = config[DOMAIN]
 
-    # schema = vimarconfig.get(CONF_SCHEMA)
-    # host = vimarconfig.get(CONF_HOST)
-    # port = vimarconfig.get(CONF_PORT)
-    # username = vimarconfig.get(CONF_USERNAME)
-    # password = vimarconfig.get(CONF_PASSWORD)
-    # certificate = vimarconfig.get(CONF_CERTIFICATE)
-    # timeout = vimarconfig.get(CONF_TIMEOUT)
-    # global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
-
-    # # initialize a new VimarLink object
-    # vimarconnection = VimarLink(
-    #     schema, host, port, username, password, certificate, timeout)
-
-    # # will hold all the devices and their states
-    # vimarproject = VimarProject(vimarconnection)
-
-    # if global_channel_id is not None:
-    #     vimarproject.global_channel_id = global_channel_id
-
     vimarproject, vimarconnection = await _validate_vimar_credentials(hass, vimarconfig)
 
-    # done, pending = await asyncio.wait(
-    # [vimarproject, vimarconnection],
-    # return_when=asyncio.FIRST_COMPLETED)
-
     # save vimar connection into hass data to share it with other platforms
-    hass.data[DOMAIN] = {}
+    hass.data.setdefault(DOMAIN, {})
+    # hass.data[DOMAIN] = {}
     hass.data[DOMAIN]["connection"] = vimarconnection
     hass.data[DOMAIN]["project"] = vimarproject
 
@@ -135,9 +115,9 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     # initial refresh of all devices - replaces fetch of main groups and room devices
     # also fetches the initial states
-    _LOGGER.debug("calling refresh..")
+    # _LOGGER.debug("calling refresh..")
     await coordinator.async_refresh()
-    _LOGGER.debug("done refresh")
+    # _LOGGER.debug("done refresh")
 
     devices = coordinator.data
 
@@ -150,12 +130,17 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     # according to: https://github.com/home-assistant/core/blob/83d4e5bbb734f77701073710beb74dd6b524195e/homeassistant/helpers/discovery.py#L131
     # https://github.com/home-assistant/core/blob/dev/homeassistant/components/hive/__init__.py#L143
 
+    ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
+
     for device_type, platform in AVAILABLE_PLATFORMS.items():
-        device_count = vimarproject.platform_exists(device_type)
-        if device_count:
-            _LOGGER.debug("load platform %s with %d %s", platform, device_count, device_type)
-            hass.async_create_task(hass.helpers.discovery.async_load_platform(
-                platform, DOMAIN, {"hass_data_key": device_type}, config))
+        if (not ignored_platforms or not platform in ignored_platforms):
+            device_count = vimarproject.platform_exists(device_type)
+            if device_count:
+                _LOGGER.debug("load platform %s with %d %s", platform, device_count, device_type)
+                hass.async_create_task(hass.helpers.discovery.async_load_platform(
+                    platform, DOMAIN, {"hass_data_key": device_type}, config))
+        else:
+            _LOGGER.warning('ignore platform: %s', platform)
 
     # States are in the format DOMAIN.OBJECT_ID.
     # hass.states.async_set("vimar_platform.Hello_World", "Works!")
@@ -165,6 +150,20 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     # Return boolean to indicate that initialization was successfully.
     return True
+
+
+# async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+#     """Set up vimar from a config entry."""
+#     hass.data[DOMAIN][entry.entry_id] = hub.Hub(hass, entry.data["host"])
+
+#     # This creates each HA object for each platform your device requires.
+#     # It's done by calling the `async_setup_entry` function in each platform module.
+#     for component in PLATFORMS:
+#         hass.async_create_task(
+#             hass.config_entries.async_forward_entry_setup(entry, component)
+#         )
+
+#     return True
 
 
 async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: ConfigType) -> [VimarProject, VimarLink]:
@@ -181,6 +180,7 @@ async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: Conf
     certificate = vimarconfig.get(CONF_CERTIFICATE)
     timeout = vimarconfig.get(CONF_TIMEOUT)
     global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
+    # ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
 
     # initialize a new VimarLink object
     vimarconnection = VimarLink(

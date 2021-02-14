@@ -83,7 +83,34 @@ it possible to connect to the webserver via http as well. While it may be necess
       schema: http
       port: 80
 
-`username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file there, the integration will download the current CA certificate from the local vimar webserver and save it under the given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and trasmittion of data to the webserver (default 6 seconds)
+#### existing CA certificate
+
+You can manualy download the CA certificate from the webserver (see settings > network) and place it in the home-assistants directory. If the file does not exist on the given filename, the integration will try to download and place it there. (Advanced usage: If you have placed your webserver behind a reverse proxy you may need to place whatever CA certificate you used to generate your proxy servers certificate.)
+
+    vimar_platform:
+      username: your-login-user
+      password: your-login-password
+      host: IP-OR-HOSTNAME
+      certificate: rootCA.VIMAR.crt
+
+#### ignore platforms
+
+You can ignore certain platforms that should not be added to home-assistant. Just list those platforms you want to ignore in the configuration:
+
+    vimar_platform:
+      username: your-login-user
+      password: your-login-password
+      host: IP-OR-HOSTNAME
+      ignore:
+        - light
+        - switch
+        - cover
+        - climate
+        - sensor
+        - media_player
+        - scene
+
+`username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file found, the integration will download the current CA certificate from the local vimar webserver and save it under that given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and transmition of data to the webserver (default 6 seconds). if only some platforms should be added to home-assistant you list them in the `ignore` area.
 
 The hostname or the IP has to match the settings screen on the vimar web server:
 

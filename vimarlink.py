@@ -211,7 +211,7 @@ class VimarLink():
 
     def get_optionals_param(self, state):
         """Return SYNCDB for climates states."""
-        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione', 'channel', 'source', 'global_channel']):
+        if (state in ['setpoint', 'stagione', 'unita', 'centralizzato', 'funzionamento', 'temporizzazione', 'channel', 'source', 'global_channel']):
             return 'SYNCDB'
         else:
             return 'NO-OPTIONALS'
@@ -693,7 +693,7 @@ class VimarProject():
                 icon = ["mdi:power-plug", "mdi:power-plug-off"]
             # elif device["object_name"].find("HEIZUNG") != -1:
             # elif "HEIZUNG" in device["object_name"].upper():
-            elif any(x in device["object_name"].upper() for x in ["HEIZUNG"]):
+            elif any(x in device["object_name"].upper() for x in ["HEIZUNG", "HEIZKÖRPER"]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:radiator", "mdi:radiator-off"]
