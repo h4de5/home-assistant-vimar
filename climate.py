@@ -289,50 +289,54 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
+
+        set_function_mode = None
+
         if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
 
             # if heating or cooling is pressed, got to automode
             set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
             set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[hvac_mode == HVAC_MODE_COOL]
 
+            _LOGGER.info(
+                "Vimar Climate setting setup mode to heat/cool: %s", set_function_mode)
+
             # DONE - get current set_temperatur and set it again
-
-            _LOGGER.info(
-                "Vimar Climate setting setup mode to auto: %s", set_function_mode)
-            _LOGGER.info(
-                "Vimar Climate setting hvac_mode: %s", set_hvac_mode)
-            _LOGGER.info(
-                "Vimar Climate resetting target temperature: %s", self.target_temperature)
-
-            if self.climate_type == 'heat_cool':
-                self.change_state('funzionamento', set_function_mode, 'setpoint', self.target_temperature, 'stagione', set_hvac_mode)
-            elif self.climate_type == 'heat_cool_fancoil':
-                # stato_principale_condizionamento and stato_principale_riscaldamento are results not states - i think
-                self.change_state('funzionamento', set_function_mode, 'setpoint', self.target_temperature, 'regolazione', set_hvac_mode)
-
-            # elif self.has_state('stato_principale_condizionamento on/off'):
-            #     if hvac_mode == HVAC_MODE_COOL:
-            #         self.change_state('funzionamento', set_function_mode, 'setpoint', self.target_temperature, 'stato_principale_condizionamento on/off', '1')
-            #     elif hvac_mode == VIMAR_CLIMATE_HEAT:
-            #         self.change_state('funzionamento', set_function_mode, 'setpoint', self.target_temperature, 'stato_principale_condizionamento on/off', '0')
-            # else:
-            #     self.change_state('funzionamento', set_function_mode, 'setpoint')
 
         elif hvac_mode in [HVAC_MODE_AUTO]:
             set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
 
+            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[self.hvac_mode == HVAC_MODE_COOL]
+
             _LOGGER.info(
                 "Vimar Climate setting setup mode to auto: %s", set_function_mode)
             # we only clear manual mode - no further settings
-            self.change_state('funzionamento', set_function_mode)
+            # self.change_state('funzionamento', set_function_mode)
 
         elif hvac_mode in [HVAC_MODE_OFF]:
             set_function_mode = self.get_const_value(VIMAR_CLIMATE_OFF)
 
+            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[self.hvac_mode == HVAC_MODE_COOL]
+
             _LOGGER.info(
                 "Vimar Climate setting setup mode to off: %s", set_function_mode)
+            # self.change_state('funzionamento', set_function_mode)
 
-            self.change_state('funzionamento', set_function_mode)
+        _LOGGER.info(
+            "Vimar Climate setting hvac_mode: %s", set_hvac_mode)
+        _LOGGER.info(
+            "Vimar Climate resetting target temperature: %s", self.target_temperature)
+
+        if self.climate_type == 'heat_cool':
+            self.change_state('funzionamento', set_function_mode, 'stagione', set_hvac_mode, 'setpoint', self.target_temperature)
+        elif self.climate_type == 'heat_cool_fancoil':
+            self.change_state('funzionamento', set_function_mode, 'regolazione', set_hvac_mode, 'setpoint', self.target_temperature)
+
+        # if self.climate_type == 'heat_cool':
+        #     self.change_state('setpoint', str(self.target_temperature), 'unita', self.get_state('unita'), 'stagione', set_hvac_mode, 'centralizzato', '1', 'funzionamento', set_function_mode)
+        # elif self.climate_type == 'heat_cool_fancoil':
+        #     # stato_principale_condizionamento and stato_principale_riscaldamento are results not states - i think
+        #     self.change_state('setpoint', str(self.target_temperature), 'unita', self.get_state('unita'), 'regolazione', set_hvac_mode, 'funzionamento', set_function_mode)
 
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
@@ -348,11 +352,18 @@ class VimarClimate(VimarEntity, ClimateEntity):
         # if temperatur is set, always fall back to manual mode
         set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
 
+        set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[self.hvac_mode == HVAC_MODE_COOL]
+
         _LOGGER.info("Vimar Climate setting target temperature: %s", str(set_temperature))
         _LOGGER.info(
             "Vimar Climate setting setup mode to manual: %s", set_function_mode)
 
-        self.change_state('funzionamento', set_function_mode, 'setpoint', set_temperature)
+        if self.climate_type == 'heat_cool':
+            self.change_state('setpoint', str(set_temperature), 'unita', self.get_state('unita'), 'stagione', set_hvac_mode, 'centralizzato', '1', 'funzionamento', set_function_mode)
+        elif self.climate_type == 'heat_cool_fancoil':
+            # stato_principale_condizionamento and stato_principale_riscaldamento are results not states - i think
+            self.change_state('setpoint', str(set_temperature), 'unita', self.get_state('unita'), 'regolazione', set_hvac_mode, 'funzionamento', set_function_mode)
+        # self.change_state('funzionamento', set_function_mode, 'setpoint', set_temperature)
 
     # helper
 

@@ -32,7 +32,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     vimar_setup_platform(VimarMediaplayer, hass, async_add_entities, discovery_info)
 
 
-
 class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     """Provide Vimar media player."""
 
