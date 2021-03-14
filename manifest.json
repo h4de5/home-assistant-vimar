@@ -6,5 +6,5 @@
 	"config_flow": false,
 	"codeowners": ["@h4de5"],
 	"requirements": ["requests"],
-	"version": "2021.3.0",
+	"version": "2021.3.0"
 }
