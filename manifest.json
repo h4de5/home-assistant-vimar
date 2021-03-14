@@ -5,5 +5,6 @@
 	"dependencies": [],
 	"config_flow": false,
 	"codeowners": ["@h4de5"],
-	"requirements": ["requests"]
+	"requirements": ["requests"],
+	"version": "2021.3.0",
 }
