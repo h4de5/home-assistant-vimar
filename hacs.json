@@ -1,0 +1,10 @@
+{
+  "name": "VIMAR Hub",
+  "content_in_root": true,
+  "render_readme": true,
+  "country": "NO",
+  "domains": ["automation", "media_player", "cover", "fan", "input_boolean", "light", "scene", "binary_sensor", "sensor", "switch"],
+  "homeassistant": "0.99.9",
+  "persistent_directory": "userfiles",
+  "iot_class": ["Assumed State", "Local Polling", "Local Push"]  
+}

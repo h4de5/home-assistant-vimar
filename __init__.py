@@ -20,6 +20,7 @@ from .const import (
     CONF_CERTIFICATE,
     CONF_GLOBAL_CHANNEL_ID,
     CONF_IGNORE_PLATFORM,
+    CONF_OVERRIDE,
     DEFAULT_USERNAME,
     DEFAULT_SCHEMA,
     DEFAULT_PORT,
@@ -48,7 +49,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
         vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
         vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999),
-        vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(cv.ensure_list, [cv.string])
+        vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(CONF_OVERRIDE, default=[]): cv.ensure_list
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -181,13 +183,15 @@ async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: Conf
     timeout = vimarconfig.get(CONF_TIMEOUT)
     global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
     # ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
+    #spunto per override: https://github.com/teharris1/insteon2/blob/master/__init__.py        
+    device_overrides = vimarconfig.get(CONF_OVERRIDE, [])
 
     # initialize a new VimarLink object
     vimarconnection = VimarLink(
         schema, host, port, username, password, certificate, timeout)
 
     # will hold all the devices and their states
-    vimarproject = VimarProject(vimarconnection)
+    vimarproject = VimarProject(vimarconnection, device_overrides)
 
     if global_channel_id is not None:
         vimarproject.global_channel_id = global_channel_id

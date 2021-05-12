@@ -14,6 +14,9 @@ DEFAULT_PORT = 443
 DEFAULT_CERTIFICATE = "rootCA.VIMAR.crt"
 DEFAULT_TIMEOUT = 6
 
+# Device overrides
+CONF_OVERRIDE = "device_override"
+
 # vimar integration specific const
 
 DEVICE_TYPE_LIGHTS = "lights"

@@ -109,6 +109,31 @@ You can ignore certain platforms that should not be added to home-assistant. Jus
         - sensor
         - media_player
         - scene
+		
+#### entities customization
+
+You can override entities attribute:
+filter_vimar_name is the filter for match entity.
+In this example, i use object_name_as_vimar for all entities, i prefer a original name without custom formatter.
+After, i change a entity 'Cancello' as switches, default is readed as lights.
+you can override device_type, device_class, icon.
+
+    vimar_platform:
+      username: your-login-user
+      password: your-login-password
+      host: IP-OR-HOSTNAME
+      device_override:
+        - filter_vimar_name: '*'
+          object_name_as_vimar: true
+        - filter_vimar_name: Cancello
+          device_type: switches
+          #device_class: garage
+          #icon: ''
+          #icon: 
+		  # - mdi:toggle-switch
+		  # - mdi:toggle-switch-off
+          icon: mdi:garage-open,mdi:garage
+
 
 `username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file found, the integration will download the current CA certificate from the local vimar webserver and save it under that given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and transmition of data to the webserver (default 6 seconds). if only some platforms should be added to home-assistant you list them in the `ignore` area.
 
