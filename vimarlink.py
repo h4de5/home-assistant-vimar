@@ -670,7 +670,7 @@ class VimarProject():
         """Split up devices into supported groups based on their names."""
         device_type = DEVICE_TYPE_OTHERS
         device_class = None
-        icon = "mdi:home-assistant"        
+        icon = "mdi:home-assistant"
 
         if device["object_type"] == "CH_Main_Automation":
             # if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
@@ -845,27 +845,29 @@ class VimarProject():
                 "Unknown object has states: "
                 + str(device["status"]))
 
-                
         vimar_name = device["object_name"]
         # TODO - make format name configurable
         object_name = self.format_name(device["object_name"])
-                
-        #_LOGGER.debug("Object returned from web server: " + device["object_type"] + " / " + device["object_name"])
-        #_LOGGER.debug("Object has states: " + str(device["status"]))
-        
-        for device_override in self._device_overrides:            
+
+        # _LOGGER.debug("Object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+        # _LOGGER.debug("Object has states: " + str(device["status"]))
+
+        for device_override in self._device_overrides:
             filter = device_override.get("filter_vimar_name", "").upper()
             match = filter == '*' or vimar_name.upper() == filter
-            #_LOGGER.debug("Overriding: filter: '" + filter + "' - vimar_name: '" + vimar_name + "' - Match: " + str(match))
+            # _LOGGER.debug("Overriding: filter: '" + filter + "' - vimar_name: '" + vimar_name + "' - Match: " + str(match))
             if not match:
                 continue
             if device_override.get("object_name_as_vimar"):
-                object_name = vimar_name.title().strip()            
+                object_name = vimar_name.title().strip()
             if device_override.get("device_type", device_type) != device_type:
-                _LOGGER.debug("Overriding device_type: object_name: '" + object_name + "' - device_type: '" + str(device_type) + "' -> '" + str(device_override.get("device_type")) + "'" )
+                _LOGGER.debug("Overriding device_type: object_name: '" + object_name + "' - device_type: '"
+                              + str(device_type) + "' -> '" + str(device_override.get("device_type")) + "'")
                 device_type = str(device_override.get("device_type"))
             if device_override.get("device_class", device_class) != device_class:
-                _LOGGER.debug("Overriding device_class: object_name: '" + object_name + "' - device_class: '" + str(device_class) + "' -> '" + str(device_override.get("device_class")) + "'" )
+                _LOGGER.debug("Overriding device_class: object_name: '" + object_name + "' - device_class: '"
+                              + str(device_class) + "' -> '"
+                              + str(device_override.get("device_class")) + "'")
                 device_class = str(device_override.get("device_class"))
             if device_override.get("icon") is not None:
                 oldIcon = icon
@@ -875,14 +877,15 @@ class VimarProject():
                 if isinstance(icon, str) and icon == "":
                     icon = None
                 if not str(icon) == str(oldIcon):
-                    _LOGGER.debug("Overriding icon: object_name: '" + object_name + "' - icon: '" + str(oldIcon) + "' -> '" + str(icon) + "'")
-                
+                    _LOGGER.debug("Overriding icon: object_name: '" + object_name
+                                  + "' - icon: '" + str(oldIcon) + "' -> '"
+                                  + str(icon) + "'")
 
         device["device_type"] = device_type
         device["device_class"] = device_class
         device["icon"] = icon
         device["object_name"] = object_name
-        
+
         if device_type in self._platforms_exists:
             self._platforms_exists[device_type] += 1
         else:
