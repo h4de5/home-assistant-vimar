@@ -1,7 +1,7 @@
 """Constant for Vimar component."""
 
 # Home-Assistant specific consts
-DOMAIN = "vimar_platform"
+DOMAIN = "vimar"
 
 CONF_SCHEMA = "schema"
 CONF_CERTIFICATE = "certificate"
