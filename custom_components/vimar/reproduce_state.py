@@ -1,4 +1,3 @@
-import asyncio
 from typing import Iterable, Optional
 from homeassistant.core import Context, State
 from homeassistant.helpers.typing import HomeAssistantType

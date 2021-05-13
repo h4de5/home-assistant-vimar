@@ -6,6 +6,22 @@ This is an integration of the VIMAR bus system into the home-assistant environme
 <img title="Energy guards" src="https://user-images.githubusercontent.com/51525150/89122026-3a005400-d4c4-11ea-98cd-c4b340cfb4c2.jpg" width="600">
 <img title="Audio player" src="https://user-images.githubusercontent.com/51525150/89122129-36b99800-d4c5-11ea-8089-18c2dcab0938.jpg" width="300">
 
+## WARNING - BEFORE YOU UPGRADE
+
+If you upgrade from a version earlier of May 2021 - please be aware:
+The integration name has changed from `vimar_platform` to `vimar` - this requires changes in your configuration and it may effect your current dashboards as well.
+In order to keep all dashboard layouts, automations and groups intact, you may want to follow this upgrade guide:
+
+- DO NOT update the files in your `custom_components` directory right away
+- stop home-assistant
+- find and backup the file: `.storage/core.entity_registry` within your home-assistant config directory
+- open that file in a proper text-editor
+- replace all `vimar_platform` occurrences to `vimar` (only replace with that exact notation)
+- save that file in it's original place
+- open your configuration.yaml and replace `vimar_platform:` with `vimar:` as well
+- remove the directory `custom_components/vimar_platform/` and checkout the source under `custom_components/vimar/`
+- start up home-assistant again
+
 ## Vimar requirements
 
 Hardware:
@@ -13,7 +29,7 @@ Hardware:
 
 Software:
 [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
-I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
+I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
 
 ## home-assistant requirements
 
@@ -21,19 +37,14 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
 
 ### installation
 
-1. locate the path to your home-assistant configuration (usually the place that holds your configuration.yaml)
-2. create the following directory within your home-assistant config folder:
-   `mkdir custom_components`
-3. go there
-   `cd custom_components`
-4. clone this repository
-   `git clone https://github.com/h4de5/home-assistant-vimar.git vimar_platform`
+- Use [HACS](https://hacs.xyz/) !
+- Otherwise, download the zip from the latest release and copy `vimar` folder inside your custom_components folder.
 
 You will end up with something like this:
 
-- on docker/hassio: `/config/custom_components/vimar_platform/`
+- on docker/hassio: `/config/custom_components/vimar/`
 
-- on hassbian/virtualenv: `/home/homeassistant/.homeassistant/custom_components/vimar_platform/`
+- on hassbian/virtualenv: `/home/homeassistant/.homeassistant/custom_components/vimar/`
 
 ### configuration
 
@@ -43,7 +54,7 @@ example configuration to put into `configuration.yaml`:
 
 this will try to connect to your webserver using https, will save the webservers CA certificate in your home-assistants config folder
 
-    vimar_platform:
+    vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
@@ -52,7 +63,7 @@ this will try to connect to your webserver using https, will save the webservers
 
 You can manualy download the CA certificate from the webserver (see settings > network) and place it in the home-assistants directory. If the file does not exist on the given filename, the integration will try to download and place it there. (Advanced usage: If you have placed your webserver behind a reverse proxy you may need to place whatever CA certificate you used to generate your proxy servers certificate.)
 
-    vimar_platform:
+    vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
@@ -66,7 +77,7 @@ if the above settings do not work for you and you keep getting errors like
 
 you can try to force ignoring any ssl errors during communicating to the webserver by keeping the path to the certificate empty.
 
-    vimar_platform:
+    vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
@@ -76,7 +87,7 @@ you can try to force ignoring any ssl errors during communicating to the webserv
 
 it possible to connect to the webserver via http as well. While it may be necessary for some setups, a direct connection to the webserver via http will not be possible, as the login process will always forward requests to https.
 
-    vimar_platform:
+    vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
@@ -87,7 +98,7 @@ it possible to connect to the webserver via http as well. While it may be necess
 
 You can manualy download the CA certificate from the webserver (see settings > network) and place it in the home-assistants directory. If the file does not exist on the given filename, the integration will try to download and place it there. (Advanced usage: If you have placed your webserver behind a reverse proxy you may need to place whatever CA certificate you used to generate your proxy servers certificate.)
 
-    vimar_platform:
+    vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
@@ -97,7 +108,7 @@ You can manualy download the CA certificate from the webserver (see settings > n
 
 You can ignore certain platforms that should not be added to home-assistant. Just list those platforms you want to ignore in the configuration:
 
-    vimar_platform:
+    vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
@@ -109,7 +120,7 @@ You can ignore certain platforms that should not be added to home-assistant. Jus
         - sensor
         - media_player
         - scene
-		
+
 #### entities customization
 
 You can override entities attribute:
@@ -118,7 +129,7 @@ In this example, i use object_name_as_vimar for all entities, i prefer a origina
 After, i change a entity 'Cancello' as switches, default is readed as lights.
 you can override device_type, device_class, icon.
 
-    vimar_platform:
+    vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
@@ -129,11 +140,10 @@ you can override device_type, device_class, icon.
           device_type: switches
           #device_class: garage
           #icon: ''
-          #icon: 
-		  # - mdi:toggle-switch
-		  # - mdi:toggle-switch-off
+          #icon:
+    	  # - mdi:toggle-switch
+    	  # - mdi:toggle-switch-off
           icon: mdi:garage-open,mdi:garage
-
 
 `username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file found, the integration will download the current CA certificate from the local vimar webserver and save it under that given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and transmition of data to the webserver (default 6 seconds). if only some platforms should be added to home-assistant you list them in the `ignore` area.
 
@@ -153,32 +163,32 @@ If you want to help see some examples of how to read out data for new devies in 
 
 **When you install, update or uninstall the integration, you need to restart Home Assistant.**
 
-Enable more logging for vimar_platform - add to your `configuration.yaml`:
+Enable more logging for vimar - add to your `configuration.yaml`:
 
     logger:
       default: warning
       logs:
-        custom_components.vimar_platform: debug
+        custom_components.vimar: debug
 
 have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where your `configuration.yaml` is located.
 
-      WARNING (MainThread) [homeassistant.loader] You are using a custom integration for vimar_platform which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant.
+      WARNING (MainThread) [homeassistant.loader] You are using a custom integration for vimar which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant.
 
 > the Vimar platform code and the configuration was found. The warning is been shown for all custom components. This is GOOD!
 
-      ERROR (MainThread) [custom_components.vimar_platform] Could not connect to Vimar Webserver home-assistant
+      ERROR (MainThread) [custom_components.vimar] Could not connect to Vimar Webserver home-assistant
 
 > Vimar By-me Webserver was not found under the given address.
 
-      ERROR (MainThread) [homeassistant.setup] Setup failed for vimar_platform: Integration not found
+      ERROR (MainThread) [homeassistant.setup] Setup failed for vimar: Integration not found
 
 > You have put the content of this repository into the wrong directory - see above for an example.
 
-      ERROR (SyncWorker_4) [custom_components.vimar_platform.vimarlink] Other error occurred: SSLError(MaxRetryError('HTTPSConnectionPool(host='***', port=443): Max retries exceeded with url: /vimarbyweb/modules/system/user_login.php?sessionid=&username=***&password=***&remember=0&op=login (Caused by SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")))'))
+      ERROR (SyncWorker_4) [custom_components.vimar.vimarlink] Other error occurred: SSLError(MaxRetryError('HTTPSConnectionPool(host='***', port=443): Max retries exceeded with url: /vimarbyweb/modules/system/user_login.php?sessionid=&username=***&password=***&remember=0&op=login (Caused by SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")))'))
 
 > There seems to a problem with the SSL connection. Try if it works with the config setting `certificate: ` (empty certificate option)
 
-      ERROR (SyncWorker_5) [custom_components.vimar_platform.vimarlink] Error parsing XML: TypeError("a bytes-like object is required, not 'bool'")
+      ERROR (SyncWorker_5) [custom_components.vimar.vimarlink] Error parsing XML: TypeError("a bytes-like object is required, not 'bool'")
 
 > This message paired with a web server that needs manual restarting: You may have too many devices connected to the installation. I am currently working on a fix. Latest version will simple limit it to 300 devices (and status attributes of those devices)
 

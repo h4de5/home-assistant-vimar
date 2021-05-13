@@ -6,7 +6,7 @@
   "dependencies": [],
   "config_flow": false,
   "codeowners": ["@h4de5"],
-  "requirements": ["requests"],
-  "version": "2021.3.0",
+  "requirements": ["asyncio", "xml"],
+  "version": "2021.5.0",
   "iot_class": "local_polling"
 }

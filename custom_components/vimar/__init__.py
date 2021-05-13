@@ -145,7 +145,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             _LOGGER.warning('ignore platform: %s', platform)
 
     # States are in the format DOMAIN.OBJECT_ID.
-    # hass.states.async_set("vimar_platform.Hello_World", "Works!")
+    # hass.states.async_set("vimar.Hello_World", "Works!")
 
     # Use `listen_platform` to register a callback for these events.
     # homeassistant.helpers.discovery.async_load_platform(hass, component, platform, discovered, hass_config)
@@ -183,7 +183,7 @@ async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: Conf
     timeout = vimarconfig.get(CONF_TIMEOUT)
     global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
     # ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
-    #spunto per override: https://github.com/teharris1/insteon2/blob/master/__init__.py        
+    #spunto per override: https://github.com/teharris1/insteon2/blob/master/__init__.py
     device_overrides = vimarconfig.get(CONF_OVERRIDE, [])
 
     # initialize a new VimarLink object
