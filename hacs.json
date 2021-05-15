@@ -3,10 +3,8 @@
   "content_in_root": false,
   "render_readme": true,
   "domains": [
-    "automation",
     "media_player",
     "cover",
-    "fan",
     "input_boolean",
     "light",
     "scene",
