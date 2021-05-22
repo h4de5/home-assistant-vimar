@@ -76,14 +76,13 @@ jobs:
           type: zip
           
       - name: Create release
-        # You may pin to the exact commit or the version.
-        # uses: meeDamian/github-release@7ae19492500104f636b3fee4d8103af0fed36c8e
+        if: ${{ steps.read_property.outputs.value != steps.get_latest_release.outputs.name }}
         uses: meeDamian/github-release@v2.0.3
         with:
           # Github API token to be used. Quite unavoidable, I'm afraid.
           token: ${{ secrets.GITHUB_TOKEN }}
           # A tag for the release. Required UNLESS action is run on tag push (meaning: '$GITHUB_REF' contains 'ref/tag/<TAG>').
-          tag: v${{ steps.read_property.outputs.value }}
+          tag: ${{ steps.read_property.outputs.value }}
           # Unnecessary, if the tag provided is a git tag. If it isn't, release will be created off 'master'.
           # commitish: # optional
           # Name the release, the more creative, the better.
