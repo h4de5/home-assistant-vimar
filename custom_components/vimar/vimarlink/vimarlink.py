@@ -109,9 +109,9 @@ class VimarLink():
             temp_certificate = self._certificate
             self._certificate = None
 
-            temp_certificate = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
+            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
                 VimarLink._schema, VimarLink._host, VimarLink._port)
-            certificate_file = self._request(temp_certificate)
+            certificate_file = self._request(downloadPath)
 
             if certificate_file is None:
                 raise VimarConnectionError("Certificate download failed")
@@ -142,8 +142,11 @@ class VimarLink():
         if result is not None:
             try:
                 xml = self._parse_xml(result)
-                logincode = xml.find('result')
-                loginmessage = xml.find('message')
+                if(xml):
+                    logincode = xml.find('result')
+                    loginmessage = xml.find('message')
+                else:
+                    raise Exception("Login failed - check username, password and certificate path")
             except BaseException as err:
                 raise VimarConnectionError("Error parsing login response: %s - %s", err, str(result))
 
@@ -508,8 +511,9 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         except BaseException as err:
             # exc_type, exc_obj, exc_tb = sys.exc_info()
             _, _, exc_tb = sys.exc_info()
-            raise VimarConnectionError(
-                "Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
+            _LOGGER.error("Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
+            # raise VimarConnectionError(
+            #     "Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
 
         return return_list
 
@@ -619,7 +623,7 @@ class VimarProject():
     #   'device_type': str (mapped type: lights, switches, climates, covers, sensors)
     #   'device_class': str (mapped class, based on name or attributes: fan, outlet, window, power)
 
-    def __init__(self, link: VimarLink, device_overrides):
+    def __init__(self, link: VimarLink, device_overrides=[]):
         """Create new container to hold all states."""
         self._link = link
         self._device_overrides = device_overrides

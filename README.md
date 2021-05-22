@@ -158,6 +158,21 @@ The hostname or the IP has to match the settings screen on the vimar web server:
 
 The integration can currently list and control all lights, rgb dimmers, audio devices, energie guards, covers/shades, fans, switches, climates and scenes. Other devices are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
 
+## Command line usage
+
+You can use the vimarlink library in the command line like this:
+
+```bash
+# install python3.9
+# install some requirements
+python3.9 -m pip install async_timeout homeassistant
+# see examples
+cd examples
+# edit example.py and add your credentials
+# run the example script, which will turn on and off the first light it will find
+python3.9 example.py
+```
+
 ## contribution
 
 If you want to help see some examples of how to read out data for new devies in [contribution](CONTRIBUTING.md).

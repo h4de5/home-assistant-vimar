@@ -12,7 +12,7 @@ from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from .vimarlink import (VimarLink, VimarProject, VimarApiError)
+from .vimarlink.vimarlink import (VimarLink, VimarProject, VimarApiError)
 
 from .const import (
     DOMAIN,
@@ -26,15 +26,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_CERTIFICATE,
     DEFAULT_TIMEOUT,
-    DEVICE_TYPE_LIGHTS,
-    DEVICE_TYPE_COVERS,
-    DEVICE_TYPE_SWITCHES,
-    DEVICE_TYPE_CLIMATES,
-    DEVICE_TYPE_MEDIA_PLAYERS,
-    DEVICE_TYPE_SCENES,
-    # DEVICE_TYPE_FANS,
-    DEVICE_TYPE_SENSORS,
-    # DEVICE_TYPE_OTHERS
+    AVAILABLE_PLATFORMS
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,18 +46,6 @@ CONFIG_SCHEMA = vol.Schema({
     })
 }, extra=vol.ALLOW_EXTRA)
 
-AVAILABLE_PLATFORMS = {
-    DEVICE_TYPE_LIGHTS: 'light',
-    DEVICE_TYPE_COVERS: 'cover',
-    DEVICE_TYPE_SWITCHES: 'switch',
-    DEVICE_TYPE_CLIMATES: 'climate',
-    DEVICE_TYPE_MEDIA_PLAYERS: 'media_player',
-    DEVICE_TYPE_SCENES: 'scene',
-    # DEVICE_TYPE_FANS: 'fan',
-    DEVICE_TYPE_SENSORS: 'sensor',
-    # DEVICE_TYPE_OTHERS: ''
-}
-
 
 @asyncio.coroutine
 async def async_setup(hass: HomeAssistantType, config: ConfigType):
@@ -77,7 +57,6 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     # save vimar connection into hass data to share it with other platforms
     hass.data.setdefault(DOMAIN, {})
-    # hass.data[DOMAIN] = {}
     hass.data[DOMAIN]["connection"] = vimarconnection
     hass.data[DOMAIN]["project"] = vimarproject
 
@@ -94,7 +73,6 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
             async with async_timeout.timeout(6):
-
                 return await hass.async_add_executor_job(vimarproject.update)
                 # will yield logger debug message: Finished fetching vimar data in xx seconds
 
@@ -117,9 +95,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     # initial refresh of all devices - replaces fetch of main groups and room devices
     # also fetches the initial states
-    # _LOGGER.debug("calling refresh..")
     await coordinator.async_refresh()
-    # _LOGGER.debug("done refresh")
 
     devices = coordinator.data
 
@@ -135,7 +111,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
 
     for device_type, platform in AVAILABLE_PLATFORMS.items():
-        if (not ignored_platforms or not platform in ignored_platforms):
+        if (not ignored_platforms or platform not in ignored_platforms):
             device_count = vimarproject.platform_exists(device_type)
             if device_count:
                 _LOGGER.debug("load platform %s with %d %s", platform, device_count, device_type)
@@ -170,9 +146,6 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
 async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: ConfigType) -> [VimarProject, VimarLink]:
     """Validate Vimar credential config."""
-    # vimar_config = vimarconfig.copy()
-    # del vimar_config[CONF_NAME]
-    # del vimar_config[CONF_VALIDATE]
 
     schema = vimarconfig.get(CONF_SCHEMA)
     host = vimarconfig.get(CONF_HOST)
@@ -183,7 +156,7 @@ async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: Conf
     timeout = vimarconfig.get(CONF_TIMEOUT)
     global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
     # ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
-    #spunto per override: https://github.com/teharris1/insteon2/blob/master/__init__.py
+    # spunto per override: https://github.com/teharris1/insteon2/blob/master/__init__.py
     device_overrides = vimarconfig.get(CONF_OVERRIDE, [])
 
     # initialize a new VimarLink object
@@ -226,20 +199,3 @@ async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: Conf
         raise PlatformNotReady
 
     return [vimarproject, vimarconnection]
-
-    # # profile = aws_config.get(CONF_PROFILE_NAME)
-
-    # if profile is not None:
-    #     session = aiobotocore.AioSession(profile=profile)
-    #     del aws_config[CONF_PROFILE_NAME]
-    #     if CONF_ACCESS_KEY_ID in aws_config:
-    #         del aws_config[CONF_ACCESS_KEY_ID]
-    #     if CONF_SECRET_ACCESS_KEY in aws_config:
-    #         del aws_config[CONF_SECRET_ACCESS_KEY]
-    # else:
-    #     session = aiobotocore.AioSession()
-
-    # if credential[CONF_VALIDATE]:
-    #     async with session.create_client("iam", **aws_config) as client:
-    #         await client.get_user()
-    # return session

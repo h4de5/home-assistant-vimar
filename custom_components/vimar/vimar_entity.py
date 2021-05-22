@@ -3,7 +3,7 @@ import logging
 
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.helpers.entity import Entity
-from .vimarlink import (VimarLink, VimarProject)
+from .vimarlink.vimarlink import (VimarLink, VimarProject)
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
