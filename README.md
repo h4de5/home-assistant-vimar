@@ -168,9 +168,13 @@ You can use the vimarlink library in the command line like this:
 python3.9 -m pip install async_timeout homeassistant
 # see examples
 cd examples
-# edit example.py and add your credentials
-# run the example script, which will turn on and off the first light it will find
-python3.9 example.py
+# copy credentials.cfg.dist to credentials.cfg and add your credentials
+# run the example script - print help
+python3.9 example.py -h
+# run the example script - list all lights
+python3.9 example.py --platform lights
+# run the example script - change a specific cover to open
+python3.9 example.py --platform covers --device 721 --status "up/down" --value 0
 ```
 
 ## contribution

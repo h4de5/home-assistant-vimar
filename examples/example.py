@@ -2,7 +2,8 @@
 # import async_timeout
 import os
 import sys
-import time
+import configparser
+import argparse
 
 # those imports only work in that directory
 # this will be easier to use, as soon as we have a separate python package
@@ -20,74 +21,101 @@ AVAILABLE_PLATFORMS = {
     "sensors": 'sensor',
 }
 
-# initialize credentials
-# CHANGE YOUR CREDENTIALS HERE
-schema = 'https'
-host = '192.168.0.100'
-port = 443
-username = 'admin'
-password = 'password'
-certificate = 'rootCA.VIMAR.crt'
-timeout = 5
 
-# setup link to vimar web server
-vimarconnection = VimarLink(schema, host, port, username, password, certificate, timeout)
+def main():
 
-# if certificate is not available, download it
-if os.path.isfile(certificate) is False:
-    vimarconnection.install_certificate()
+    parser = argparse.ArgumentParser(description='Command line client for controlling a vimar webserver')
+    parser.add_argument('-c', '--config', type=str, default="credentials.cfg", dest="configpath", help="Path to your credentials settings")
+    parser.add_argument('-p', '--platform', type=str, dest="platform", help="Must be one of: lights, covers, switches, climates, media_players, scenes or sensors")
+    # parser.add_argument('-l', '--list', action='store_true', dest="list", help="List all available devices found in the given platform")
+    parser.add_argument('-d', '--device', type=int, dest="device_id", help="ID of the device you want to change")
+    parser.add_argument('-s', '--status', type=str, dest="status_name", help="Status that you want to change")
+    parser.add_argument('-v', '--value', type=str, dest="target_value", help="Change status to the given value")
+    args = parser.parse_args()
 
-# initialize project
-vimarproject = VimarProject(vimarconnection)
+    if os.path.isfile("credentials.cfg") is False:
+        print("credentials not found - please rename credentials.cfg.dist to credentials.cfg and adapt the settings.")
+        exit(1)
 
-# try to login
-try:
-    valid_login = vimarconnection.check_login()
-except BaseException as err:
-    print("Login Exception: %s" % err)
-    valid_login = False
+    # read credentials from config files
+    config = configparser.ConfigParser()
+    config.read(args.configpath)
+    config.sections()
 
-if (not valid_login):
-    print("Login failed")
-    exit(1)
+    # setup link to vimar web server
+    vimarconnection = VimarLink(
+        config['webserver']['schema'],
+        config['webserver']['host'],
+        int(config['webserver']['port']),
+        config['webserver']['username'],
+        config['webserver']['password'],
+        config['webserver']['certificate'],
+        int(config['webserver']['timeout']))
 
-# load all devices and device status
-vimarproject.update()
+    # if certificate is not available, download it
+    if os.path.isfile(config['webserver']['certificate']) is False:
+        vimarconnection.install_certificate()
 
-# check all available device types
-for device_type, platform in AVAILABLE_PLATFORMS.items():
-    device_count = vimarproject.platform_exists(device_type)
-    if device_count:
-        print("load platform %s with %d %s" % (platform, device_count, device_type))
+    # initialize project
+    vimarproject = VimarProject(vimarconnection)
 
-# get all lights
-lights = vimarproject.get_by_device_type("lights")
+    # try to login
+    try:
+        valid_login = vimarconnection.check_login()
+    except BaseException as err:
+        print("Login Exception: %s" % err)
+        valid_login = False
+    if (not valid_login):
+        print("Login failed")
+        exit(1)
 
-# list all lights and their status
-for device_id, device in lights.items():
-    print(device_id, "-", device["object_name"], "available status:", list(device["status"].keys()))
+    # load all devices and device status
+    vimarproject.update()
 
-# SELECT YOUR OWN DEVICE ID FROM THE LIST ABOVE
-test_device_id = "704"
+    # check all available platforms
+    if args.platform is None:
+        for device_type, platform in AVAILABLE_PLATFORMS.items():
+            device_count = vimarproject.platform_exists(device_type)
+            if device_count:
+                print("found platform %s with %d %s" % (platform, device_count, device_type))
+        exit(0)
 
-# if the default device_id is not available turn on the first found light
-if (test_device_id not in lights):
-    test_device_id = list(lights)[0]
+    # get all devices
+    devices = vimarproject.get_by_device_type(args.platform)
 
-if ("on/off" not in lights[test_device_id]["status"]):
-    print("given device does not support 'on/off' status - available:", list(lights[test_device_id]["status"].keys()))
-    exit(1)
+    if not devices:
+        print("No devices found for platform:", args.platform)
+        exit(1)
 
-# get optionals parameter for given status name
-optionals = vimarconnection.get_optionals_param("on/off")
+    # list all available devices for given platform
+    if not args.device_id:
+        # list all lights and their status
+        for device_id, device in devices.items():
+            print(device_id, "-", device["object_name"], "available status:", list(device["status"].keys()))
+        exit(0)
 
-# change a single status to on
-print("Turn on device", test_device_id, "-", lights[test_device_id]["object_name"])
-vimarconnection.set_device_status(lights[test_device_id]["status"]["on/off"]["status_id"], '1', optionals)
+    # show single device
+    if args.device_id:
+        args.device_id = str(args.device_id)
+        # if the default device_id is not available turn on the first found light
+        if args.device_id not in devices:
+            print("No device found with id:", args.device_id, "in platform", args.platform)
+            exit(1)
 
-# wait 2 seconds
-time.sleep(2)
+        statusdict = devices.get(args.device_id)["status"]
+        print(args.device_id, "-", devices.get(args.device_id)["object_name"], "available status:", [key + ": " + value['status_value'] for key, value in statusdict.items()])
 
-# change a single status to off again
-print("Turn off device", test_device_id, "-", lights[test_device_id]["object_name"])
-vimarconnection.set_device_status(lights[test_device_id]["status"]["on/off"]["status_id"], '0', optionals)
+        if args.status_name:
+            if args.status_name not in devices[args.device_id]["status"]:
+                print("given device does not support '", args.status_name, "' status")
+                exit(1)
+
+            optionals = vimarconnection.get_optionals_param(args.status_name)
+
+            if args.target_value:
+                print("Setting", args.status_name, "to", args.target_value)
+                vimarconnection.set_device_status(statusdict[args.status_name]["status_id"], args.target_value, optionals)
+
+
+if __name__ == "__main__":
+    main()

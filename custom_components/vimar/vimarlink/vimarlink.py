@@ -312,7 +312,7 @@ ORDER BY o3.ID;""" % (object_id)
         if VimarLink._room_ids is None:
             return None
 
-        start, limit = self._sanitaze_limits(start, limit)
+        start, limit = self._sanitize_limits(start, limit)
 
         _LOGGER.debug("get_room_devices started - from %d to %d", start, start + limit)
 
@@ -341,7 +341,7 @@ LIMIT %d, %d;""" % (VimarLink._room_ids, start, limit)
         if len(devices) == 0:
             _LOGGER.debug("get_remote_devices started - from %d to %d", start, start + limit)
 
-        start, limit = self._sanitaze_limits(start, limit)
+        start, limit = self._sanitize_limits(start, limit)
 
         select = """SELECT '' AS room_ids, o2.id AS object_id, o2.name AS object_name, o2.VALUES_TYPE AS object_type,
 o2.NAME AS object_name, o2.VALUES_TYPE AS object_type,
@@ -355,7 +355,7 @@ LIMIT %d, %d;""" % (start, limit)
 
         return self._generate_device_list(select, devices)
 
-    def _sanitaze_limits(self, start: int, limit: int):
+    def _sanitize_limits(self, start: int, limit: int):
         """Check for sane values in start and limit."""
         # upper limit is hardcoded - too many results will kill webserver
         if limit is None or limit > MAX_ROWS_PER_REQUEST or limit <= 0:

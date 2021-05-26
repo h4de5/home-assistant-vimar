@@ -2,3 +2,5 @@ __pycache__
 logos/@eaDir/
 logos/Thumbs.db
 *.bac
+examples/rootCA.VIMAR.crt
+examples/credentials.cfg
