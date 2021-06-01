@@ -512,6 +512,10 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             # exc_type, exc_obj, exc_tb = sys.exc_info()
             _, _, exc_tb = sys.exc_info()
             _LOGGER.error("Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
+            # enforce relogin
+            _LOGGER.info("Start to relogin..")
+            VimarLink._session_id = None
+            self.login()
             # raise VimarConnectionError(
             #     "Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
 
