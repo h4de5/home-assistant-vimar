@@ -28,11 +28,14 @@ In order to keep all dashboard layouts, automations and groups intact, you may w
 ## Vimar requirements
 
 Hardware:
-[Vimar - 01945/01946 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/01945)
+- [Vimar - 01945 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01945)
+or
+- [Vimar - 01946 - Web server Light By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01946)
 
 Software:
-[By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
-I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
+- [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
+    
+    I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
 
 ## home-assistant requirements
 
