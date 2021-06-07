@@ -1,15 +1,16 @@
 """Vimar Platform example without HA."""
 # import async_timeout
 import os
-import sys
 import configparser
 import argparse
+import xml.etree.cElementTree as xmlTree
 
 # those imports only work in that directory
 # this will be easier to use, as soon as we have a separate python package
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(CURRENT_DIR))
-from custom_components.vimar.vimarlink.vimarlink import (VimarLink, VimarProject)
+# CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# sys.path.append(os.path.dirname(CURRENT_DIR))
+# from custom_components.vimar.vimarlink.vimarlink import (VimarLink, VimarProject)
+from vimarlink.vimarlink import (VimarLink, VimarProject)
 
 AVAILABLE_PLATFORMS = {
     "lights": 'light',
@@ -22,6 +23,37 @@ AVAILABLE_PLATFORMS = {
 }
 
 
+def parse_var(s):
+    """
+    Parse a key, value pair, separated by '='
+    That's the reverse of ShellArgs.
+
+    On the command line (argparse) a declaration will typically look like:
+        foo=hello
+    or
+        foo="hello world"
+    """
+    items = s.split('=')
+    key = items[0].strip()  # we remove blanks around keys, as is logical
+    if len(items) > 1:
+        # rejoin the rest:
+        value = '='.join(items[1:])
+    return (key, value)
+
+
+def parse_vars(items):
+    """
+    Parse a series of key-value pairs and return a dictionary
+    """
+    d = {}
+
+    if items:
+        for item in items:
+            key, value = parse_var(item)
+            d[key] = value
+    return d
+
+
 def main():
 
     parser = argparse.ArgumentParser(description='Command line client for controlling a vimar webserver')
@@ -31,6 +63,7 @@ def main():
     parser.add_argument('-d', '--device', type=int, dest="device_id", help="ID of the device you want to change")
     parser.add_argument('-s', '--status', type=str, dest="status_name", help="Status that you want to change")
     parser.add_argument('-v', '--value', type=str, dest="target_value", help="Change status to the given value")
+    parser.add_argument('statuslist', metavar="status=value", type=str, nargs="*", help="Change the given status to the value")
     args = parser.parse_args()
 
     if os.path.isfile("credentials.cfg") is False:
@@ -42,6 +75,8 @@ def main():
     config.read(args.configpath)
     config.sections()
 
+    print("Config ready")
+
     # setup link to vimar web server
     vimarconnection = VimarLink(
         config['webserver']['schema'],
@@ -52,12 +87,23 @@ def main():
         config['webserver']['certificate'],
         int(config['webserver']['timeout']))
 
+    print("Link ready")
+
     # if certificate is not available, download it
     if os.path.isfile(config['webserver']['certificate']) is False:
         vimarconnection.install_certificate()
+        print("Certificate ready")
 
     # initialize project
     vimarproject = VimarProject(vimarconnection)
+
+    print("Project ready")
+
+    # TODO - save and reuse session login
+    # if os.path.isfile("session.pid"):
+    #     file = open("session.pid", "r")
+    #     VimarLink._session_id = file.readline()
+    #     print("Loading session %s" % VimarLink._session_id)
 
     # try to login
     try:
@@ -69,8 +115,28 @@ def main():
         print("Login failed")
         exit(1)
 
+    # TODO - save and reuse session login
+    # xml = vimarconnection.check_session()
+    # logincode = xml.find('userName')
+    # loginmessage = xml.find('userID')
+    # print("found user data:", xmlTree.tostring(xml, method='xml'), logincode.text, loginmessage.text)
+    # # if logincode.text is None:
+    # # VimarLink._session_id = None
+
+    # try:
+    #     file = open("session.pid", "w")
+    #     file.write(VimarLink._session_id)
+    #     file.close()
+
+    # except IOError as err:
+    #     print("Saving session.pid failed: %s" % err)
+
+    print("Logged in")
+
     # load all devices and device status
     vimarproject.update()
+
+    print("Devices loaded")
 
     # check all available platforms
     if args.platform is None:
@@ -82,6 +148,8 @@ def main():
 
     # get all devices
     devices = vimarproject.get_by_device_type(args.platform)
+
+    print("Devices parsed")
 
     if not devices:
         print("No devices found for platform:", args.platform)
@@ -102,20 +170,26 @@ def main():
             print("No device found with id:", args.device_id, "in platform", args.platform)
             exit(1)
 
+        statuslist = None
+        if args.statuslist:
+            statuslist = parse_vars(args.statuslist)
+
+        if args.status_name and args.target_value:
+            statuslist = {args.status_name: args.target_value}
+
         statusdict = devices.get(args.device_id)["status"]
-        print(args.device_id, "-", devices.get(args.device_id)["object_name"], "available status:", [key + ": " + value['status_value'] for key, value in statusdict.items()])
+        print(args.device_id, "-", devices.get(args.device_id)["object_name"], "available status:",
+              [key + " #" + value['status_id'] + ": " + value['status_value'] for key, value in statusdict.items()])
 
-        if args.status_name:
-            if args.status_name not in devices[args.device_id]["status"]:
-                print("given device does not support '", args.status_name, "' status")
-                exit(1)
+        if statuslist:
+            for status_name, status_value in statuslist.items():
+                if status_name not in devices[args.device_id]["status"]:
+                    print("given device does not support '", status_name, "' status")
+                    exit(1)
 
-            optionals = vimarconnection.get_optionals_param(args.status_name)
-
-            if args.target_value:
-                print("Setting", args.status_name, "to", args.target_value)
-                vimarconnection.set_device_status(statusdict[args.status_name]["status_id"], args.target_value, optionals)
-
+            for status_name, status_value in statuslist.items():
+                optionals = vimarconnection.get_optionals_param(status_name)
+                vimarconnection.set_device_status(statusdict[status_name]["status_id"], status_value, optionals)
 
 if __name__ == "__main__":
     main()

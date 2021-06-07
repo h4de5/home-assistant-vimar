@@ -177,7 +177,7 @@ python3.9 example.py -h
 # run the example script - list all lights
 python3.9 example.py --platform lights
 # run the example script - change a specific cover to open
-python3.9 example.py --platform covers --device 721 --status "up/down" --value 0
+python3.9 example.py --platform covers --device 721 "up/down"=0
 ```
 
 ## contribution

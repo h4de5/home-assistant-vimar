@@ -87,6 +87,9 @@ class VimarLink():
         """Prepare connections instance for vimar webserver."""
         _LOGGER.info("Vimar link initialized")
 
+        # TODO - change static variables to normal instance variables
+        # self._host = ''
+
         if schema is not None:
             VimarLink._schema = schema
         if host is not None:
@@ -173,10 +176,29 @@ class VimarLink():
 
     def check_login(self):
         """Check if session is available - if not, aquire a new one."""
-        if VimarLink._session_id is None:
+        if not VimarLink._session_id:
             self.login()
 
         return VimarLink._session_id is not None
+
+    def check_session(self):
+        """Check if session is valid - if not, clear session id."""
+
+        # _LOGGER.error("calling url: " + url)
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            # needs to be set to overcome:
+            # 'Expect' => '100-continue'
+            # otherwise header and payload is send in two requests if payload
+            # is bigger then 1024byte
+            'Expect': ''
+        }
+
+        post = ("sessionid=%s&"
+                "op=getjScriptEnvironment&"
+                "context=runtime") % VimarLink._session_id
+
+        return self._request_vimar(post, 'vimarbyweb/modules/system/dpadaction.php', headers)
 
     def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
         """Set a given status for one device."""
@@ -195,7 +217,7 @@ class VimarLink():
             VimarLink._session_id,
             object_id)
 
-        response = self._request_vimar(post)
+        response = self._request_vimar_soap(post)
         if response is not None and response is not False:
 
             payload = response.find('.//payload')
@@ -215,7 +237,7 @@ class VimarLink():
     def get_optionals_param(self, state):
         """Return SYNCDB for climates states."""
         # if (state in ['setpoint', 'stagione', 'unita', 'centralizzato', 'funzionamento', 'temporizzazione', 'channel', 'source', 'global_channel']):
-        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione', 'channel', 'source', 'global_channel']):
+        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione', 'channel', 'source', 'global_channel', 'centralizzato']):
             return 'SYNCDB'
         else:
             return 'NO-OPTIONALS'
@@ -437,8 +459,10 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 "</service-databasesocketoperation></soapenv:Body></soapenv:Envelope>") % (
             VimarLink._session_id, select, len(select))
 
-        response = self._request_vimar(post)
+        response = self._request_vimar_soap(post)
         if response is not None and response is not False:
+
+            # print('Response XML', xmlTree.tostring(response, method='xml'), 'POST: ', post)
 
             payload = response.find('.//payload')
             if payload is not None:
@@ -521,12 +545,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
         return return_list
 
-    def _request_vimar(self, post):
-        """Prepare call to vimar webserver."""
-        url = '%s://%s:%s/cgi-bin/dpadws' % (
-            VimarLink._schema, VimarLink._host, VimarLink._port)
-
-        # _LOGGER.error("calling url: " + url)
+    def _request_vimar_soap(self, post):
         headers = {
             'SOAPAction': 'dbSoapRequest',
             'SOAPServer': '',
@@ -538,6 +557,15 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             # is bigger then 1024byte
             'Expect': ''
         }
+
+        return self._request_vimar(post, 'cgi-bin/dpadws', headers)
+
+    def _request_vimar(self, post, path, headers):
+        """Prepare call to vimar webserver."""
+        url = '%s://%s:%s/%s' % (
+            VimarLink._schema, VimarLink._host, VimarLink._port, path)
+
+        # _LOGGER.error("calling url: " + url)
         # _LOGGER.info("in _request_vimar")
         # _LOGGER.info(post)
         response = self._request(url, post, headers)
@@ -577,6 +605,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             if self._certificate is not None:
                 check_ssl = self._certificate
             else:
+                requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
                 _LOGGER.debug("Request ignores ssl certificate")
 
             if post is None:
