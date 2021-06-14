@@ -44,7 +44,8 @@ See installation guides [Home-Assistant.io](http://home-assistant.io/)
 ### installation
 
 - Use [HACS](https://hacs.xyz/) !
-- Otherwise, download the zip from the latest release and copy `vimar` folder inside your custom_components folder.
+- ![image](https://user-images.githubusercontent.com/6115324/121959380-ff627b80-cd64-11eb-812f-252dcbddc530.png)
+- Otherwise, download the zip from the latest release and copy `vimar` folder into your custom_components folder within your home-assistant installation.
 
 You will end up with something like this:
 
