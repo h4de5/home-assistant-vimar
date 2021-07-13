@@ -201,7 +201,7 @@ Enable more logging for vimar - add to your `configuration.yaml`:
       logs:
         custom_components.vimar: debug
 
-have a look into your home-assistant log files - usually named `home-assitant.log` in the directory where your `configuration.yaml` is located.
+have a look into your home-assistant log files - usually named `home-assistant.log` in the directory where your `configuration.yaml` is located.
 
       WARNING (MainThread) [homeassistant.loader] You are using a custom integration for vimar which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant.
 
@@ -221,11 +221,15 @@ have a look into your home-assistant log files - usually named `home-assitant.lo
 
       ERROR (SyncWorker_5) [custom_components.vimar.vimarlink] Error parsing XML: TypeError("a bytes-like object is required, not 'bool'")
 
-> This message paired with a web server that needs manual restarting: You may have too many devices connected to the installation. I am currently working on a fix. Latest version will simple limit it to 300 devices (and status attributes of those devices)
+> This message paired with a web server that needs manual restarting: You may have too many devices connected to the installation.
 
       Some entities are listed as "not available" with a red exclamation mark in the entity list.
 
 > See the explanation and the fix in: https://github.com/h4de5/home-assistant-vimar/issues/15#issuecomment-665635305
+
+      When you enable the integration in home-assistant you can no longer use the vimar web server gui.
+      
+> Please create a separate user on your VIMAR webserver for this integration. At some point the web server does not allow to be logged in with the same user from different locations and simple drops one connection. This may have strange side effects.
 
 ## thanks
 
