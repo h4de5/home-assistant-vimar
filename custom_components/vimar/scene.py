@@ -2,7 +2,7 @@
 
 import logging
 from homeassistant.components.scene import Scene
-from .vimar_entity import (VimarEntity, vimar_setup_platform)
+from .vimar_entity import VimarEntity, vimar_setup_platform
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,11 +33,11 @@ class VimarScene(VimarEntity, Scene):
 
     async def async_activate(self, **kwargs) -> None:
         """Activate scene. Try to get entities into requested state."""
-        if self.has_state('on/off'):
-            self.change_state('on/off', '1')
+        if self.has_state("on/off"):
+            self.change_state("on/off", "1")
 
-        elif self.has_state('comando'):
-            self.change_state('comando', '0')
+        elif self.has_state("comando"):
+            self.change_state("comando", "0")
 
 
 # end class VimarScene

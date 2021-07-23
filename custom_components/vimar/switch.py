@@ -2,7 +2,7 @@
 
 import logging
 from homeassistant.helpers.entity import ToggleEntity
-from .vimar_entity import (VimarEntity, vimar_setup_platform)
+from .vimar_entity import VimarEntity, vimar_setup_platform
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,8 +27,8 @@ class VimarSwitch(VimarEntity, ToggleEntity):
     @property
     def is_on(self):
         """Return True if the device is on."""
-        if self.has_state('on/off'):
-            return self.get_state('on/off') == '1'
+        if self.has_state("on/off"):
+            return self.get_state("on/off") == "1"
         # elif self.has_state('comando'):
         #     return self.get_state('comando') == '1'
         return None
@@ -42,8 +42,8 @@ class VimarSwitch(VimarEntity, ToggleEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn the Vimar switch on."""
-        if self.has_state('on/off'):
-            self.change_state('on/off', '1')
+        if self.has_state("on/off"):
+            self.change_state("on/off", "1")
 
         # moved scenes into scene.py
         # elif self.has_state('comando'):
@@ -51,9 +51,10 @@ class VimarSwitch(VimarEntity, ToggleEntity):
 
     async def async_turn_off(self, **kwargs):
         """Turn the Vimar switch off."""
-        if self.has_state('on/off'):
-            self.change_state('on/off', '0')
+        if self.has_state("on/off"):
+            self.change_state("on/off", "0")
 
         # no turn off for scenes
+
 
 # end class VimarSwitch

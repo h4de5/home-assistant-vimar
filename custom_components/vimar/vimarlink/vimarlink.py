@@ -1,7 +1,8 @@
-""""Connection to vimar web server."""
+"""Connection to vimar web server."""
 
 import logging
 import sys
+
 # for communicating with vimar webserver
 import xml.etree.cElementTree as xmlTree
 from xml.etree import ElementTree
@@ -17,7 +18,8 @@ from .const import (
     DEVICE_TYPE_SCENES,
     # DEVICE_TYPE_FANS,
     DEVICE_TYPE_SENSORS,
-    DEVICE_TYPE_OTHERS)
+    DEVICE_TYPE_OTHERS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 MAX_ROWS_PER_REQUEST = 300
@@ -46,7 +48,7 @@ class VimarApiError(Exception):
 
     def __str__(self):
         """Stringify exception text."""
-        return f'{self.__class__.__name__}: {self.err_args[0]}' % self.err_args[1:]
+        return f"{self.__class__.__name__}: {self.err_args[0]}" % self.err_args[1:]
 
 
 class VimarConfigError(VimarApiError):
@@ -61,29 +63,21 @@ class VimarConnectionError(VimarApiError):
     pass
 
 
-class VimarLink():
+class VimarLink:
     """Link to communicate with the Vimar webserver."""
 
     # private
-    _host = ''
-    _schema = ''
+    _host = ""
+    _schema = ""
     _port = 443
-    _username = ''
-    _password = ''
+    _username = ""
+    _password = ""
     _session_id = None
     _room_ids = None
     _certificate = None
     _timeout = 6
 
-    def __init__(
-            self,
-            schema=None,
-            host=None,
-            port=None,
-            username=None,
-            password=None,
-            certificate=None,
-            timeout=None):
+    def __init__(self, schema=None, host=None, port=None, username=None, password=None, certificate=None, timeout=None):
         """Prepare connections instance for vimar webserver."""
         _LOGGER.info("Vimar link initialized")
 
@@ -112,8 +106,7 @@ class VimarLink():
             temp_certificate = self._certificate
             self._certificate = None
 
-            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
-                VimarLink._schema, VimarLink._host, VimarLink._port)
+            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (VimarLink._schema, VimarLink._host, VimarLink._port)
             certificate_file = self._request(downloadPath)
 
             if certificate_file is None:
@@ -130,24 +123,28 @@ class VimarLink():
             except IOError as err:
                 raise VimarApiError("Saving certificate failed: %s" % err)
 
-            _LOGGER.debug("Downloaded Vimar CA certificate to: %s",
-                          self._certificate)
+            _LOGGER.debug("Downloaded Vimar CA certificate to: %s", self._certificate)
 
         return True
 
     def login(self):
         """Call login and store the session id."""
         loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
-            VimarLink._schema, VimarLink._host, VimarLink._port, VimarLink._username, VimarLink._password)
+            VimarLink._schema,
+            VimarLink._host,
+            VimarLink._port,
+            VimarLink._username,
+            VimarLink._password,
+        )
 
         result = self._request(loginurl)
 
         if result is not None:
             try:
                 xml = self._parse_xml(result)
-                if(xml):
-                    logincode = xml.find('result')
-                    loginmessage = xml.find('message')
+                if xml:
+                    logincode = xml.find("result")
+                    loginmessage = xml.find("message")
                 else:
                     raise Exception("Login failed - check username, password and certificate path")
             except BaseException as err:
@@ -160,14 +157,12 @@ class VimarLink():
                     raise VimarConnectionError("Error during login. Code: %s", logincode.text)
             else:
                 _LOGGER.info("Vimar login ok")
-                loginsession = xml.find('sessionid')
+                loginsession = xml.find("sessionid")
                 if loginsession.text != "":
-                    _LOGGER.debug("Got a new Vimar Session id: %s",
-                                  loginsession.text)
+                    _LOGGER.debug("Got a new Vimar Session id: %s", loginsession.text)
                     VimarLink._session_id = loginsession.text
                 else:
-                    _LOGGER.warning(
-                        "Missing Session id in login response: %s", result)
+                    _LOGGER.warning("Missing Session id in login response: %s", result)
 
         else:
             _LOGGER.warning("Empty Response from webserver login")
@@ -183,52 +178,43 @@ class VimarLink():
 
     def check_session(self):
         """Check if session is valid - if not, clear session id."""
-
         # _LOGGER.error("calling url: " + url)
         headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
             # needs to be set to overcome:
             # 'Expect' => '100-continue'
             # otherwise header and payload is send in two requests if payload
             # is bigger then 1024byte
-            'Expect': ''
+            "Expect": "",
         }
 
-        post = ("sessionid=%s&"
-                "op=getjScriptEnvironment&"
-                "context=runtime") % VimarLink._session_id
+        post = ("sessionid=%s&" "op=getjScriptEnvironment&" "context=runtime") % VimarLink._session_id
 
-        return self._request_vimar(post, 'vimarbyweb/modules/system/dpadaction.php', headers)
+        return self._request_vimar(post, "vimarbyweb/modules/system/dpadaction.php", headers)
 
     def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
         """Set a given status for one device."""
-        post = ("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
-                "<soapenv:Body><service-runonelement xmlns=\"urn:xmethods-dpadws\">"
-                "<payload>%s</payload>"
-                "<hashcode>NO-HASHCODE</hashcode>"
-                "<optionals>%s</optionals>"
-                "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
-                "<sessionid>%s</sessionid><waittime>10</waittime>"
-                "<idobject>%s</idobject>"
-                "<operation>SETVALUE</operation>"
-                "</service-runonelement></soapenv:Body></soapenv:Envelope>") % (
-            status,
-            optionals,
-            VimarLink._session_id,
-            object_id)
+        post = (
+            '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">'
+            '<soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws">'
+            "<payload>%s</payload>"
+            "<hashcode>NO-HASHCODE</hashcode>"
+            "<optionals>%s</optionals>"
+            "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
+            "<sessionid>%s</sessionid><waittime>10</waittime>"
+            "<idobject>%s</idobject>"
+            "<operation>SETVALUE</operation>"
+            "</service-runonelement></soapenv:Body></soapenv:Envelope>"
+        ) % (status, optionals, VimarLink._session_id, object_id)
 
         response = self._request_vimar_soap(post)
         if response is not None and response is not False:
 
-            payload = response.find('.//payload')
+            payload = response.find(".//payload")
 
             # usually set_status should not return a payload
             if payload is not None:
-                _LOGGER.warning(
-                    "set_device_status returned a payload: "
-                    + payload.text
-                    + " from post request: "
-                    + post)
+                _LOGGER.warning("set_device_status returned a payload: " + payload.text + " from post request: " + post)
                 parsed_data = self._parse_sql_payload(payload.text)
                 return parsed_data
 
@@ -237,21 +223,23 @@ class VimarLink():
     def get_optionals_param(self, state):
         """Return SYNCDB for climates states."""
         # if (state in ['setpoint', 'stagione', 'unita', 'centralizzato', 'funzionamento', 'temporizzazione', 'channel', 'source', 'global_channel']):
-        if (state in ['setpoint', 'stagione', 'unita', 'temporizzazione', 'channel', 'source', 'global_channel', 'centralizzato']):
-            return 'SYNCDB'
+        if state in ["setpoint", "stagione", "unita", "temporizzazione", "channel", "source", "global_channel", "centralizzato"]:
+            return "SYNCDB"
         else:
-            return 'NO-OPTIONALS'
+            return "NO-OPTIONALS"
 
     def get_device_status(self, object_id):
         """Get attribute status for a single device."""
         status_list = {}
 
-# , o3.OPTIONALP AS status_range
+        # , o3.OPTIONALP AS status_range
         select = """SELECT o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r3
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ"
 WHERE r3.PARENTOBJ_ID IN (%s) AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
-ORDER BY o3.ID;""" % (object_id)
+ORDER BY o3.ID;""" % (
+            object_id
+        )
 
         payload = self._request_vimar_sql(select)
         if payload is not None:
@@ -260,17 +248,17 @@ ORDER BY o3.ID;""" % (object_id)
             for device in payload:
                 if status_list == {}:
                     status_list = {
-                        device['status_name']: {
-                            'status_id': device['status_id'],
-                            'status_value': device['status_value'],
+                        device["status_name"]: {
+                            "status_id": device["status_id"],
+                            "status_value": device["status_value"],
                             # 'status_range': device['status_range'],
                         }
                     }
                 else:
-                    if device['status_name'] != '':
-                        status_list[device['status_name']] = {
-                            'status_id': device['status_id'],
-                            'status_value': device['status_value'],
+                    if device["status_name"] != "":
+                        status_list[device["status_name"]] = {
+                            "status_id": device["status_id"],
+                            "status_value": device["status_value"],
                             # 'status_range': device['status_range'],
                         }
 
@@ -278,42 +266,42 @@ ORDER BY o3.ID;""" % (object_id)
 
         return {}
 
-# Device example:
-#   'room_id' => string '439' (length=3)
-#   'object_id' => string '768' (length=3)
-#   'object_name' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
-#   'ID' => string '768' (length=3)
-#   'NAME' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
-#   'DESCRIPTION' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
-#   'TYPE' => string 'BYMEIDX' (length=7)
-#   'MIN_VALUE' => string '434' (length=3)
-#   'MAX_VALUE' => string '391' (length=3)
-#   'CURRENT_VALUE' => string '' (length=0)
-#   'STATUS_ID' => string '-1' (length=2)
-#   'RENDERING_ID' => string '141' (length=3)
-#   'IMAGE_PATH' => string 'on_off/ICN_DV_LuceGenerale_on.png' (length=33)
-#   'IS_STOPPABLE' => string '0' (length=1)
-#   'MSP' => string '158' (length=3)
-#   'OPTIONALP' => string 'index_id=158|category=1' (length=23)
-#   'PHPCLASS' => string 'dpadVimarBymeIdx' (length=16)
-#   'COMMUNICATIONSECTION_ID' => string '6' (length=1)
-#   'IS_BOOLEAN' => string '0' (length=1)
-#   'WITH_PERMISSION' => string '1' (length=1)
-#   'TRACK_FLAG' => string '0' (length=1)
-#   'IS_REMOTABLE' => string '0' (length=1)
-#   'REMOTABLE_FILTER' => string '*' (length=1)
-#   'OWNED_BY' => string 'LOCAL' (length=5)
-#   'HAS_GRANT' => string '0' (length=1)
-#   'GRANT_HASHCODE' => string '' (length=0)
-#   'AUTOMATIC_REFRESH_FLAG' => string '0' (length=1)
-#   'TRACK_FLAG_ONREAD' => string '0' (length=1)
-#   'IS_DISCOVERABLE' => string '1' (length=1)
+    # Device example:
+    #   'room_id' => string '439' (length=3)
+    #   'object_id' => string '768' (length=3)
+    #   'object_name' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
+    #   'ID' => string '768' (length=3)
+    #   'NAME' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
+    #   'DESCRIPTION' => string 'DIMMER 11 WOHNZIMMER ERDGESCHOSS' (length=32)
+    #   'TYPE' => string 'BYMEIDX' (length=7)
+    #   'MIN_VALUE' => string '434' (length=3)
+    #   'MAX_VALUE' => string '391' (length=3)
+    #   'CURRENT_VALUE' => string '' (length=0)
+    #   'STATUS_ID' => string '-1' (length=2)
+    #   'RENDERING_ID' => string '141' (length=3)
+    #   'IMAGE_PATH' => string 'on_off/ICN_DV_LuceGenerale_on.png' (length=33)
+    #   'IS_STOPPABLE' => string '0' (length=1)
+    #   'MSP' => string '158' (length=3)
+    #   'OPTIONALP' => string 'index_id=158|category=1' (length=23)
+    #   'PHPCLASS' => string 'dpadVimarBymeIdx' (length=16)
+    #   'COMMUNICATIONSECTION_ID' => string '6' (length=1)
+    #   'IS_BOOLEAN' => string '0' (length=1)
+    #   'WITH_PERMISSION' => string '1' (length=1)
+    #   'TRACK_FLAG' => string '0' (length=1)
+    #   'IS_REMOTABLE' => string '0' (length=1)
+    #   'REMOTABLE_FILTER' => string '*' (length=1)
+    #   'OWNED_BY' => string 'LOCAL' (length=5)
+    #   'HAS_GRANT' => string '0' (length=1)
+    #   'GRANT_HASHCODE' => string '' (length=0)
+    #   'AUTOMATIC_REFRESH_FLAG' => string '0' (length=1)
+    #   'TRACK_FLAG_ONREAD' => string '0' (length=1)
+    #   'IS_DISCOVERABLE' => string '1' (length=1)
 
-#   'VALUES_TYPE' => string 'CH_Dimmer_Automation' (length=20)
-#   'ENABLE_FLAG' => string '1' (length=1)
-#   'IS_READABLE' => string '1' (length=1)
-#   'IS_WRITABLE' => string '1' (length=1)
-#   'IS_VISIBLE' => string '1' (length=1)
+    #   'VALUES_TYPE' => string 'CH_Dimmer_Automation' (length=20)
+    #   'ENABLE_FLAG' => string '1' (length=1)
+    #   'IS_READABLE' => string '1' (length=1)
+    #   'IS_WRITABLE' => string '1' (length=1)
+    #   'IS_VISIBLE' => string '1' (length=1)
 
     def get_paged_results(self, method, objectlist={}, start=0):
         """Page results from a method automatically."""
@@ -347,7 +335,11 @@ INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_W
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.NAME != ""
 WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
-LIMIT %d, %d;""" % (VimarLink._room_ids, start, limit)
+LIMIT %d, %d;""" % (
+            VimarLink._room_ids,
+            start,
+            limit,
+        )
 
         # o3.OPTIONALP AS status_range
         # AND o3.OPTIONALP IS NOT NULL
@@ -373,7 +365,10 @@ INNER JOIN (SELECT CLASSNAME,IS_EVENT,IS_EXECUTABLE FROM DPAD_WEB_PHPCLASS) AS D
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type IN ('BYMETVAL','BYMEOBJ') AND o3.NAME != ""
 WHERE o2.OPTIONALP NOT LIKE "%%restricted%%" AND o2.IS_VISIBLE=1 AND o2.OWNED_BY!="SYSTEM" AND o2.OPTIONALP LIKE "%%category=%%"
-LIMIT %d, %d;""" % (start, limit)
+LIMIT %d, %d;""" % (
+            start,
+            limit,
+        )
 
         return self._generate_device_list(select, devices)
 
@@ -393,27 +388,27 @@ LIMIT %d, %d;""" % (start, limit)
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
             for device in payload:
-                if device['object_id'] not in devices:
-                    devices[device['object_id']] = {
-                        'room_ids': device['room_ids'].split(','),
-                        'object_id': device['object_id'],
-                        'object_name': device['object_name'],
-                        'object_type': device['object_type'],
-                        'status': {
-                            device['status_name']: {
-                                'status_id': device['status_id'],
-                                'status_value': device['status_value'],
-                                'status_range': device['status_range'],
+                if device["object_id"] not in devices:
+                    devices[device["object_id"]] = {
+                        "room_ids": device["room_ids"].split(","),
+                        "object_id": device["object_id"],
+                        "object_name": device["object_name"],
+                        "object_type": device["object_type"],
+                        "status": {
+                            device["status_name"]: {
+                                "status_id": device["status_id"],
+                                "status_value": device["status_value"],
+                                "status_range": device["status_range"],
                             }
-                        }
+                        },
                     }
                 else:
                     # if object_id is already in the device list, we only update the state
-                    if device['status_name'] != '':
-                        devices[device['object_id']]['status'][device['status_name']] = {
-                            'status_id': device['status_id'],
-                            'status_value': device['status_value'],
-                            'status_range': device['status_range'],
+                    if device["status_name"] != "":
+                        devices[device["object_id"]]["status"][device["status_name"]] = {
+                            "status_id": device["status_id"],
+                            "status_value": device["status_value"],
+                            "status_range": device["status_range"],
                         }
             return devices, len(payload)
 
@@ -433,8 +428,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
         payload = self._request_vimar_sql(select)
         if payload is not None:
-            VimarLink._room_ids = payload[0]['MAIN_GROUPS']
-            _LOGGER.info("get_room_ids ends - found %d rooms", len(VimarLink._room_ids.split(',')))
+            VimarLink._room_ids = payload[0]["MAIN_GROUPS"]
+            _LOGGER.info("get_room_ids ends - found %d rooms", len(VimarLink._room_ids.split(",")))
 
             return VimarLink._room_ids
         else:
@@ -442,40 +437,34 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
     def _request_vimar_sql(self, select):
         """Build sql request."""
-        select = select.replace('\r\n', ' ').replace(
-            '\n', ' ').replace('"', '&apos;').replace('\'', '&apos;')
+        select = select.replace("\r\n", " ").replace("\n", " ").replace('"', "&apos;").replace("'", "&apos;")
 
         # optionals is set to NO-OPTIONAL (singular) for sql only
-        post = ("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
-                "<soapenv:Body><service-databasesocketoperation xmlns=\"urn:xmethods-dpadws\">"
-                "<payload>NO-PAYLOAD</payload>"
-                "<hashcode>NO-HASCHODE</hashcode>"
-                "<optionals>NO-OPTIONAL</optionals>"
-                "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
-                "<sessionid>%s</sessionid>"
-                "<waittime>5</waittime>"
-                "<function>DML-SQL</function><type>SELECT</type>"
-                "<statement>%s</statement><statement-len>%d</statement-len>"
-                "</service-databasesocketoperation></soapenv:Body></soapenv:Envelope>") % (
-            VimarLink._session_id, select, len(select))
+        post = (
+            '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">'
+            '<soapenv:Body><service-databasesocketoperation xmlns="urn:xmethods-dpadws">'
+            "<payload>NO-PAYLOAD</payload>"
+            "<hashcode>NO-HASCHODE</hashcode>"
+            "<optionals>NO-OPTIONAL</optionals>"
+            "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
+            "<sessionid>%s</sessionid>"
+            "<waittime>5</waittime>"
+            "<function>DML-SQL</function><type>SELECT</type>"
+            "<statement>%s</statement><statement-len>%d</statement-len>"
+            "</service-databasesocketoperation></soapenv:Body></soapenv:Envelope>"
+        ) % (VimarLink._session_id, select, len(select))
 
         response = self._request_vimar_soap(post)
         if response is not None and response is not False:
 
             # print('Response XML', xmlTree.tostring(response, method='xml'), 'POST: ', post)
 
-            payload = response.find('.//payload')
+            payload = response.find(".//payload")
             if payload is not None:
                 parsed_data = self._parse_sql_payload(payload.text)
 
                 if parsed_data is None:
-                    _LOGGER.warning(
-                        "Received invalid data from SQL: "
-                        + ElementTree.tostring(
-                            response,
-                            encoding='unicode')
-                        + " from post: "
-                        + post)
+                    _LOGGER.warning("Received invalid data from SQL: " + ElementTree.tostring(response, encoding="unicode") + " from post: " + post)
 
                 return parsed_data
             else:
@@ -500,29 +489,29 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         return_list = []
 
         try:
-            lines = string.split('\n')
+            lines = string.split("\n")
             keys = []
             for line in lines:
                 if line:
-                    if line.find(':') == -1:
-                        raise Exception('Missing :-character in response line: %s' % line)
+                    if line.find(":") == -1:
+                        raise Exception("Missing :-character in response line: %s" % line)
 
                     # split prefix from values
-                    prefix, values = line.split(':', 1)
+                    prefix, values = line.split(":", 1)
                     prefix = prefix.strip()
 
                     # skip unused prefixes
-                    if prefix in ['Response', 'NextRows']:
+                    if prefix in ["Response", "NextRows"]:
                         pass
                     else:
                         # remove outer quotes, split each quoted string
-                        values = values.strip()[1:-1].split('\',\'')
+                        values = values.strip()[1:-1].split("','")
 
                         idx = 0
                         row_dict = {}
                         for value in values:
                             # line with Row000001 holds the name of the fields
-                            if prefix == 'Row000001':
+                            if prefix == "Row000001":
                                 keys.append(value)
                             else:
                                 # all other rows have values
@@ -547,23 +536,22 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
     def _request_vimar_soap(self, post):
         headers = {
-            'SOAPAction': 'dbSoapRequest',
-            'SOAPServer': '',
+            "SOAPAction": "dbSoapRequest",
+            "SOAPServer": "",
             # 'X-Requested-With' => 'XMLHttpRequest',
-            'Content-Type': 'text/xml; charset="UTF-8"',
+            "Content-Type": 'text/xml; charset="UTF-8"',
             # needs to be set to overcome:
             # 'Expect' => '100-continue'
             # otherwise header and payload is send in two requests if payload
             # is bigger then 1024byte
-            'Expect': ''
+            "Expect": "",
         }
 
-        return self._request_vimar(post, 'cgi-bin/dpadws', headers)
+        return self._request_vimar(post, "cgi-bin/dpadws", headers)
 
     def _request_vimar(self, post, path, headers):
         """Prepare call to vimar webserver."""
-        url = '%s://%s:%s/%s' % (
-            VimarLink._schema, VimarLink._host, VimarLink._port, path)
+        url = "%s://%s:%s/%s" % (VimarLink._schema, VimarLink._host, VimarLink._port, path)
 
         # _LOGGER.error("calling url: " + url)
         # _LOGGER.info("in _request_vimar")
@@ -590,12 +578,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return root
         return None
 
-    def _request(
-            self,
-            url,
-            post=None,
-            headers=None,
-            check_ssl=False):
+    def _request(self, url, post=None, headers=None, check_ssl=False):
         """Call web server using post variables."""
         # _LOGGER.info("request to " + url)
         try:
@@ -609,28 +592,22 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 _LOGGER.debug("Request ignores ssl certificate")
 
             if post is None:
-                response = requests.get(url,
-                                        headers=headers,
-                                        verify=check_ssl,
-                                        timeout=timeouts)
+                response = requests.get(url, headers=headers, verify=check_ssl, timeout=timeouts)
             else:
-                response = requests.post(url,
-                                         data=post,
-                                         headers=headers,
-                                         verify=check_ssl,
-                                         timeout=timeouts)
+                response = requests.post(url, data=post, headers=headers, verify=check_ssl, timeout=timeouts)
 
             # If the response was successful, no Exception will be raised
             response.raise_for_status()
 
         except HTTPError as http_err:
-            _LOGGER.error('HTTP error occurred: %s', str(http_err))
+            _LOGGER.error("HTTP error occurred: %s", str(http_err))
             return False
         # except ReadTimeoutError:
         except requests.exceptions.Timeout:
+            _LOGGER.error("HTTP timeout occurred")
             return False
         except BaseException as err:
-            _LOGGER.error('Error occurred: %s', str(err))
+            _LOGGER.error("Error occurred: %s", str(err))
             return False
         else:
             return response.text
@@ -638,7 +615,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         return None
 
 
-class VimarProject():
+class VimarProject:
     """Container that holds all vimar devices and its states."""
 
     _devices = {}
@@ -694,7 +671,7 @@ class VimarProject():
 
     def get_by_device_type(self, platform):
         """Do dictionary comprehension."""
-        return {k: v for (k, v) in self._devices.items() if v['device_type'] == platform}
+        return {k: v for (k, v) in self._devices.items() if v["device_type"] == platform}
 
     def platform_exists(self, platform):
         """Check if there are devices for a given platform."""
@@ -744,14 +721,8 @@ class VimarProject():
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:motion-sensor", "mdi:motion-sensor-off"]
 
-                _LOGGER.debug(
-                    "IR Sensor object returned from web server: "
-                    + device["object_type"]
-                    + " / "
-                    + device["object_name"])
-                _LOGGER.debug(
-                    "IR Sensor object has states: "
-                    + str(device["status"]))
+                _LOGGER.debug("IR Sensor object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+                _LOGGER.debug("IR Sensor object has states: " + str(device["status"]))
 
             else:
                 # fallback to lights
@@ -797,28 +768,16 @@ class VimarProject():
             device_type = DEVICE_TYPE_CLIMATES
             icon = "mdi:thermometer-lines"
 
-            _LOGGER.debug(
-                "Climate object returned from web server: "
-                + device["object_type"]
-                + " / "
-                + device["object_name"])
-            _LOGGER.debug(
-                "Climate object has states: "
-                + str(device["status"]))
+            _LOGGER.debug("Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug("Climate object has states: " + str(device["status"]))
 
         elif device["object_type"] == "CH_Scene":
             device_type = DEVICE_TYPE_SCENES
             # device_class = DEVICE_CLASS_SWITCH
             icon = "mdi:google-pages"
 
-            _LOGGER.debug(
-                "Scene returned from web server: "
-                + device["object_type"]
-                + " / "
-                + device["object_name"])
-            _LOGGER.debug(
-                "Scene object has states: "
-                + str(device["status"]))
+            _LOGGER.debug("Scene returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug("Scene object has states: " + str(device["status"]))
 
         elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
             device_type = DEVICE_TYPE_SENSORS
@@ -854,33 +813,15 @@ class VimarProject():
             device_type = DEVICE_TYPE_MEDIA_PLAYERS
             icon = ["mdi:radio", "mdi:radio-off"]
 
-            _LOGGER.debug(
-                "Audio object returned from web server: "
-                + device["object_type"]
-                + " / "
-                + device["object_name"])
-            _LOGGER.debug(
-                "Audio object has states: "
-                + str(device["status"]))
+            _LOGGER.debug("Audio object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug("Audio object has states: " + str(device["status"]))
 
         elif device["object_type"] in ["CH_SAI", "CH_Event", "CH_KNX_GENERIC_TIMEPERIODMIN"]:
-            _LOGGER.debug(
-                "Unsupported object returned from web server: "
-                + device["object_type"]
-                + " / "
-                + device["object_name"])
-            _LOGGER.debug(
-                "Unsupported object has states: "
-                + str(device["status"]))
+            _LOGGER.debug("Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug("Unsupported object has states: " + str(device["status"]))
         else:
-            _LOGGER.warning(
-                "Unknown object returned from web server: "
-                + device["object_type"]
-                + " / "
-                + device["object_name"])
-            _LOGGER.debug(
-                "Unknown object has states: "
-                + str(device["status"]))
+            _LOGGER.warning("Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug("Unknown object has states: " + str(device["status"]))
 
         vimar_name = device["object_name"]
         # TODO - make format name configurable
@@ -891,32 +832,31 @@ class VimarProject():
 
         for device_override in self._device_overrides:
             filter = device_override.get("filter_vimar_name", "").upper()
-            match = filter == '*' or vimar_name.upper() == filter
+            match = filter == "*" or vimar_name.upper() == filter
             # _LOGGER.debug("Overriding: filter: '" + filter + "' - vimar_name: '" + vimar_name + "' - Match: " + str(match))
             if not match:
                 continue
             if device_override.get("object_name_as_vimar"):
                 object_name = vimar_name.title().strip()
             if device_override.get("device_type", device_type) != device_type:
-                _LOGGER.debug("Overriding device_type: object_name: '" + object_name + "' - device_type: '"
-                              + str(device_type) + "' -> '" + str(device_override.get("device_type")) + "'")
+                _LOGGER.debug(
+                    "Overriding device_type: object_name: '" + object_name + "' - device_type: '" + str(device_type) + "' -> '" + str(device_override.get("device_type")) + "'"
+                )
                 device_type = str(device_override.get("device_type"))
             if device_override.get("device_class", device_class) != device_class:
-                _LOGGER.debug("Overriding device_class: object_name: '" + object_name + "' - device_class: '"
-                              + str(device_class) + "' -> '"
-                              + str(device_override.get("device_class")) + "'")
+                _LOGGER.debug(
+                    "Overriding device_class: object_name: '" + object_name + "' - device_class: '" + str(device_class) + "' -> '" + str(device_override.get("device_class")) + "'"
+                )
                 device_class = str(device_override.get("device_class"))
             if device_override.get("icon") is not None:
                 oldIcon = icon
                 icon = device_override.get("icon")
                 if isinstance(icon, str) and "," in icon:
-                    icon = icon.split(',')
+                    icon = icon.split(",")
                 if isinstance(icon, str) and icon == "":
                     icon = None
                 if not str(icon) == str(oldIcon):
-                    _LOGGER.debug("Overriding icon: object_name: '" + object_name
-                                  + "' - icon: '" + str(oldIcon) + "' -> '"
-                                  + str(icon) + "'")
+                    _LOGGER.debug("Overriding icon: object_name: '" + object_name + "' - icon: '" + str(oldIcon) + "' -> '" + str(icon) + "'")
 
         device["device_type"] = device_type
         device["device_class"] = device_class
@@ -930,7 +870,7 @@ class VimarProject():
 
     def format_name(self, name):
         """Format device name to get rid of unused terms."""
-        parts = name.split(' ')
+        parts = name.split(" ")
 
         if len(parts) > 0:
             if len(parts) >= 4:
@@ -943,8 +883,8 @@ class VimarProject():
                     level_name += " " + parts[i]
             elif len(parts) >= 2:
                 device_type = parts[0]
-                entity_number = ''
-                room_name = ''
+                entity_number = ""
+                room_name = ""
                 level_name = parts[1]
 
                 for i in range(2, len(parts)):
@@ -954,26 +894,26 @@ class VimarProject():
                 #     "Found a device with an uncommon naming schema: %s", name)
 
                 device_type = parts[0]
-                entity_number = ''
-                room_name = ''
+                entity_number = ""
+                room_name = ""
                 # level_name = 'LEVEL'
-                level_name = ''
+                level_name = ""
 
                 for i in range(2, len(parts)):
                     level_name += " " + parts[i]
 
-        device_type = device_type.replace('LUCE', '')
-        device_type = device_type.replace('TAPPARELLA', '')
+        device_type = device_type.replace("LUCE", "")
+        device_type = device_type.replace("TAPPARELLA", "")
 
-        if device_type != 'LICHT':
-            device_type = device_type.replace('LICHT', '')
+        if device_type != "LICHT":
+            device_type = device_type.replace("LICHT", "")
 
-        device_type = device_type.replace('ROLLLADEN', '')
-        device_type = device_type.replace('F-FERNBEDIENUNG', 'FENSTER')
-        device_type = device_type.replace('VENTILATORE', '')
-        device_type = device_type.replace('VENTILATOR', '')
-        device_type = device_type.replace('STECKDOSE', '')
-        device_type = device_type.replace('THERMOSTAT', '')
+        device_type = device_type.replace("ROLLLADEN", "")
+        device_type = device_type.replace("F-FERNBEDIENUNG", "FENSTER")
+        device_type = device_type.replace("VENTILATORE", "")
+        device_type = device_type.replace("VENTILATOR", "")
+        device_type = device_type.replace("STECKDOSE", "")
+        device_type = device_type.replace("THERMOSTAT", "")
 
         if len(level_name) != 0:
             level_name += " "
@@ -983,8 +923,7 @@ class VimarProject():
             device_type += " "
 
         # Erdgeschoss Wohnzimmer Licht 3
-        name = "%s%s%s%s" % (level_name, room_name,
-                             device_type, entity_number)
+        name = "%s%s%s%s" % (level_name, room_name, device_type, entity_number)
 
         # change case
         return name.title().strip()
