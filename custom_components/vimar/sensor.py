@@ -2,15 +2,30 @@
 
 # import copy
 import logging
+
 # from datetime import timedelta
 from homeassistant.const import (
-    POWER_KILO_WATT, ENERGY_KILO_WATT_HOUR, TEMP_CELSIUS, SPEED_METERS_PER_SECOND, VOLT,
-    DEVICE_CLASS_ENERGY, DEVICE_CLASS_CURRENT, DEVICE_CLASS_TIMESTAMP, DEVICE_CLASS_POWER,
-    DEVICE_CLASS_TEMPERATURE, DEVICE_CLASS_ILLUMINANCE)
+    POWER_KILO_WATT,
+    ENERGY_KILO_WATT_HOUR,
+    TEMP_CELSIUS,
+    SPEED_METERS_PER_SECOND,
+    DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_CURRENT,
+    DEVICE_CLASS_TIMESTAMP,
+    DEVICE_CLASS_POWER,
+    DEVICE_CLASS_TEMPERATURE,
+    DEVICE_CLASS_ILLUMINANCE,
+)
+
+try:
+    from homeassistant.const import ELECTRIC_POTENTIAL_VOLT
+except ImportError:
+    from homeassistant.const import VOLT as ELECTRIC_POTENTIAL_VOLT
 
 from homeassistant.helpers.entity import Entity
 from .const import DOMAIN
-from .vimar_entity import (VimarEntity, vimar_setup_platform)
+from .vimar_entity import VimarEntity, vimar_setup_platform
+
 # from . import format_name
 
 
@@ -21,6 +36,7 @@ _LOGGER = logging.getLogger(__name__)
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
 # PARALLEL_UPDATES = 2
 # see: https://developers.home-assistant.io/docs/core/entity/sensor/
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vimar sensor platform."""
@@ -58,7 +74,7 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def name(self):
         """Return the name of the device."""
-        return self._device['object_name'] + " " + self._measurement_name
+        return self._device["object_name"] + " " + self._measurement_name
 
     @property
     def unit_of_measurement(self):
@@ -79,25 +95,28 @@ class VimarSensor(VimarEntity, Entity):
     def class_and_units(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
-            if any(x in self._measurement_name for x in ['energia']):
+            if any(x in self._measurement_name for x in ["energia"]):
                 return [ENERGY_KILO_WATT_HOUR, DEVICE_CLASS_ENERGY]
-            elif any(x in self._measurement_name for x in ['fase']):
-                return [VOLT, DEVICE_CLASS_CURRENT]
-            elif any(x in self._measurement_name for x in ['_date', '_time', '_datetime']):
-                return ['', DEVICE_CLASS_TIMESTAMP]
+            elif any(x in self._measurement_name for x in ["fase"]):
+                return [ELECTRIC_POTENTIAL_VOLT, DEVICE_CLASS_CURRENT]
+            # elif any(x in self._measurement_name for x in ["fase"]):
+            #     return [ELECTRIC_POTENTIAL_VOLT, DEVICE_CLASS_VOLTAGE]
+
+            elif any(x in self._measurement_name for x in ["_date", "_time", "_datetime"]):
+                return ["", DEVICE_CLASS_TIMESTAMP]
             else:
                 return [POWER_KILO_WATT, DEVICE_CLASS_POWER]
-        elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(x in self._measurement_name for x in ['temperature']):
+        elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(x in self._measurement_name for x in ["temperature"]):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
             return [TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE]
-        elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(x in self._measurement_name for x in ['wind_speed']):
+        elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(x in self._measurement_name for x in ["wind_speed"]):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
-            return [SPEED_METERS_PER_SECOND, self._device['device_class']]
-        elif any(x in self._measurement_name for x in ['brightness']):
+            return [SPEED_METERS_PER_SECOND, self._device["device_class"]]
+        elif any(x in self._measurement_name for x in ["brightness"]):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
             return ["lm", DEVICE_CLASS_ILLUMINANCE]
         else:
-            return [None, self._device['device_class']]
+            return [None, self._device["device_class"]]
 
         # ‘its_night’: {‘status_id’: ‘3369’, ‘status_value’: ‘1’, ‘status_range’: ‘’},
         # ‘its_raining’: {‘status_id’: ‘3371’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
@@ -119,7 +138,7 @@ class VimarSensor(VimarEntity, Entity):
         """Return the ID of this device and its state."""
         # _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + '-' +
         # self._device['status'][self._measurement_name]['status_id'] + " - " + self.name)
-        return DOMAIN + '_' + self._platform + '_' + self._device_id + '-' + self._device['status'][self._measurement_name]['status_id']
+        return DOMAIN + "_" + self._platform + "_" + self._device_id + "-" + self._device["status"][self._measurement_name]["status_id"]
         # return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
 
     @property
@@ -130,7 +149,7 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        return self._device['status'][self._measurement_name]
+        return self._device["status"][self._measurement_name]
 
     # def _reset_status(self):
     #     """Read data from device and convert it into hass states."""
@@ -139,7 +158,7 @@ class VimarSensor(VimarEntity, Entity):
     #             self._state_value = float(self._device['status'][self._measurement_name]['status_value'])
 
 
-class VimarSensorContainer():
+class VimarSensorContainer:
     """Defines a Vimar Sensor device."""
 
     _device = []
@@ -170,16 +189,17 @@ class VimarSensorContainer():
         """Return a List of VimarSensors."""
         # if len(self._sensor_list) == 0:
         sensor_list = []
-        if 'status' in self._device and self._device['status']:
-            for status in self._device['status']:
+        if "status" in self._device and self._device["status"]:
+            for status in self._device["status"]:
                 # if status.find('_setpoint') != -1 or status.find('_output') != -1:
-                if any(x in status for x in ['_setpoint', '_output']):
+                if any(x in status for x in ["_setpoint", "_output"]):
                     continue
                 # _LOGGER.debug("Adding sensor for %s", status)
                 # _LOGGER.debug("Adding sensor %s from id %s", status, self._device_id)
                 sensor_list.append(VimarSensor(self._device_id, self._vimarconnection, self._vimarproject, self._coordinator, status))
 
         return sensor_list
+
 
 # The row is Row000005: '321','consumo_totale','-1','0.310'
 #  (the device is set to consider also your potential production - zero in my case - with row n.6 and the net demand row n.8
