@@ -1,7 +1,9 @@
 """Platform for switch integration."""
 
 import logging
+
 from homeassistant.helpers.entity import ToggleEntity
+
 from .vimar_entity import VimarEntity, vimar_setup_platform
 
 _LOGGER = logging.getLogger(__name__)

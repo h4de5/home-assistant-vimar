@@ -1,10 +1,11 @@
 """Insteon base entity."""
 import logging
 
-from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.helpers.entity import Entity
-from .vimarlink.vimarlink import (VimarLink, VimarProject)
+from homeassistant.helpers.typing import HomeAssistantType
+
 from .const import DOMAIN
+from .vimarlink.vimarlink import VimarLink, VimarProject
 
 _LOGGER = logging.getLogger(__name__)
 

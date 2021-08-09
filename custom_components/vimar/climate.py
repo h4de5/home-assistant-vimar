@@ -1,43 +1,30 @@
 """Platform for climate integration."""
 
 import logging
-from homeassistant.components.climate.const import (
-    CURRENT_HVAC_COOL,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_IDLE,
-    CURRENT_HVAC_OFF,
-    HVAC_MODE_AUTO,
-    HVAC_MODE_COOL,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_FAN_MODE,
-    SUPPORT_AUX_HEAT,
-    FAN_ON,
-    FAN_OFF,
-    FAN_LOW,
-    FAN_MEDIUM,
-    FAN_HIGH,
-)
+
+from homeassistant.components.climate.const import (CURRENT_HVAC_COOL,
+                                                    CURRENT_HVAC_HEAT,
+                                                    CURRENT_HVAC_IDLE,
+                                                    CURRENT_HVAC_OFF, FAN_HIGH,
+                                                    FAN_LOW, FAN_MEDIUM,
+                                                    FAN_OFF, FAN_ON,
+                                                    HVAC_MODE_AUTO,
+                                                    HVAC_MODE_COOL,
+                                                    HVAC_MODE_HEAT,
+                                                    HVAC_MODE_OFF,
+                                                    SUPPORT_AUX_HEAT,
+                                                    SUPPORT_FAN_MODE,
+                                                    SUPPORT_TARGET_TEMPERATURE)
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
-from .const import (
-    # DOMAIN,
-    VIMAR_CLIMATE_COOL,
-    VIMAR_CLIMATE_COOL_I,
-    VIMAR_CLIMATE_COOL_II,
-    VIMAR_CLIMATE_HEAT,
-    VIMAR_CLIMATE_HEAT_I,
-    VIMAR_CLIMATE_HEAT_II,
-    VIMAR_CLIMATE_AUTO,
-    VIMAR_CLIMATE_AUTO_I,
-    VIMAR_CLIMATE_AUTO_II,
-    VIMAR_CLIMATE_MANUAL,
-    VIMAR_CLIMATE_MANUAL_I,
-    VIMAR_CLIMATE_MANUAL_II,
-    VIMAR_CLIMATE_OFF,
-    VIMAR_CLIMATE_OFF_I,
-    VIMAR_CLIMATE_OFF_II,
-)
+
+from .const import (VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_AUTO_I,  # DOMAIN,
+                    VIMAR_CLIMATE_AUTO_II, VIMAR_CLIMATE_COOL,
+                    VIMAR_CLIMATE_COOL_I, VIMAR_CLIMATE_COOL_II,
+                    VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_HEAT_I,
+                    VIMAR_CLIMATE_HEAT_II, VIMAR_CLIMATE_MANUAL,
+                    VIMAR_CLIMATE_MANUAL_I, VIMAR_CLIMATE_MANUAL_II,
+                    VIMAR_CLIMATE_OFF, VIMAR_CLIMATE_OFF_I,
+                    VIMAR_CLIMATE_OFF_II)
 from .vimar_entity import VimarEntity, vimar_setup_platform
 
 try:

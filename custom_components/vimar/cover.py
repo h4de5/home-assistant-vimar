@@ -1,18 +1,13 @@
 """Platform for cover integration."""
 
 import logging
-from homeassistant.components.cover import (
-    SUPPORT_CLOSE,
-    SUPPORT_OPEN,
-    SUPPORT_STOP,
-    SUPPORT_SET_POSITION,
-    SUPPORT_OPEN_TILT,
-    SUPPORT_CLOSE_TILT,
-    SUPPORT_STOP_TILT,
-    SUPPORT_SET_TILT_POSITION,
-    ATTR_POSITION,
-    ATTR_TILT_POSITION,
-)
+
+from homeassistant.components.cover import (ATTR_POSITION, ATTR_TILT_POSITION,
+                                            SUPPORT_CLOSE, SUPPORT_CLOSE_TILT,
+                                            SUPPORT_OPEN, SUPPORT_OPEN_TILT,
+                                            SUPPORT_SET_POSITION,
+                                            SUPPORT_SET_TILT_POSITION,
+                                            SUPPORT_STOP, SUPPORT_STOP_TILT)
 
 from .vimar_entity import VimarEntity, vimar_setup_platform
 

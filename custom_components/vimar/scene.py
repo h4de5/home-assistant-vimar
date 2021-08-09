@@ -1,7 +1,9 @@
 """Platform for scene integration."""
 
 import logging
+
 from homeassistant.components.scene import Scene
+
 from .vimar_entity import VimarEntity, vimar_setup_platform
 
 _LOGGER = logging.getLogger(__name__)

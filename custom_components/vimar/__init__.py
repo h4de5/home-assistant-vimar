@@ -1,50 +1,48 @@
 """Vimar Platform integration."""
-from datetime import timedelta
-import logging
 import asyncio
-import async_timeout
+import logging
 import os
+from datetime import timedelta
+from typing import Tuple
 
-from homeassistant.helpers.typing import HomeAssistantType, ConfigType
-from homeassistant.const import (
-    CONF_PORT, CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_TIMEOUT)
-from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+import async_timeout
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from .vimarlink.vimarlink import (VimarLink, VimarProject, VimarApiError)
+from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_PORT,
+                                 CONF_TIMEOUT, CONF_USERNAME)
+from homeassistant.exceptions import PlatformNotReady
+from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
+                                                      UpdateFailed)
 
-from .const import (
-    DOMAIN,
-    CONF_SCHEMA,
-    CONF_CERTIFICATE,
-    CONF_GLOBAL_CHANNEL_ID,
-    CONF_IGNORE_PLATFORM,
-    CONF_OVERRIDE,
-    DEFAULT_USERNAME,
-    DEFAULT_SCHEMA,
-    DEFAULT_PORT,
-    DEFAULT_CERTIFICATE,
-    DEFAULT_TIMEOUT,
-    AVAILABLE_PLATFORMS
-)
+from .const import (AVAILABLE_PLATFORMS, CONF_CERTIFICATE,
+                    CONF_GLOBAL_CHANNEL_ID, CONF_IGNORE_PLATFORM,
+                    CONF_OVERRIDE, CONF_SCHEMA, DEFAULT_CERTIFICATE,
+                    DEFAULT_PORT, DEFAULT_SCHEMA, DEFAULT_TIMEOUT,
+                    DEFAULT_USERNAME, DOMAIN)
+from .vimarlink.vimarlink import VimarApiError, VimarLink, VimarProject
 
 _LOGGER = logging.getLogger(__name__)
 
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.Schema({
-        vol.Required(CONF_HOST): cv.string,
-        vol.Required(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-        vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
-        vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
-        vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
-        vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999),
-        vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_OVERRIDE, default=[]): cv.ensure_list
-    })
-}, extra=vol.ALLOW_EXTRA)
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required(CONF_HOST): cv.string,
+                vol.Required(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
+                vol.Required(CONF_PASSWORD): cv.string,
+                vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+                vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
+                vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
+                vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
+                vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999),
+                vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(cv.ensure_list, [cv.string]),
+                vol.Optional(CONF_OVERRIDE, default=[]): cv.ensure_list,
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 
 @asyncio.coroutine
@@ -111,14 +109,13 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
 
     for device_type, platform in AVAILABLE_PLATFORMS.items():
-        if (not ignored_platforms or platform not in ignored_platforms):
+        if not ignored_platforms or platform not in ignored_platforms:
             device_count = vimarproject.platform_exists(device_type)
             if device_count:
                 _LOGGER.debug("load platform %s with %d %s", platform, device_count, device_type)
-                hass.async_create_task(hass.helpers.discovery.async_load_platform(
-                    platform, DOMAIN, {"hass_data_key": device_type}, config))
+                hass.async_create_task(hass.helpers.discovery.async_load_platform(platform, DOMAIN, {"hass_data_key": device_type}, config))
         else:
-            _LOGGER.warning('ignore platform: %s', platform)
+            _LOGGER.warning("ignore platform: %s", platform)
 
     # States are in the format DOMAIN.OBJECT_ID.
     # hass.states.async_set("vimar.Hello_World", "Works!")
@@ -144,9 +141,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 #     return True
 
 
-async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: ConfigType) -> [VimarProject, VimarLink]:
+async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: ConfigType) -> Tuple[VimarProject, VimarLink]:
     """Validate Vimar credential config."""
-
     schema = vimarconfig.get(CONF_SCHEMA)
     host = vimarconfig.get(CONF_HOST)
     port = vimarconfig.get(CONF_PORT)
@@ -160,8 +156,7 @@ async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: Conf
     device_overrides = vimarconfig.get(CONF_OVERRIDE, [])
 
     # initialize a new VimarLink object
-    vimarconnection = VimarLink(
-        schema, host, port, username, password, certificate, timeout)
+    vimarconnection = VimarLink(schema, host, port, username, password, certificate, timeout)
 
     # will hold all the devices and their states
     vimarproject = VimarProject(vimarconnection, device_overrides)
@@ -181,8 +176,7 @@ async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: Conf
             if not valid_certificate:
                 raise PlatformNotReady
         else:
-            _LOGGER.info(
-                "Vimar CA Certificate is already in place: %s", certificate)
+            _LOGGER.info("Vimar CA Certificate is already in place: %s", certificate)
 
     # Verify that passed in configuration works
     # starting it outside MainThread

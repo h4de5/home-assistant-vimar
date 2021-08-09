@@ -1,8 +1,8 @@
 """Vimar Platform example without HA."""
 # import async_timeout
-import os
-import configparser
 import argparse
+import configparser
+import os
 
 # those imports only work in that directory
 # this will be easier to use, as soon as we have a separate python package

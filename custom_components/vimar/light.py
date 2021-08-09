@@ -1,8 +1,10 @@
 """Platform for light integration."""
 
 import logging
-from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_HS_COLOR, SUPPORT_BRIGHTNESS, SUPPORT_COLOR
+
 import homeassistant.util.color as color_util
+from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_HS_COLOR, SUPPORT_BRIGHTNESS, SUPPORT_COLOR
+
 from .vimar_entity import VimarEntity, vimar_setup_platform
 
 try:

@@ -1,1 +1,1 @@
-"""VIMAR by-me link library"""
+"""VIMAR by-me link library."""

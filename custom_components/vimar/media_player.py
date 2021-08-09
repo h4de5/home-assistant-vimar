@@ -1,22 +1,20 @@
 """Platform for media player integration."""
 
 import logging
+
 from homeassistant.components.media_player.const import (
-    MEDIA_TYPE_MUSIC,
     MEDIA_TYPE_CHANNEL,
+    MEDIA_TYPE_MUSIC,
+    SUPPORT_NEXT_TRACK,
+    SUPPORT_SELECT_SOURCE,
+    SUPPORT_TURN_OFF,
+    SUPPORT_TURN_ON,
     SUPPORT_VOLUME_MUTE,
     SUPPORT_VOLUME_SET,
     SUPPORT_VOLUME_STEP,
-    SUPPORT_TURN_ON,
-    SUPPORT_TURN_OFF,
-    SUPPORT_SELECT_SOURCE,
-    SUPPORT_NEXT_TRACK,
 )
-from homeassistant.const import (
-    # STATE_IDLE,
-    STATE_OFF,
-    STATE_PLAYING,
-)
+from homeassistant.const import STATE_OFF, STATE_PLAYING  # STATE_IDLE,
+
 from .vimar_entity import VimarEntity, vimar_setup_platform
 
 try:

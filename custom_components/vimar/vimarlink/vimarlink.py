@@ -2,24 +2,18 @@
 
 import logging
 import sys
-
 # for communicating with vimar webserver
 import xml.etree.cElementTree as xmlTree
 from xml.etree import ElementTree
+
 import requests
 from requests.exceptions import HTTPError
 
-from .const import (
-    DEVICE_TYPE_LIGHTS,
-    DEVICE_TYPE_COVERS,
-    DEVICE_TYPE_SWITCHES,
-    DEVICE_TYPE_CLIMATES,
-    DEVICE_TYPE_MEDIA_PLAYERS,
-    DEVICE_TYPE_SCENES,
-    # DEVICE_TYPE_FANS,
-    DEVICE_TYPE_SENSORS,
-    DEVICE_TYPE_OTHERS,
-)
+from .const import (DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
+                    DEVICE_TYPE_COVERS, DEVICE_TYPE_LIGHTS,
+                    DEVICE_TYPE_MEDIA_PLAYERS, DEVICE_TYPE_OTHERS,
+                    DEVICE_TYPE_SCENES, DEVICE_TYPE_SENSORS,
+                    DEVICE_TYPE_SWITCHES)
 
 _LOGGER = logging.getLogger(__name__)
 MAX_ROWS_PER_REQUEST = 300

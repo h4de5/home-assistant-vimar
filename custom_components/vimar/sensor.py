@@ -5,16 +5,16 @@ import logging
 
 # from datetime import timedelta
 from homeassistant.const import (
-    POWER_KILO_WATT,
-    ENERGY_KILO_WATT_HOUR,
-    TEMP_CELSIUS,
-    SPEED_METERS_PER_SECOND,
-    DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_CURRENT,
-    DEVICE_CLASS_TIMESTAMP,
+    DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_ILLUMINANCE,
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_TEMPERATURE,
-    DEVICE_CLASS_ILLUMINANCE,
+    DEVICE_CLASS_TIMESTAMP,
+    ENERGY_KILO_WATT_HOUR,
+    POWER_KILO_WATT,
+    SPEED_METERS_PER_SECOND,
+    TEMP_CELSIUS,
 )
 
 try:
@@ -23,6 +23,7 @@ except ImportError:
     from homeassistant.const import VOLT as ELECTRIC_POTENTIAL_VOLT
 
 from homeassistant.helpers.entity import Entity
+
 from .const import DOMAIN
 from .vimar_entity import VimarEntity, vimar_setup_platform
 
