@@ -10,7 +10,8 @@
     "scene",
     "binary_sensor",
     "sensor",
-    "switch"
+    "switch",
+    "climate"
   ],
   "homeassistant": "0.99.9",
   "iot_class": ["Local Polling"]
