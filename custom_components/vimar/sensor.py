@@ -148,7 +148,7 @@ class VimarSensor(VimarEntity, Entity):
         return self.get_state(self._measurement_name)
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return self._device["status"][self._measurement_name]
 
