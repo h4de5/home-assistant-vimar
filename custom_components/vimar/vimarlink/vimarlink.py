@@ -763,8 +763,7 @@ class VimarProject:
                 icon = ["mdi:window-shutter", "mdi:window-shutter-open"]
 
         elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_HVAC_RiscaldamentoNoZonaNeutra", "CH_Fancoil", "CH_HVAC"]:
-            # device_type = DEVICE_TYPE_CLIMATES
-            device_type = DEVICE_TYPE_SENSORS
+            device_type = DEVICE_TYPE_CLIMATES
             icon = "mdi:thermometer-lines"
 
             _LOGGER.debug("Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"])

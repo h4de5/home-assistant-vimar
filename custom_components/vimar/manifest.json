@@ -6,6 +6,6 @@
   "dependencies": [],
   "config_flow": false,
   "codeowners": ["@h4de5"],
-  "version": "2021.8.1",
+  "version": "2021.10.1",
   "iot_class": "local_polling"
 }
