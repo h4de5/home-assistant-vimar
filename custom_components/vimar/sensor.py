@@ -22,6 +22,11 @@ try:
 except ImportError:
     from homeassistant.const import VOLT as ELECTRIC_POTENTIAL_VOLT
 
+try:
+    from homeassistant.components.sensor import STATE_CLASS_TOTAL_INCREASING
+except ImportError:
+    from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT as STATE_CLASS_TOTAL_INCREASING
+
 from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN
@@ -82,27 +87,30 @@ class VimarSensor(VimarEntity, Entity):
         """Return the unit of measurement."""
         class_and_unit = self.class_and_units()
         # _LOGGER.warning("DEBUG units for %s %s %s", self._device["object_type"], self._measurement_name, class_and_unit[0]);
-
         return class_and_unit[0]
 
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         class_and_unit = self.class_and_units()
-        # _LOGGER.warning("DEBUG class for %s %s %s", self._device["object_type"], self._measurement_name, class_and_unit[1]);
-
         return class_and_unit[1]
+
+    @property
+    def state_class(self) -> str:
+        """Return the state class of this entity."""
+        class_and_unit = self.class_and_units()
+        if class_and_unit[1] == DEVICE_CLASS_ENERGY:
+            return STATE_CLASS_TOTAL_INCREASING
 
     def class_and_units(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
-            if any(x in self._measurement_name for x in ["energia"]):
+            if any(x in self._measurement_name for x in ["energia", "potenza_attiva"]):
                 return [ENERGY_KILO_WATT_HOUR, DEVICE_CLASS_ENERGY]
             elif any(x in self._measurement_name for x in ["fase"]):
                 return [ELECTRIC_POTENTIAL_VOLT, DEVICE_CLASS_CURRENT]
             # elif any(x in self._measurement_name for x in ["fase"]):
             #     return [ELECTRIC_POTENTIAL_VOLT, DEVICE_CLASS_VOLTAGE]
-
             elif any(x in self._measurement_name for x in ["_date", "_time", "_datetime"]):
                 return ["", DEVICE_CLASS_TIMESTAMP]
             else:
@@ -133,6 +141,24 @@ class VimarSensor(VimarEntity, Entity):
         # ‘wind_speed_reset’: {‘status_id’: ‘3415’, ‘status_value’: ‘1’, ‘status_range’: ‘’},
         # ‘wind_speed_alarm’: {‘status_id’: ‘3417’, ‘status_value’: ‘0’, ‘status_range’: ‘’},
         # ‘brightness’: {‘status_id’: ‘3437’, ‘status_value’: ‘0.00’, ‘status_range’: ‘’},
+
+        # 'potenza_attiva','-1','0.01'
+
+        # 'contatore_assoluto': {'status_id': '102467', 'status_value': '104','status_range': 'min=0|max=4294967295'},
+        # 'contatore_parziale':{'status_id': '102469', 'status_value': '15', 'status_range': 'min=0|max=4294967295'},
+        # 'reset_to_value': {'status_id': '102472', 'status_value': '0', 'status_range': 'min=0|max=4294967295'},
+        # 'reset_history': {'status_id': '102474', 'status_value': '0', 'status_range': 'min=0|max=1'},
+        # 'frequenza_impulsi': {'status_id': '102476', 'status_value':'0', 'status_range':'min=-2147483648|max=2147483648'},
+        # 'divisore': {'status_id': '103644', 'status_value': '1', 'status_range': ''},
+        # 'moltiplicatore': {'status_id': '103646', 'status_value': '100', 'status_range': ''}}
+
+        # contatore assoluto = absolute counter. total pulses received
+        # contatore parziale = partial counter. pulses since the last reset
+        # reset_to_value = initial value to count from
+        # reset_history = reset history
+        # frequenza_impulsi = pulse frequency
+        # divisore = divisor: value by which to divide the partial counter
+        # moltiplicatore = multiplier: value by which to multiply the partial counter
 
     @property
     def unique_id(self):

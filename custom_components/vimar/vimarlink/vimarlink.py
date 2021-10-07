@@ -2,6 +2,7 @@
 
 import logging
 import sys
+
 # for communicating with vimar webserver
 import xml.etree.cElementTree as xmlTree
 from xml.etree import ElementTree
@@ -9,11 +10,16 @@ from xml.etree import ElementTree
 import requests
 from requests.exceptions import HTTPError
 
-from .const import (DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
-                    DEVICE_TYPE_COVERS, DEVICE_TYPE_LIGHTS,
-                    DEVICE_TYPE_MEDIA_PLAYERS, DEVICE_TYPE_OTHERS,
-                    DEVICE_TYPE_SCENES, DEVICE_TYPE_SENSORS,
-                    DEVICE_TYPE_SWITCHES)
+from .const import (
+    DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
+    DEVICE_TYPE_COVERS,
+    DEVICE_TYPE_LIGHTS,
+    DEVICE_TYPE_MEDIA_PLAYERS,
+    DEVICE_TYPE_OTHERS,
+    DEVICE_TYPE_SCENES,
+    DEVICE_TYPE_SENSORS,
+    DEVICE_TYPE_SWITCHES,
+)
 
 _LOGGER = logging.getLogger(__name__)
 MAX_ROWS_PER_REQUEST = 300
@@ -606,8 +612,6 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
         else:
             return response.text
 
-        return None
-
 
 class VimarProject:
     """Container that holds all vimar devices and its states."""
@@ -759,7 +763,8 @@ class VimarProject:
                 icon = ["mdi:window-shutter", "mdi:window-shutter-open"]
 
         elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_HVAC_RiscaldamentoNoZonaNeutra", "CH_Fancoil", "CH_HVAC"]:
-            device_type = DEVICE_TYPE_CLIMATES
+            # device_type = DEVICE_TYPE_CLIMATES
+            device_type = DEVICE_TYPE_SENSORS
             icon = "mdi:thermometer-lines"
 
             _LOGGER.debug("Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"])
@@ -787,6 +792,10 @@ class VimarProject:
             # _LOGGER.debug(
             #     "Sensor object has states: "
             #     + str(device["status"]))
+        elif any(x in device["object_type"].upper() for x in ["CH_Contatore_"]):
+            device_type = DEVICE_TYPE_SENSORS
+            # icon = "mdi:battery-charging-high"
+            icon = "mdi:pulse"
 
         elif device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"]:
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
