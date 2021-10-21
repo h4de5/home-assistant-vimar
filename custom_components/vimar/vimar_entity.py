@@ -8,6 +8,7 @@ from .const import DOMAIN
 from .vimarlink.vimarlink import VimarLink, VimarProject
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER_isDebug = _LOGGER.isEnabledFor(logging.DEBUG)
 
 
 class VimarEntity(Entity):
@@ -69,12 +70,24 @@ class VimarEntity(Entity):
     @property
     def name(self):
         """Return the name of the device."""
-        return self._device["object_name"]
+        name = self._device["device_friendly_name"];
+        if name is None:
+           name = self._device["object_name"];
+        return name
 
     @property
     def extra_state_attributes(self):
         """Return device specific state attributes."""
         # see: https://developers.home-assistant.io/docs/dev_101_states/
+        #mostro gli attributi importati da vimar
+        if self._device is not None:
+            for key in self._device:
+               value = self._device[key]
+               if (_LOGGER_isDebug == False and (key == 'status' or key == 'device_class' or key == 'device_friendly_name' or key == 'vimar_icon')):
+                   #for status_name in value:
+                   #    deviceItem["state_" + status_name.replace("/", "_").replace(" ", "_")] = value[status_name]["status_value"]
+                   continue
+               self._attributes['vimar_' + key] = value
         return self._attributes
 
     def request_statemachine_update(self):

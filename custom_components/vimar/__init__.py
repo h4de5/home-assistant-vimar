@@ -8,6 +8,7 @@ from typing import Tuple
 import async_timeout
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from homeassistant.core import callback
 from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_PORT,
                                  CONF_TIMEOUT, CONF_USERNAME)
 from homeassistant.exceptions import PlatformNotReady
@@ -44,6 +45,14 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+SERVICE_UPDATE = 'update_entities'
+SERVICE_UPDATE_SCHEMA = vol.Schema({
+    vol.Optional('forced', default=True): cv.boolean
+})
+SERVICE_EXEC_VIMAR_SQL = 'exec_vimar_sql'
+SERVICE_EXEC_VIMAR_SQL_SCHEMA = vol.Schema({
+    vol.Required('sql'): cv.string
+})
 
 @asyncio.coroutine
 async def async_setup(hass: HomeAssistantType, config: ConfigType):
@@ -57,6 +66,19 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["connection"] = vimarconnection
     hass.data[DOMAIN]["project"] = vimarproject
+       
+    async def service_update_call(call):
+        forced = call.data.get('forced')
+        return await hass.async_add_executor_job(vimarproject.update, forced)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE, service_update_call, SERVICE_UPDATE_SCHEMA)
+
+    async def service_exec_vimar_sql_call(call):
+        data = call.data
+        sql = data.get('sql')
+        payload = await hass.async_add_executor_job(vimarproject._link._request_vimar_sql, sql)
+        _LOGGER.info(SERVICE_EXEC_VIMAR_SQL + " done: SQL: %s . Result: %s", sql, str(payload))
+        return payload
+    hass.services.async_register(DOMAIN, SERVICE_EXEC_VIMAR_SQL, service_exec_vimar_sql_call, SERVICE_EXEC_VIMAR_SQL_SCHEMA)
 
     async def async_api_update():
         """Fetch data from API endpoint.
@@ -115,7 +137,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
                 _LOGGER.debug("load platform %s with %d %s", platform, device_count, device_type)
                 hass.async_create_task(hass.helpers.discovery.async_load_platform(platform, DOMAIN, {"hass_data_key": device_type}, config))
         else:
-            _LOGGER.warning("ignore platform: %s", platform)
+            _LOGGER.debug("ignore platform: %s", platform)
 
     # States are in the format DOMAIN.OBJECT_ID.
     # hass.states.async_set("vimar.Hello_World", "Works!")

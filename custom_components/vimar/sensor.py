@@ -57,6 +57,7 @@ class VimarSensor(VimarEntity, Entity):
 
     _platform = "sensor"
     _measurement_name = None
+    _class_and_units = None
     # _parent = None
     # _state_value = None
 
@@ -68,7 +69,7 @@ class VimarSensor(VimarEntity, Entity):
 
         self._measurement_name = measurement_name
         VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
-
+        self._class_and_units = self.class_and_units()
         # this will override the name for all
         # self._device['object_name_' + self._measurement_name] = self._device['object_name'] + " " + measurement_name
         # self.entity_id = self._platform + "." + self.name.lower() + "-" + measurement_name + "_" + self._device_id
@@ -79,8 +80,8 @@ class VimarSensor(VimarEntity, Entity):
 
     @property
     def name(self):
-        """Return the name of the device."""
-        return self._device["object_name"] + " " + self._measurement_name
+        """Return the name of the device."""        
+        return super().name + " " + self._measurement_name.title().strip()
 
     @property
     def unit_of_measurement(self):
@@ -103,6 +104,8 @@ class VimarSensor(VimarEntity, Entity):
             return STATE_CLASS_TOTAL_INCREASING
 
     def class_and_units(self):
+        if (not self._class_and_units is None):
+            return self._class_and_units
         """Return the class of this device, from component DEVICE_CLASSES."""
         if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
             if any(x in self._measurement_name for x in ["energia", "potenza_attiva"]):
@@ -165,9 +168,9 @@ class VimarSensor(VimarEntity, Entity):
         """Return the ID of this device and its state."""
         # _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + '-' +
         # self._device['status'][self._measurement_name]['status_id'] + " - " + self.name)
-        return DOMAIN + "_" + self._platform + "_" + self._device_id + "-" + self._device["status"][self._measurement_name]["status_id"]
+        return super().unique_id  + "-" + self._device["status"][self._measurement_name]["status_id"]
         # return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
-
+        
     @property
     def state(self):
         """Return the value of the sensor."""
@@ -176,13 +179,29 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._device["status"][self._measurement_name]
+        base_attr = supert().extra_state_attributes
+        attr = self._device["status"][self._measurement_name]
+        for key in attr:
+            base_attr[key] = attr[key]
+        return base_attr
 
     # def _reset_status(self):
     #     """Read data from device and convert it into hass states."""
     #     if 'status' in self._device and self._device['status']:
     #         if self._measurement_name in self._device['status']:
     #             self._state_value = float(self._device['status'][self._measurement_name]['status_value'])
+    
+    @property
+    def native_unit_of_measurement(self):
+        """Return the native unit_of_measurement of this sensor."""        
+        class_and_unit = self.class_and_units()
+        # _LOGGER.warning("DEBUG units for %s %s %s", self._device["object_type"], self._measurement_name, class_and_unit[0]);
+        return class_and_unit[0]
+
+    @property
+    def native_value(self):
+        """Return the native value of this sensor."""
+        return self.get_state(self._measurement_name)
 
 
 class VimarSensorContainer:

@@ -1,0 +1,15 @@
+update_entities:
+  description: >
+    Esegue il loading delle entities
+  fields:
+    forced:
+      description: Se forzare il caricamento di tutte le informazioni, come le info delle stanze
+      example: True
+
+exec_vimar_sql:
+  description: >
+    Esegue una query SQL su vimar.
+  fields:
+    sql:
+      description: SQL Query
+      example: SELECT 1
