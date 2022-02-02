@@ -158,9 +158,15 @@ class VimarClimate(VimarEntity, ClimateEntity):
             return HVAC_MODE_OFF
 
         if self.climate_type == "heat_cool":
-            return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)]
+            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
+                return HVAC_MODE_AUTO
+            else:
+                return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)]
         else:
-            return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)]
+            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
+                return HVAC_MODE_AUTO
+            else:
+                return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)]
 
             # if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
             #     return HVAC_MODE_COOL
@@ -380,8 +386,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return VIMAR_CLIMATE_COOL_I
             elif const == VIMAR_CLIMATE_HEAT:
                 return VIMAR_CLIMATE_HEAT_I
-            elif const == VIMAR_CLIMATE_HEAT:
-                return VIMAR_CLIMATE_HEAT_I
             else:
                 return None
         else:
@@ -393,8 +397,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return VIMAR_CLIMATE_AUTO_II
             elif const == VIMAR_CLIMATE_COOL:
                 return VIMAR_CLIMATE_COOL_II
-            elif const == VIMAR_CLIMATE_HEAT:
-                return VIMAR_CLIMATE_HEAT_II
             elif const == VIMAR_CLIMATE_HEAT:
                 return VIMAR_CLIMATE_HEAT_II
             else:
