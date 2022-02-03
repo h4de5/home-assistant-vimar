@@ -23,9 +23,10 @@ except ImportError:
     from homeassistant.const import VOLT as ELECTRIC_POTENTIAL_VOLT
 
 try:
-    from homeassistant.components.sensor import STATE_CLASS_TOTAL_INCREASING
+    from homeassistant.components.sensor import (STATE_CLASS_TOTAL_INCREASING, STATE_CLASS_MEASUREMENT)
 except ImportError:
     from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT as STATE_CLASS_TOTAL_INCREASING
+    from homeassistant.components.sense import STATE_CLASS_MEASUREMENT
 
 from homeassistant.helpers.entity import Entity
 
@@ -101,6 +102,8 @@ class VimarSensor(VimarEntity, Entity):
         class_and_unit = self.class_and_units()
         if class_and_unit[1] == DEVICE_CLASS_ENERGY:
             return STATE_CLASS_TOTAL_INCREASING
+        elif class_and_unit[1] == DEVICE_CLASS_POWER and any(x in self._measurement_name for x in ["totale"]):
+            return STATE_CLASS_MEASUREMENT
 
     def class_and_units(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
