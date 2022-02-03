@@ -281,7 +281,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
 
             # if heating or cooling is pressed, got to automode
-            set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL) # personal choice -robigan
             set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[hvac_mode == HVAC_MODE_COOL]
 
             _LOGGER.info("Vimar Climate setting setup mode to heat/cool: %s", set_function_mode)
