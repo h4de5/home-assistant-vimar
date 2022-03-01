@@ -112,7 +112,7 @@ class VimarLink:
             downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (VimarLink._schema, VimarLink._host, VimarLink._port)
             certificate_file = self._request(downloadPath)
 
-            if certificate_file is None:
+            if certificate_file is None or certificate_file == False:
                 raise VimarConnectionError("Certificate download failed")
 
             # get it back
