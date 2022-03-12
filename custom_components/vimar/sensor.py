@@ -28,7 +28,7 @@ except ImportError:
     from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT as STATE_CLASS_TOTAL_INCREASING
     from homeassistant.components.sense import STATE_CLASS_MEASUREMENT
 
-from homeassistant.helpers.entity import Entity
+from homeassistant.components.sensor import SensorEntity
 
 from .const import DOMAIN
 from .vimar_entity import VimarEntity, vimar_setup_platform
@@ -50,7 +50,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     vimar_setup_platform(VimarSensorContainer, hass, async_add_entities, discovery_info)
 
 
-class VimarSensor(VimarEntity, Entity):
+class VimarSensor(VimarEntity, SensorEntity):
     """Provide a Vimar Sensors."""
 
     # set entity_id, object_id manually due to possible duplicates
