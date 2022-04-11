@@ -35,15 +35,26 @@ class VimarDeviceCustomizer:
     def customize_device(self, device):
         deviceold = None
         for device_override in self._device_overrides:
-            match = self.device_override_match(device, device_override)
-            if not match:
-                continue
-            if (deviceold is None and _LOGGER_isDebug):
-                deviceold = {}
-                for key, value in device.items():
-                    deviceold[key] = self.device_override_get_attr_str(device, key)
-            for key, value in device_override[DEVICE_OVERRIDE_ACTIONS].items():
-                self.device_override_action(device, key, value, deviceold)
+            try:
+                match = self.device_override_match(device, device_override)
+                if not match:
+                    continue
+                if (deviceold is None and _LOGGER_isDebug):
+                    deviceold = {}
+                    for key, value in device.items():
+                        deviceold[key] = self.device_override_get_attr_str(device, key)
+                actions = device_override[DEVICE_OVERRIDE_ACTIONS]
+                if isinstance(actions, list):
+                    for item in actions:
+                        for key, value in item.items():
+                            self.device_override_action(device, key, value, deviceold)
+                else:
+                    for key, value in actions.items():
+                        self.device_override_action(device, key, value, deviceold)
+            except BaseException as err:
+                _LOGGER.error("Error occurred for device_override. %s - device_override: %s", str(err), str(device_override))
+                raise
+
         if (deviceold is not None):
             fields_edit = []
             for key in device:
@@ -129,6 +140,17 @@ class VimarDeviceCustomizer:
     def device_override_get_attr_key(self, key):
         if (key == 'type' or key == 'class' or key == 'friendly_name'):
             return "device_" + key
+
+        if key == 'vimar_object_type':
+            return 'object_type'
+        if key == 'vimar_object_name':
+            return 'object_name'
+        if key == 'vimar_object_id':
+            return 'object_id'
+        if key == 'vimar_room_name':
+            return 'room_name'
+        if key == 'vimar_room_names':
+            return 'room_names'
         return key
 
     def device_override_get_attr_str(self, device, key):
