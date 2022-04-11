@@ -19,15 +19,15 @@ CONF_OVERRIDE = "device_override"
 
 # vimar integration specific const
 
-DEVICE_TYPE_LIGHTS = "lights"
-DEVICE_TYPE_COVERS = "covers"
-DEVICE_TYPE_SWITCHES = "switches"
-DEVICE_TYPE_CLIMATES = "climates"
-DEVICE_TYPE_MEDIA_PLAYERS = "media_players"
-DEVICE_TYPE_SCENES = "scenes"
-DEVICE_TYPE_FANS = "fans"
-DEVICE_TYPE_SENSORS = "sensors"
-DEVICE_TYPE_OTHERS = "others"
+DEVICE_TYPE_LIGHTS = "light"
+DEVICE_TYPE_COVERS = "cover"
+DEVICE_TYPE_SWITCHES = "switch"
+DEVICE_TYPE_CLIMATES = "climate"
+DEVICE_TYPE_MEDIA_PLAYERS = "media_player"
+DEVICE_TYPE_SCENES = "scene"
+DEVICE_TYPE_FANS = "fan"
+DEVICE_TYPE_SENSORS = "sensor"
+DEVICE_TYPE_OTHERS = "other"
 
 
 VIMAR_CLIMATE_OFF = "VIMAR_CLIMATE_OFF"

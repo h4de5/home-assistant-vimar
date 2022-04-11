@@ -11,6 +11,8 @@ from xml.etree import ElementTree
 import requests
 from requests.exceptions import HTTPError
 
+from ..vimar_device_customizer import VimarDeviceCustomizer
+
 from .const import (
     DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
     DEVICE_TYPE_COVERS,
@@ -651,7 +653,7 @@ class VimarProject:
     _link = None
     _platforms_exists = {}
     global_channel_id = None
-    _device_overrides = []
+    _device_customizer = None
 
     # single device
     #   'room_ids': number[] (maybe empty, ids of rooms)
@@ -659,13 +661,13 @@ class VimarProject:
     #   'object_name': str (name of the device, reformated in format_name)
     #   'object_type': str (CH_xx channel name of vimar)
     #   'status':  dict{dict{'status_id': number, 'status_value': str }}
-    #   'device_type': str (mapped type: lights, switches, climates, covers, sensors)
+    #   'device_type': str (mapped type: light, switch, climate, cover, sensor)
     #   'device_class': str (mapped class, based on name or attributes: fan, outlet, window, power)
 
     def __init__(self, link: VimarLink, device_overrides=[]):
         """Create new container to hold all states."""
         self._link = link
-        self._device_overrides = device_overrides
+        self._device_customizer = VimarDeviceCustomizer(device_overrides)
 
     @property
     def devices(self):
@@ -863,74 +865,19 @@ class VimarProject:
         object_name = device["object_name"]
         # TODO - make format name configurable
         friendly_name = self.format_name(object_name)
-        
-        room_name = ''
-        if "room_name" in device and device["room_name"] is not None and device["room_name"] != '':
-           room_name = device["room_name"].title().strip()
-
-        #salvo delle copie per loggare i cambiamenti
-        old_friendly_name = friendly_name
-        old_device_type = device_type
-        old_device_class = device_class
-        old_icon = icon
-
-        # _LOGGER.debug("Object returned from web server: " + device["object_type"] + " / " + device["object_name"])
-        # _LOGGER.debug("Object has states: " + str(device["status"]))
-
-        for device_override in self._device_overrides:
-            match = self.match_name(object_name, device_override.get("filter_vimar_name"), device_override.get("filter_vimar_name_regex"))
-            if not match:
-                match = self.match_name(object_name, device_override.get("filter_object_name"), device_override.get("filter_object_name_regex"))
-            if not match:
-                match = self.match_name(friendly_name, device_override.get("filter_friendly_name"), device_override.get("filter_friendly_name_regex"))
-            if not match:
-                match = self.match_name(device["object_id"], device_override.get("filter_object_id"), device_override.get("filter_object_id_regex"))
-            if not match:
-                match = self.match_name(room_name, device_override.get("filter_room_name"), device_override.get("filter_room_name_regex"))
-            # _LOGGER.debug("Overriding: filter: '" + filter + "' - object_name: '" + object_name + "' - Match: " + str(match))
-            if not match:
-                continue
-            if device_override.get("object_name_as_vimar") or device_override.get("friendly_name_as_vimar") :
-                friendly_name = object_name.title().strip()
-                old_friendly_name = friendly_name
-            if device_override.get("friendly_name_room_name_at_begin") and room_name != '':
-                if friendly_name.upper().endswith(room_name.upper()):
-                   friendly_name = friendly_name[:-len(room_name)]
-                   friendly_name = (room_name + ' ' + friendly_name).strip()
-                if not friendly_name.upper().startswith(room_name.upper()):
-                   friendly_name = (room_name + ' ' + friendly_name).strip()
-            friendly_name = str(device_override.get("friendly_name", friendly_name))
-            friendly_name = self.replace_name(friendly_name, device_override.get("friendly_name_regexsub_pattern"), device_override.get("friendly_name_regexsub_repl"))
-            if device_override.get("device_type", device_type) != device_type:
-                device_type = str(device_override.get("device_type"))
-            if device_override.get("device_class", device_class) != device_class:
-                device_class = str(device_override.get("device_class"))
-            if device_override.get("icon") is not None:
-                icon = device_override.get("icon")
-                if isinstance(icon, str) and "," in icon:
-                    icon = icon.split(",")
-                if isinstance(icon, str) and icon == "":
-                    icon = None
-
-        if _LOGGER_isDebug:
-            modifiche = []
-            if not str(friendly_name) == str(old_friendly_name):
-               modifiche.append("friendly_name: '" + str(old_friendly_name) + "' -> '" + str(friendly_name) + "'")
-            if not str(device_type) == str(old_device_type):
-               modifiche.append("device_type: '" + str(old_device_type) + "' -> '" + str(device_type) + "'")
-            if not str(device_class) == str(old_device_class):
-               modifiche.append("device_class: '" + str(old_device_class) + "' -> '" + str(device_class) + "'")
-            if not str(icon) == str(old_icon):
-               modifiche.append("icon: '" + str(old_icon) + "' -> '" + str(icon) + "'")
-            if len(modifiche) > 0:
-               _LOGGER.debug(
-                    "Overriding attributes per object_name: '" + object_name + "': " + " - ".join(modifiche) + "."
-               )
 
         device["device_type"] = device_type
         device["device_class"] = device_class
-        device["icon"] = icon
         device["device_friendly_name"] = friendly_name
+        device["icon"] = icon
+
+        self._device_customizer.customize_device(device)
+
+        #reload device_type: can be changed from customizer
+        device_type = device["device_type"]
+
+        # _LOGGER.debug("Object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+        # _LOGGER.debug("Object has states: " + str(device["status"]))
 
         if device_type in self._platforms_exists:
             self._platforms_exists[device_type] += 1
@@ -996,28 +943,3 @@ class VimarProject:
 
         # change case
         return name.title().strip()
-
-    def match_name(self, name, search, searchRegex):
-        match = False
-        if (search is not None):
-           match = search == "*" or name.upper() == search.upper()
-           
-        #gestione filtro con regex, come su https://gist.github.com/elbarsal/65f413b60d1c4976a8351fba4b4d94d5 (whitelist_re)
-        try:                    
-            if (searchRegex is not None):
-              name_match = re.search(searchRegex, name, re.IGNORECASE) is not None                  
-              if (name_match):
-                #_LOGGER.debug("Whitelist regex matches entity or domain: %s", state.entity_id)
-                match = True
-        except BaseException as err:
-            _LOGGER.error("Error occurred in match_name. name: '" + name + "', searchRegex: '" + searchRegex + "' - %s", str(err))
-        
-        return match
-
-    def replace_name(self, name, pattern, repl):
-        try:                    
-            if (pattern is not None and repl is not None ):
-               name = re.sub(pattern, repl, name, flags=re.I)
-        except BaseException as err:
-            _LOGGER.error("Error occurred in replace_name. name: '" + name + "', pattern: '" + pattern + "', repl: '" + repl + "' - %s", str(err))        
-        return name
