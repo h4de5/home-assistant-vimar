@@ -58,7 +58,9 @@ class VimarDeviceCustomizer:
         if (deviceold is not None):
             fields_edit = []
             for key in device:
-                old_value =  str(deviceold[key])
+                old_value = str(None)
+                if (key in deviceold):
+                    old_value = str(deviceold[key])
                 new_value = str(self.device_override_get_attr_str(device, key))
                 if old_value != new_value:
                     fields_edit.append(str(key) + ": '" + str(old_value) + "' -> '" + str(new_value) + "'")
@@ -211,7 +213,7 @@ class VimarDeviceCustomizer:
             new_value = self.replace_name(curr_value, value.get(DEVICE_OVERRIDE_ACTION_REPLACE_RE_PATTERN), value.get(DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL))
             device[field] = new_value
         else: #on default, set specified value in dictionary :)
-            field = self.device_override_get_attr_key(value)
+            field = self.device_override_get_attr_key(action)
             device[field] = value
 
         if (field == 'icon' and isinstance(device[field], str) and "," in device[field]):
