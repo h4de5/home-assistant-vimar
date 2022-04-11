@@ -179,7 +179,7 @@ class VimarSensor(VimarEntity, Entity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        base_attr = supert().extra_state_attributes
+        base_attr = super().extra_state_attributes
         attr = self._device["status"][self._measurement_name]
         for key in attr:
             base_attr[key] = attr[key]
