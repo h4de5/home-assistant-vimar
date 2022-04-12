@@ -6,6 +6,6 @@
   "dependencies": [],
   "config_flow": false,
   "codeowners": ["@davideciarmiello"],
-  "version": "2022.04.3",
+  "version": "2022.04.4",
   "iot_class": "local_polling"
 }
