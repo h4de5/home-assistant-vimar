@@ -131,6 +131,12 @@ class VimarDeviceCustomizer:
                 elif field.endswith("_re"):
                     field = field[:-len('_re')]
                     filters_key = DEVICE_OVERRIDE_FILTER_RE
+                elif field.startswith("regex_"):
+                    field = field[6:100]
+                    filters_key = DEVICE_OVERRIDE_FILTER_RE
+                elif field.startswith("re_"):
+                    field = field[3:100]
+                    filters_key = DEVICE_OVERRIDE_FILTER_RE
                 if (device_override.get(filters_key) is None):
                     device_override[filters_key] = {}
                 device_override[filters_key][field] = value
