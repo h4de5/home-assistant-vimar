@@ -134,9 +134,9 @@ class VimarDeviceCustomizer:
                 if (device_override.get(filters_key) is None):
                     device_override[filters_key] = {}
                 device_override[filters_key][field] = value
-            if (str(key).endswith('_regexsub_repl')):
+            elif (str(key).endswith('_regexsub_repl')):
                 continue
-            if (str(key).endswith('_regexsub_pattern')):
+            elif (str(key).endswith('_regexsub_pattern')):
                 field = key[:-len('_regexsub_pattern')]
                 repl = {
                     DEVICE_OVERRIDE_ACTION_REPLACE_RE_FIELD : field,
