@@ -2,6 +2,19 @@ import logging
 import sys
 import re
 
+from .const import DOMAIN
+from .const import (
+    DEVICE_TYPE_CLIMATES,
+    DEVICE_TYPE_FANS,
+    DEVICE_TYPE_COVERS,
+    DEVICE_TYPE_LIGHTS,
+    DEVICE_TYPE_MEDIA_PLAYERS,
+    DEVICE_TYPE_OTHERS,
+    DEVICE_TYPE_SCENES,
+    DEVICE_TYPE_SENSORS,
+    DEVICE_TYPE_SWITCHES,
+)
+
 DEVICE_OVERRIDE_FILTER = "filter"
 DEVICE_OVERRIDE_FILTER_RE = "filter_re"
 DEVICE_OVERRIDE_ACTIONS = "actions"
@@ -29,8 +42,11 @@ class VimarDeviceCustomizer:
 
     def init_overrides(self):
         for device_override in self._device_overrides:
-            self.device_override_fix(device_override)
-
+            try:
+                self.device_override_check(device_override)
+            except BaseException as err:
+                _LOGGER.error("Error occurred parsing device_override. %s - device_override: %s", str(err), str(device_override))
+                raise
 
     def customize_device(self, device):
         deviceold = None
@@ -94,50 +110,48 @@ class VimarDeviceCustomizer:
             _LOGGER.error("Error occurred in replace_name. name: '" + name + "', pattern: '" + pattern + "', repl: '" + repl + "' - %s", str(err))
         return name
 
-    def device_override_fix_filter(self, device_override, name, search, searchRegex):
-        search = device_override.get(search)
-        if (search is not None):
-            if (device_override.get(DEVICE_OVERRIDE_FILTER) is None):
-                device_override[DEVICE_OVERRIDE_FILTER] = {}
-            device_override[DEVICE_OVERRIDE_FILTER][name] = search
-        searchRegex = device_override.get(searchRegex)
-        if (searchRegex is not None):
-            if (device_override.get(DEVICE_OVERRIDE_FILTER_RE) is None):
-                device_override[DEVICE_OVERRIDE_FILTER_RE] = {}
-            device_override[DEVICE_OVERRIDE_FILTER_RE][name] = searchRegex
-
-    def device_override_fix(self, device_override):
-        #if (device_override.get('fixed') is not None):
-        #    return
-        self.device_override_fix_filter(device_override, 'object_name', "filter_vimar_name", "filter_vimar_name_regex")
-        self.device_override_fix_filter(device_override, 'object_name', "filter_object_name", "filter_object_name_regex")
-        self.device_override_fix_filter(device_override, 'friendly_name', "filter_friendly_name", "filter_friendly_name_regex")
-        self.device_override_fix_filter(device_override, 'object_id', "filter_object_id", "filter_object_id_regex")
-        self.device_override_fix_filter(device_override, 'room_name', "filter_room_name", "filter_room_name_regex")
+    def device_override_check(self, device_override):
         if (device_override.get(DEVICE_OVERRIDE_ACTIONS) is None):
-            device_override[DEVICE_OVERRIDE_ACTIONS] = {}
+            device_override[DEVICE_OVERRIDE_ACTIONS] = []
         actions = device_override[DEVICE_OVERRIDE_ACTIONS]
-        if device_override.get("object_name_as_vimar") or device_override.get("friendly_name_as_vimar") :
-            actions[DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_AS_VIMAR] = True
-        if device_override.get("friendly_name_room_name_at_begin"):
-            actions[DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN] = True
-        if device_override.get("friendly_name_regexsub_pattern") is not None:
-            actions[DEVICE_OVERRIDE_ACTION_REPLACE_RE] = {
-                DEVICE_OVERRIDE_ACTION_REPLACE_RE_FIELD : 'friendly_name',
-                DEVICE_OVERRIDE_ACTION_REPLACE_RE_PATTERN : device_override.get("friendly_name_regexsub_pattern") ,
-                DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL : device_override.get("friendly_name_regexsub_repl")
-            }
+        if isinstance(actions, list) is False:
+            actions = [actions]
+            device_override[DEVICE_OVERRIDE_ACTIONS] = actions
 
-        if device_override.get("friendly_name") is not None:
-            actions["friendly_name"] = device_override.get("friendly_name")
-        if device_override.get("device_type") is not None:
-            actions["device_type"] = device_override.get("device_type")
-        if device_override.get("device_class") is not None:
-            actions["device_class"] = device_override.get("device_class")
-        if device_override.get("icon") is not None:
-            actions["icon"] = device_override.get("icon")
+        #extend shorner version to list detailed version
+        for key, value in device_override.copy().items():
+            if (key == DEVICE_OVERRIDE_ACTIONS or key == DEVICE_OVERRIDE_FILTER or key == DEVICE_OVERRIDE_FILTER_RE):
+                continue
+            if (str(key).startswith('filter_')):
+                field = str(key)[7:100]
+                filters_key = DEVICE_OVERRIDE_FILTER
+                if field.endswith("_regex"):
+                    field = field[:-len('_regex')]
+                    filters_key = DEVICE_OVERRIDE_FILTER_RE
+                elif field.endswith("_re"):
+                    field = field[:-len('_re')]
+                    filters_key = DEVICE_OVERRIDE_FILTER_RE
+                if (device_override.get(filters_key) is None):
+                    device_override[filters_key] = {}
+                device_override[filters_key][field] = value
+            if (str(key).endswith('_regexsub_repl')):
+                continue
+            if (str(key).endswith('_regexsub_pattern')):
+                field = key[:-len('_regexsub_pattern')]
+                repl = {
+                    DEVICE_OVERRIDE_ACTION_REPLACE_RE_FIELD : field,
+                    DEVICE_OVERRIDE_ACTION_REPLACE_RE_PATTERN : value,
+                    DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL : device_override.get(field + "_regexsub_repl")
+                }
+                actions.append({DEVICE_OVERRIDE_ACTION_REPLACE_RE: repl})
+            elif key == "object_name_as_vimar" or key == "friendly_name_as_vimar":
+                actions.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_AS_VIMAR: True})
+            elif key == "friendly_name_room_name_at_begin":
+                actions.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN: True})
+            else:
+                actions.append({key: value})
 
-        #device_override.fixed = True
+
 
     def device_override_get_attr_key(self, key):
         if (key == 'type' or key == 'class' or key == 'friendly_name'):
@@ -145,7 +159,7 @@ class VimarDeviceCustomizer:
 
         if key == 'vimar_object_type':
             return 'object_type'
-        if key == 'vimar_object_name':
+        if key == 'vimar_object_name' or key == "vimar_name":
             return 'object_name'
         if key == 'vimar_object_id':
             return 'object_id'
@@ -165,7 +179,6 @@ class VimarDeviceCustomizer:
         return attr_str
 
     def device_override_match(self, device, device_override):
-        #self.device_override_fix(device_override)
         matchcnt = 0
         filters = device_override.get(DEVICE_OVERRIDE_FILTER)
         if isinstance(filters, str) and filters == "*":
@@ -219,3 +232,18 @@ class VimarDeviceCustomizer:
         if (field == 'icon' and isinstance(device[field], str) and "," in device[field]):
             device[field] = device[field].split(",")
 
+        if (field == 'device_type' and isinstance(device[field], str)):
+            device[field] = self.device_type_singolarize(device[field])
+
+
+    def device_type_singolarize(self, device_type):
+        if device_type == 'climates': return  DEVICE_TYPE_CLIMATES
+        if device_type == 'fans': return  DEVICE_TYPE_FANS
+        if device_type == 'covers': return  DEVICE_TYPE_COVERS
+        if device_type == 'lights': return  DEVICE_TYPE_LIGHTS
+        if device_type == 'media_players': return  DEVICE_TYPE_MEDIA_PLAYERS
+        if device_type == 'others': return  DEVICE_TYPE_OTHERS
+        if device_type == 'scenes': return  DEVICE_TYPE_SCENES
+        if device_type == 'sensors': return  DEVICE_TYPE_SENSORS
+        if device_type == 'switches': return  DEVICE_TYPE_SWITCHES
+        return device_type
