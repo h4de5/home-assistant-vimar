@@ -58,15 +58,15 @@ class VimarDeviceCustomizer:
                 if (deviceold is None and _LOGGER_isDebug):
                     deviceold = {}
                     for key, value in device.items():
-                        deviceold[key] = self.device_override_get_attr_str(device, key)
+                        deviceold[key] = self.get_attr_str(device, key)
                 actions = device_override[DEVICE_OVERRIDE_ACTIONS]
                 if isinstance(actions, list):
                     for item in actions:
                         for key, value in item.items():
-                            self.device_override_action(device, key, value, deviceold)
+                            self.device_override_action_execute(device, key, value, deviceold)
                 else:
                     for key, value in actions.items():
-                        self.device_override_action(device, key, value, deviceold)
+                        self.device_override_action_execute(device, key, value, deviceold)
             except BaseException as err:
                 _LOGGER.error("Error occurred for device_override. %s - device_override: %s", str(err), str(device_override))
                 raise
@@ -77,7 +77,7 @@ class VimarDeviceCustomizer:
                 old_value = str(None)
                 if (key in deviceold):
                     old_value = str(deviceold[key])
-                new_value = str(self.device_override_get_attr_str(device, key))
+                new_value = str(self.get_attr_str(device, key))
                 if old_value != new_value:
                     fields_edit.append(str(key) + ": '" + str(old_value) + "' -> '" + str(new_value) + "'")
             if len(fields_edit) > 0:
@@ -85,20 +85,25 @@ class VimarDeviceCustomizer:
                     "Overriding attributes per object_name: '" + deviceold["object_name"] + "': " + " - ".join(fields_edit) + "."
                 )
 
-    def match_name(self, name, search, searchRegex):
+    def match_name(self, device, key, search, search_regex):
+        name = self.get_attr_str(device, key)
+        if (self.get_attr_key(key) == 'device_type'):
+            search = self.device_type_singolarize(search)
+            search_regex = self.device_type_singolarize(search_regex)
+
         match = False
         if (search is not None):
            match = search == "*" or name.upper() == search.upper()
 
         #gestione filtro con regex, come su https://gist.github.com/elbarsal/65f413b60d1c4976a8351fba4b4d94d5 (whitelist_re)
         try:
-            if (searchRegex is not None):
-              name_match = re.search(searchRegex, name, re.IGNORECASE) is not None
+            if (search_regex is not None):
+              name_match = re.search(search_regex, name, re.IGNORECASE) is not None
               if (name_match):
                 #_LOGGER.debug("Whitelist regex matches entity or domain: %s", state.entity_id)
                 match = True
         except BaseException as err:
-            _LOGGER.error("Error occurred in match_name. name: '" + name + "', searchRegex: '" + searchRegex + "' - %s", str(err))
+            _LOGGER.error("Error occurred in match_name. name: '" + name + "', searchRegex: '" + search_regex + "' - %s", str(err))
 
         return match
 
@@ -159,7 +164,7 @@ class VimarDeviceCustomizer:
 
 
 
-    def device_override_get_attr_key(self, key):
+    def get_attr_key(self, key):
         if (key == 'type' or key == 'class' or key == 'friendly_name'):
             return "device_" + key
 
@@ -175,8 +180,8 @@ class VimarDeviceCustomizer:
             return 'room_names'
         return key
 
-    def device_override_get_attr_str(self, device, key):
-        attr_name = self.device_override_get_attr_key(key)
+    def get_attr_str(self, device, key):
+        attr_name = self.get_attr_key(key)
         attr_str = device.get(attr_name)
         if attr_str is None:
             attr_str = ""
@@ -191,8 +196,7 @@ class VimarDeviceCustomizer:
             matchcnt += 1
         elif filters is not None:
             for key, value in filters.items():
-                attr_str = self.device_override_get_attr_str(device, key)
-                if self.match_name(attr_str, value, None) is False:
+                if self.match_name(device, key, value, None) is False:
                     return False
                 matchcnt += 1
         filters = device_override.get(DEVICE_OVERRIDE_FILTER_RE)
@@ -200,15 +204,14 @@ class VimarDeviceCustomizer:
             matchcnt += 1
         elif filters is not None:
             for key, value in filters.items():
-                attr_str = self.device_override_get_attr_str(device, key)
-                if self.match_name(attr_str, None, value) is False:
+                if self.match_name(device, key, None, value) is False:
                     return False
                 matchcnt += 1
         match = matchcnt > 0
         return match
 
 
-    def device_override_action(self, device, action, value, device_original):
+    def device_override_action_execute(self, device, action, value, device_original):
         field = None
         if (action == DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_AS_VIMAR):
             device["device_friendly_name"] = device["object_name"].title().strip()
@@ -227,12 +230,12 @@ class VimarDeviceCustomizer:
                     friendly_name = (room_name + ' ' + friendly_name).strip()
                 device["device_friendly_name"] = friendly_name
         elif (action == DEVICE_OVERRIDE_ACTION_REPLACE_RE):
-            field = self.device_override_get_attr_key(value.get(DEVICE_OVERRIDE_ACTION_REPLACE_RE_FIELD))
-            curr_value = self.device_override_get_attr_str(device, field)
+            field = self.get_attr_key(value.get(DEVICE_OVERRIDE_ACTION_REPLACE_RE_FIELD))
+            curr_value = self.get_attr_str(device, field)
             new_value = self.replace_name(curr_value, value.get(DEVICE_OVERRIDE_ACTION_REPLACE_RE_PATTERN), value.get(DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL))
             device[field] = new_value
         else: #on default, set specified value in dictionary :)
-            field = self.device_override_get_attr_key(action)
+            field = self.get_attr_key(action)
             device[field] = value
 
         if (field == 'icon' and isinstance(device[field], str) and "," in device[field]):
@@ -243,13 +246,22 @@ class VimarDeviceCustomizer:
 
 
     def device_type_singolarize(self, device_type):
-        if device_type == 'climates': return  DEVICE_TYPE_CLIMATES
-        if device_type == 'fans': return  DEVICE_TYPE_FANS
-        if device_type == 'covers': return  DEVICE_TYPE_COVERS
-        if device_type == 'lights': return  DEVICE_TYPE_LIGHTS
-        if device_type == 'media_players': return  DEVICE_TYPE_MEDIA_PLAYERS
-        if device_type == 'others': return  DEVICE_TYPE_OTHERS
-        if device_type == 'scenes': return  DEVICE_TYPE_SCENES
-        if device_type == 'sensors': return  DEVICE_TYPE_SENSORS
-        if device_type == 'switches': return  DEVICE_TYPE_SWITCHES
+        if device_type == 'climates':
+            return  DEVICE_TYPE_CLIMATES
+        if device_type == 'fans':
+            return  DEVICE_TYPE_FANS
+        if device_type == 'covers':
+            return  DEVICE_TYPE_COVERS
+        if device_type == 'lights':
+            return  DEVICE_TYPE_LIGHTS
+        if device_type == 'media_players':
+            return  DEVICE_TYPE_MEDIA_PLAYERS
+        if device_type == 'others':
+            return  DEVICE_TYPE_OTHERS
+        if device_type == 'scenes':
+            return  DEVICE_TYPE_SCENES
+        if device_type == 'sensors':
+            return  DEVICE_TYPE_SENSORS
+        if device_type == 'switches':
+            return  DEVICE_TYPE_SWITCHES
         return device_type
