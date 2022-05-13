@@ -15,25 +15,25 @@ from homeassistant.components.media_player.const import (
 )
 from homeassistant.const import STATE_OFF, STATE_PLAYING  # STATE_IDLE,
 
-from .vimar_entity import VimarEntity, vimar_setup_platform
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 try:
     from homeassistant.components.media_player import MediaPlayerEntity
 except ImportError:
     from homeassistant.components.media_player import MediaPlayerDevice as MediaPlayerEntity
 
+from .const import DEVICE_TYPE_MEDIA_PLAYERS as CURR_PLATFORM
+
 _LOGGER = logging.getLogger(__name__)
 
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Vimar Media player platform."""
-    vimar_setup_platform(VimarMediaplayer, hass, async_add_entities, discovery_info)
+async def async_setup_entry(hass, entry, async_add_devices):
+    """Set up the Vimar Switch platform."""
+    vimar_setup_entry(VimarMediaplayer, CURR_PLATFORM, hass, entry, async_add_devices)
 
 
 class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     """Provide Vimar media player."""
 
-    _platform = "media_player"
     _last_volume = 0.1
     _channel_source_id = 0
     _global_channel_id = 1545
@@ -46,20 +46,24 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
     # channel   | channel   | source
     # source    | track     | channel
 
-    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
+    def __init__(self, coordinator, device_id: int):
         """Initialize the media players."""
-        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+        VimarEntity.__init__(self, coordinator, device_id)
 
         # self.entity_id = "media_player." + self._name.lower() + "_" + self._device_id
 
         # CH_Audio somehow uses a global status id for all radios
-        if vimarproject.global_channel_id is not None:
-            self._global_channel_id = vimarproject.global_channel_id
+        if coordinator.vimarproject.global_channel_id is not None:
+            self._global_channel_id = coordinator.vimarproject.global_channel_id
             self._device["status"]["global_channel"] = {
                 "status_id": str(self._global_channel_id),
                 "status_value": "0",
                 "status_range": "0-7",
             }
+
+    @property
+    def entity_platform(self):
+        return CURR_PLATFORM
 
     # media player properties
     @property

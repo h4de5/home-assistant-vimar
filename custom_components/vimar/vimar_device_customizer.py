@@ -1,19 +1,8 @@
 import logging
 import sys
 import re
-
-from .const import DOMAIN
-from .const import (
-    DEVICE_TYPE_CLIMATES,
-    DEVICE_TYPE_FANS,
-    DEVICE_TYPE_COVERS,
-    DEVICE_TYPE_LIGHTS,
-    DEVICE_TYPE_MEDIA_PLAYERS,
-    DEVICE_TYPE_OTHERS,
-    DEVICE_TYPE_SCENES,
-    DEVICE_TYPE_SENSORS,
-    DEVICE_TYPE_SWITCHES,
-)
+from homeassistant.helpers.typing import ConfigType
+from .const import *
 
 DEVICE_OVERRIDE_FILTER = "filter"
 DEVICE_OVERRIDE_FILTER_RE = "filter_re"
@@ -29,24 +18,57 @@ _LOGGER = logging.getLogger(__name__)
 _LOGGER_isDebug = _LOGGER.isEnabledFor(logging.DEBUG)
 
 class VimarDeviceCustomizer:
+    """"""
 
     _device_overrides = []
+    vimarconfig : ConfigType = None
 
-    def __init__(self, device_overrides):
+    def __init__(self, vimarconfig: ConfigType, device_overrides):
         """Create new container to hold all states."""
-        self._device_overrides = device_overrides
-        if (device_overrides is None):
-            self._device_overrides = []
+        if device_overrides:
+            self._device_overrides += device_overrides
+        self.vimarconfig = vimarconfig
         self.init_overrides()
 
-
     def init_overrides(self):
+        """-"""
+        actions = self.get_actions_from_config()
+        if actions:
+            overrides = []
+            overrides += actions
+            overrides += self._device_overrides
+            self._device_overrides = actions
+
         for device_override in self._device_overrides:
             try:
                 self.device_override_check(device_override)
             except BaseException as err:
                 _LOGGER.error("Error occurred parsing device_override. %s - device_override: %s", str(err), str(device_override))
                 raise
+
+    def get_actions_from_config(self):
+        """-"""
+        actions = []
+        action_all = []
+        action_all_item = { DEVICE_OVERRIDE_FILTER : "*", DEVICE_OVERRIDE_ACTIONS : action_all}
+        actions.append(action_all_item)
+        if self.vimarconfig.get(CONF_USE_VIMAR_NAMING):
+            action_all.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_AS_VIMAR: True})
+            action_all.append({ "device_class": ""})
+            action_all.append({ "icon": ""})
+        if self.vimarconfig.get(CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN):
+            action_all.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN: True})
+        if self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE):
+            #tutti i CH_Main_Automation li imposto inizialmente come switch
+            set_switch = { DEVICE_OVERRIDE_FILTER : { "object_type": "CH_Main_Automation" }, "device_type" : "switch"}
+            set_light = { DEVICE_OVERRIDE_FILTER : { "object_type": "CH_Main_Automation" }, DEVICE_OVERRIDE_FILTER_RE : { "friendly_name": self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE) }, "device_type" : "light"}
+            actions.append(set_switch)
+            actions.append(set_light)
+        if not action_all:
+            actions.remove(action_all_item)
+        return actions
+
+
 
     def customize_device(self, device):
         deviceold = None

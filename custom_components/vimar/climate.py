@@ -25,25 +25,23 @@ from .const import (VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_AUTO_I,  # DOMAIN,
                     VIMAR_CLIMATE_MANUAL_I, VIMAR_CLIMATE_MANUAL_II,
                     VIMAR_CLIMATE_OFF, VIMAR_CLIMATE_OFF_I,
                     VIMAR_CLIMATE_OFF_II)
-from .vimar_entity import VimarEntity, vimar_setup_platform
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 try:
     from homeassistant.components.climate import ClimateEntity
 except ImportError:
     from homeassistant.components.climate import ClimateDevice as ClimateEntity
 
+from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
+
 _LOGGER = logging.getLogger(__name__)
 
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Vimar Climate platform."""
-    vimar_setup_platform(VimarClimate, hass, async_add_entities, discovery_info)
-
+async def async_setup_entry(hass, entry, async_add_devices):
+    """Set up the Vimar Switch platform."""
+    vimar_setup_entry(VimarClimate, CURR_PLATFORM, hass, entry, async_add_devices)
 
 class VimarClimate(VimarEntity, ClimateEntity):
     """Provides a Vimar climates."""
-
-    _platform = "climate"
 
     # {'status_id': '2129', 'status_value': '0', 'status_range': 'min=0|max=1'},
     # 'regolazione': {'status_id': '2131', 'status_value': '2', 'status_range': ''},
@@ -92,13 +90,16 @@ class VimarClimate(VimarEntity, ClimateEntity):
     # Row000016: '62834','stato_principale_condizionamento on/off','-1','0'  #cooling on/ff
     # Row000017: '62835','stato_principale_riscaldamento on/off','-1','0'  #heating on/ff
 
-    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
+    def __init__(self, coordinator, device_id: int):
         """Initialize the climate."""
-        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+        VimarEntity.__init__(self, coordinator, device_id)
 
         # self.entity_id = "climate." + self._name.lower() + "_" + self._device_id
 
     # climate properties
+    @property
+    def entity_platform(self):
+        return CURR_PLATFORM
 
     @property
     def is_on(self):

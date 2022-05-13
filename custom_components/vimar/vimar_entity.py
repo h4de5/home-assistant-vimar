@@ -1,79 +1,60 @@
 """Insteon base entity."""
 import logging
+import string
 
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN
+from .const import DOMAIN, PACKAGE_NAME, _LOGGER
 from .vimarlink.vimarlink import VimarLink, VimarProject
+from .vimar_coordinator import VimarDataUpdateCoordinator
 
-_LOGGER = logging.getLogger(__name__)
-_LOGGER_isDebug = _LOGGER.isEnabledFor(logging.DEBUG)
-
-
-class VimarEntity(Entity):
+#extend CoordinatorEntity that have all methods available / async_added_to_hass implemented
+class VimarEntity(CoordinatorEntity):
     """Vimar abstract base entity."""
 
+    _logger = _LOGGER
+    _logger_is_debug = False
     _device = []
     _device_id = 0
-    _vimarconnection = None
-    _vimarproject = None
-    _coordinator = None
+    _vimarconnection : VimarLink = None
+    _vimarproject : VimarProject = None
+    _coordinator : VimarDataUpdateCoordinator = None
     _attributes = {}
 
     ICON = "mdi:checkbox-marked"
 
-    def __init__(self, device_id: int, vimarconnection: VimarLink, vimarproject: VimarProject, coordinator):
+    def __init__(self, coordinator: VimarDataUpdateCoordinator, device_id: int):
         """Initialize the base entity."""
+        super().__init__(coordinator)
         self._coordinator = coordinator
         self._device_id = device_id
-        self._vimarconnection = vimarconnection
-        self._vimarproject = vimarproject
+        self._vimarconnection = coordinator.vimarconnection
+        self._vimarproject = coordinator.vimarproject
         self._reset_status()
 
         if self._device_id in self._vimarproject.devices:
             self._device = self._vimarproject.devices[self._device_id]
+            self._logger = logging.getLogger(PACKAGE_NAME + "." + self.entity_platform)
+            self._logger_is_debug = self._logger.isEnabledFor(logging.DEBUG)
         else:
-            _LOGGER.warning("Cannot find device #%s", self._device_id)
+            self._logger.warning("Cannot find device #%s", self._device_id)
 
         # self.entity_id = self._platform + "." + self.name.lower().replace(" ", "_") + "_" + self._device_id
 
     @property
-    def should_poll(self):
-        """No need to poll. Coordinator notifies entity of updates."""
-        return False
-
-    @property
-    def available(self):
-        """Return if entity is available."""
-        return self._coordinator.last_update_success
-
-    async def async_added_to_hass(self):
-        """Connect to dispatcher listening for entity data notifications."""
-        # _LOGGER.debug("async_added_to_hass %s called for %s", str(self.platform.platform), self.name)
-        self._coordinator.async_add_listener(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self):
-        """Disconnect from update signal."""
-        _LOGGER.debug("async_will_remove_from_hass %s called for %s", str(self.platform.platform), self.name)
-        self._coordinator.async_remove_listener(self.async_write_ha_state)
-
-    # async def async_added_to_hass(self):
-    #     """When entity is added to hass."""
-    #     self.async_on_remove(
-    #         self._coordinator.async_add_listener(
-    #             # self.async_write_ha_state
-    #             self.async_on_data_updated
-    #         )
-    #     )
+    def device_name(self):
+        """Return the name of the device."""
+        name = self._device["device_friendly_name"]
+        if name is None:
+           name = self._device["object_name"]
+        return name
 
     @property
     def name(self):
         """Return the name of the device."""
-        name = self._device["device_friendly_name"];
-        if name is None:
-           name = self._device["object_name"];
-        return name
+        return self.device_name
 
     @property
     def extra_state_attributes(self):
@@ -82,12 +63,12 @@ class VimarEntity(Entity):
         #mostro gli attributi importati da vimar
         if self._device is not None:
             for key in self._device:
-               value = self._device[key]
-               if (_LOGGER_isDebug == False and (key == 'status' or key == 'device_class' or key == 'device_friendly_name' or key == 'vimar_icon')):
+                value = self._device[key]
+                if self._logger_is_debug is False and (key == 'status' or key == 'device_class' or key == 'device_friendly_name' or key == 'vimar_icon'):
                    #for status_name in value:
                    #    deviceItem["state_" + status_name.replace("/", "_").replace(" ", "_")] = value[status_name]["status_value"]
                    continue
-               self._attributes['vimar_' + key] = value
+                self._attributes['vimar_' + key] = value
         return self._attributes
 
     def request_statemachine_update(self):
@@ -113,7 +94,7 @@ class VimarEntity(Entity):
                         self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device["status"][state]["status_id"], str(value), optionals)
                         self._device["status"][state]["status_value"] = str(value)
                     else:
-                        _LOGGER.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self.name, self._device_id, value)
+                        self._logger.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self.name, self._device_id, value)
 
             if kwargs and len(kwargs) > 0:
                 for state, value in kwargs.items():
@@ -123,7 +104,7 @@ class VimarEntity(Entity):
                         self.hass.async_add_executor_job(self._vimarconnection.set_device_status, self._device["status"][state]["status_id"], str(value), optionals)
                         self._device["status"][state]["status_value"] = str(value)
                     else:
-                        _LOGGER.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self.name, self._device_id, value)
+                        self._logger.warning("Could not find state %s in device %s - %s - could not change value to: %s", state, self.name, self._device_id, value)
 
             if state_changed:
                 self.request_statemachine_update()
@@ -135,7 +116,7 @@ class VimarEntity(Entity):
         if self.has_state(state):
             return self._device["status"][state]["status_value"]
         else:
-            _LOGGER.warning("Could not find state %s in device %s - %s - could not get value", state, self.name, self._device_id)
+            self._logger.warning("Could not find state %s in device %s - %s - could not get value", state, self.name, self._device_id)
         return None
 
     def has_state(self, state):
@@ -163,8 +144,11 @@ class VimarEntity(Entity):
     @property
     def unique_id(self):
         """Return the ID of this device."""
-        # _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
-        return DOMAIN + "_" + self._platform + "_" + self._device_id
+        # self._logger.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
+        prefix = (self._coordinator.entity_unique_id_prefix or "")
+        if len(prefix) > 0:
+            prefix += "_"
+        return DOMAIN + "_" + prefix + self.entity_platform + "_" + self._device_id
 
     def _reset_status(self):
         """Set status from _device to class variables."""
@@ -174,33 +158,55 @@ class VimarEntity(Entity):
         """Return True of in default state - resulting in default icon."""
         return False
 
+    @property
+    def device_info(self):
+        room_name = None
+        if self._device.get("room_name") and self._device["room_name"] != '':
+            room_name = self._device["room_name"].title().strip()
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+            "name": self.device_name,
+            "model": self._device.get("object_type"),
+            "manufacturer": "Vimar",
+            "suggested_area": room_name
+        }
 
-def vimar_setup_platform(vimar_entity_class: VimarEntity, hass: HomeAssistantType, async_add_entities, discovery_info=None):
-    """Set up the Vimar Sensor platform."""
-    # We only want this platform to be set up via discovery.
-    if discovery_info is None:
-        return
+    @property
+    def entity_platform(self):
+        """Return device_type (platform overrrided in sensor class)"""
+        return self._device["device_type"]
 
-    _LOGGER.debug("Vimar %s started!", discovery_info["hass_data_key"])
+    def get_entity_list(self) -> list:
+        """return entity as list for async_add_devices, method to override if has multiple attribute, as sensor"""
+        return [ self ]
+
+
+def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssistantType, entry, async_add_devices):
+    """Generic method for add entities of specified platform to HASS"""
+    logger = logging.getLogger(PACKAGE_NAME + "." + platform)
+    coordinator : VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    platform_ignored = platform not in coordinator.platforms
+    vimarproject = coordinator.vimarproject
+
+    devices = []
+    if not platform_ignored:
+        logger.debug("Vimar %s started!", platform)
+        devices = vimarproject.get_by_device_type(platform)
+
     entities = []
-
-    vimarconnection = hass.data[DOMAIN]["connection"]
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    vimarproject = hass.data[DOMAIN]["project"]
-
-    devices = vimarproject.get_by_device_type(discovery_info["hass_data_key"])
-
     if len(devices) != 0:
         for device_id, device in devices.items():
-            if hasattr(vimar_entity_class, "get_entity_list") and callable(getattr(vimar_entity_class, "get_entity_list")):
-                entities += vimar_entity_class(device_id, vimarconnection, vimarproject, coordinator).get_entity_list()
-            else:
-                entities.append(vimar_entity_class(device_id, vimarconnection, vimarproject, coordinator))
+            if device.get("ignored", False):
+                continue
+            entity : VimarEntity = vimar_entity_class(coordinator, device_id)
+            entity_list = entity.get_entity_list()
+            entities += entity_list
 
     if len(entities) != 0:
-        _LOGGER.info("Adding %d %s", len(entities), discovery_info["hass_data_key"])
-        async_add_entities(entities)
-    # else:
-    #     _LOGGER.warning("Vimar %s has no entities!", discovery_info['hass_data_key'])
+        logger.info("Adding %d %s", len(entities), platform)
+        async_add_devices(entities)
 
-    _LOGGER.debug("Vimar %s complete!", discovery_info["hass_data_key"])
+    coordinator.devices_for_platform[platform] = entities
+
+    if not platform_ignored:
+        logger.debug("Vimar %s complete!", platform)

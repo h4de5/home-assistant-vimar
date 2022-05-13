@@ -8,8 +8,12 @@ update_entities:
 
 exec_vimar_sql:
   description: >
-    Esegue una query SQL su vimar.
+    Execute a SQL query on vimar.
   fields:
     sql:
       description: SQL Query
       example: SELECT 1
+
+reload_default:
+  description: >
+    Reload all entities, removing all, and then reload

@@ -1,8 +1,16 @@
 """Constant for Vimar component."""
 
+import logging
+
+_LOGGER = logging.getLogger(__package__)
+PACKAGE_NAME = __package__
+
 # Home-Assistant specific consts
 DOMAIN = "vimar"
+#DOMAIN_DATA = "vimar_data"
+DOMAIN_CONFIG_YAML = "vimar_default_config"
 
+CONF_TITLE = "title"
 CONF_SCHEMA = "schema"
 CONF_CERTIFICATE = "certificate"
 CONF_GLOBAL_CHANNEL_ID = "global_channel_id"
@@ -16,6 +24,13 @@ DEFAULT_TIMEOUT = 6
 
 # Device overrides
 CONF_OVERRIDE = "device_override"
+
+CONF_ENTITY_PREFIX = "entity_prefix"
+
+CONF_USE_VIMAR_NAMING = "use_vimar_naming"
+CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN = "friendly_name_room_name_at_begin"
+CONF_DEVICES_LIGHTS_RE = "devices_as_lights_re"
+CONF_DELETE_AND_RELOAD_ALL_ENTITIES = "delete_and_reload_all_entities"
 
 # vimar integration specific const
 
@@ -63,3 +78,8 @@ AVAILABLE_PLATFORMS = {
     DEVICE_TYPE_SENSORS: "sensor",
     # DEVICE_TYPE_OTHERS: ''
 }
+
+PLATFORMS = [DEVICE_TYPE_LIGHTS, DEVICE_TYPE_COVERS, DEVICE_TYPE_SWITCHES, DEVICE_TYPE_CLIMATES, DEVICE_TYPE_MEDIA_PLAYERS, DEVICE_TYPE_SCENES, DEVICE_TYPE_SENSORS]
+
+
+#VIMAR_UNIQUE_ID = "vimar_unique_id"

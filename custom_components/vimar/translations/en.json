@@ -1,0 +1,61 @@
+{
+    "config": {
+      "title": "VIMAR By-Me Hub",
+      "step": {
+        "user": {
+          "title": "Set up VIMAR By-Me Hub",
+          "data": {
+            "title": "Instance Title",
+            "host": "Host",
+            "username": "User Name",
+            "password": "Password",
+            "port": "Port",
+            "schema": "Schema Http/Https",
+            "certificate": "Certificate file name"
+          }
+        }
+      },
+      "error": {
+        "cannot_connect": "Failed to connect, please try again",
+        "invalid_auth": "Invalid authentication",
+        "invalid_cert": "Invalid certificate, try change or remove",
+        "unknown": "Unexpected error"
+      },
+      "abort": {
+        "already_configured": "Device is already configured"
+      }
+    },
+    "options": {
+      "step": {
+        "init": {
+          "title": "Set up VIMAR By-Me Hub (Auth)",
+          "data": {
+            "host": "Host",
+            "username": "User Name",
+            "password": "Password",
+            "port": "Port",
+            "schema": "Schema Http/Https",
+            "certificate": "Certificate file name"
+          }
+        },
+        "two": {
+          "title": "Set up VIMAR By-Me Hub (2)",
+          "data": {
+            "timeout": "Request Timeout (seconds)",
+            "global_channel_id": "MediaPlayer Global Channel Id",
+            "ignore": "Ignored platforms",
+            "use_vimar_naming": "Use naming as Vimar",
+            "friendly_name_room_name_at_begin": "Set Room Name at begin of name",
+            "devices_as_lights_re": "RegEx for set entities as lights (CH_Main_Automation), others setted as switch",
+            "delete_and_reload_all_entities" : "Delete and reload all entities (if naming changed)"
+          }
+        }
+      },
+      "error": {
+        "cannot_connect": "Failed to connect, please try again",
+        "invalid_auth": "Invalid authentication",
+        "invalid_cert": "Invalid certificate, try change or remove",
+        "unknown": "Unexpected error"
+      }
+    }
+  }
