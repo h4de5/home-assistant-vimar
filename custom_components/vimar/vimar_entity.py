@@ -2,13 +2,16 @@
 import logging
 import string
 
+from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.const import CONF_VERIFY_SSL
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PACKAGE_NAME, _LOGGER
+from .const import DOMAIN, PACKAGE_NAME, _LOGGER, DEVICE_TYPE_BINARY_SENSOR
 from .vimarlink.vimarlink import VimarLink, VimarProject
 from .vimar_coordinator import VimarDataUpdateCoordinator
+#from binary_sensor import VimarStatusSensor
 
 #extend CoordinatorEntity that have all methods available / async_added_to_hass implemented
 class VimarEntity(CoordinatorEntity):
@@ -164,7 +167,7 @@ class VimarEntity(CoordinatorEntity):
         if self._device.get("room_name") and self._device["room_name"] != '':
             room_name = self._device["room_name"].title().strip()
         return {
-            "identifiers": {(DOMAIN, self._device_id)},
+            "identifiers": {(DOMAIN, self._coordinator.entity_unique_id_prefix or "", self._device_id)},
             "name": self.device_name,
             "model": self._device.get("object_type"),
             "manufacturer": "Vimar",
@@ -181,6 +184,89 @@ class VimarEntity(CoordinatorEntity):
         return [ self ]
 
 
+class VimarStatusSensor(BinarySensorEntity):
+    """Representation of a Sensor."""
+    _coordinator : VimarDataUpdateCoordinator = None
+    def __init__(self, coordinator : VimarDataUpdateCoordinator):
+        """Initialize the sensor."""
+        self._coordinator = coordinator
+        vimarconfig = coordinator.vimarconfig
+        self._name = "Vimar Connection to " + str(coordinator.vimarconnection._host) + ":" + str(coordinator.vimarconnection._port)
+        self._type = 'connectivity'
+        self._attributes = {
+            "Host" : coordinator.vimarconnection._host,
+            "Port" : coordinator.vimarconnection._port,
+            "Secure" : coordinator.vimarconnection._schema == "https",
+            "Verify SSL": coordinator.vimarconnection._schema == "https" and vimarconfig.get(CONF_VERIFY_SSL),
+            "Vimar Url": "%s://%s:%s" % (coordinator.vimarconnection._schema, coordinator.vimarconnection._host, coordinator.vimarconnection._port),
+            "Certificate": coordinator.vimarconnection._certificate,
+            "Username": coordinator.vimarconnection._username
+        }
+        self._data = self._attributes
+        self._state = False
+
+    @property
+    def device_class(self):
+        """Return the class of this sensor."""
+        return self._type
+
+    @property
+    def should_poll(self):
+        """Polling needed for a demo binary sensor."""
+        return True
+
+    @property
+    def name(self):
+        """Return the name of the binary sensor."""
+        return self._name
+
+    @property
+    def unique_id(self):
+        """Return the ID of this device."""
+        # self._logger.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
+        prefix = (self._coordinator.entity_unique_id_prefix or "")
+        if len(prefix) > 0:
+            prefix += "_"
+        return DOMAIN + "_" + prefix + "status"
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes of the sensor."""
+        if self._data:
+            return self._data
+        else:
+            return None
+
+    @property
+    def extra_state_attributes(self):
+        """Return device specific state attributes."""
+        return self._attributes
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._coordinator.entity_unique_id_prefix or "", "status")},
+            "name": "Vimar WebServer",
+            "model": "Vimar WebServer",
+            "manufacturer": "Vimar"
+        }
+
+    @property
+    def is_on(self):
+        """Return true if the binary sensor is on."""
+        return self._state
+
+    def update(self):
+        """Fetch new state data for the sensor.
+        This is the only method that should fetch new data for Home Assistant.
+        """
+        #self._data = self._fetch(self._host)
+        logged = self._coordinator.vimarconnection.is_logged()
+        if logged:
+            self._state = True
+        else:
+            self._state = False
+
 def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssistantType, entry, async_add_devices):
     """Generic method for add entities of specified platform to HASS"""
     logger = logging.getLogger(PACKAGE_NAME + "." + platform)
@@ -188,25 +274,32 @@ def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssis
     platform_ignored = platform not in coordinator.platforms
     vimarproject = coordinator.vimarproject
 
-    devices = []
+    entities = []
+
+    if platform == DEVICE_TYPE_BINARY_SENSOR:
+        status_sensor = VimarStatusSensor(coordinator)
+        async_add_devices([status_sensor], True)
+        entities += [status_sensor]
+
     if not platform_ignored:
         logger.debug("Vimar %s started!", platform)
         devices = vimarproject.get_by_device_type(platform)
+        entities_to_add = []
+        if len(devices) != 0:
+            for device_id, device in devices.items():
+                if device.get("ignored", False):
+                    continue
+                entity : VimarEntity = vimar_entity_class(coordinator, device_id)
+                entity_list = entity.get_entity_list()
+                entities_to_add += entity_list
 
-    entities = []
-    if len(devices) != 0:
-        for device_id, device in devices.items():
-            if device.get("ignored", False):
-                continue
-            entity : VimarEntity = vimar_entity_class(coordinator, device_id)
-            entity_list = entity.get_entity_list()
-            entities += entity_list
-
-    if len(entities) != 0:
-        logger.info("Adding %d %s", len(entities), platform)
-        async_add_devices(entities)
+        if len(entities_to_add) != 0:
+            logger.info("Adding %d %s", len(entities_to_add), platform)
+            async_add_devices(entities_to_add)
+            entities += entities_to_add
 
     coordinator.devices_for_platform[platform] = entities
 
     if not platform_ignored:
         logger.debug("Vimar %s complete!", platform)
+

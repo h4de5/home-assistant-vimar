@@ -16,6 +16,8 @@ from homeassistant.const import (
     CONF_PORT,
     CONF_TIMEOUT,
     CONF_USERNAME,
+    CONF_VERIFY_SSL,
+    CONF_SCAN_INTERVAL
 )
 from homeassistant.exceptions import PlatformNotReady, ConfigEntryNotReady
 from homeassistant.core import Config, HomeAssistant
@@ -53,12 +55,16 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         self.vimarconfig = vimarconfig
         self.platforms = []
         self.devices_for_platform = {}
+        if entry:
+            self.entity_unique_id_prefix = entry.unique_id or ""
         timeout = vimarconfig.get(CONF_TIMEOUT) or DEFAULT_TIMEOUT
         if timeout > 0:
             self._timeout = float(timeout)
-
+        uptade_interval = float(vimarconfig.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL)
+        if uptade_interval < 1:
+            uptade_interval = DEFAULT_SCAN_INTERVAL
         super().__init__(
-            hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=8)
+            hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=uptade_interval)
         )
 
     def init_available_platforms(self):
@@ -102,12 +108,14 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def init_vimarproject(self) -> None:
         vimarconfig = self.vimarconfig
-        schema = vimarconfig.get(CONF_SCHEMA)
+        schema = "https" if vimarconfig.get(CONF_SECURE) else "http"
         host = vimarconfig.get(CONF_HOST)
         port = vimarconfig.get(CONF_PORT)
         username = vimarconfig.get(CONF_USERNAME)
         password = vimarconfig.get(CONF_PASSWORD)
-        certificate = vimarconfig.get(CONF_CERTIFICATE)
+        certificate = None
+        if schema == "https" and vimarconfig.get(CONF_VERIFY_SSL):
+            certificate = vimarconfig.get(CONF_CERTIFICATE, DEFAULT_CERTIFICATE)
         timeout = vimarconfig.get(CONF_TIMEOUT)
         global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
         # ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)

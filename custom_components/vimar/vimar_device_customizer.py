@@ -56,6 +56,12 @@ class VimarDeviceCustomizer:
             action_all.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_AS_VIMAR: True})
             action_all.append({ "device_class": ""})
             action_all.append({ "icon": ""})
+            repl = {
+                DEVICE_OVERRIDE_ACTION_REPLACE_RE_FIELD : "friendly_name",
+                DEVICE_OVERRIDE_ACTION_REPLACE_RE_PATTERN : "  ",
+                DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL : " "
+            }
+            action_all.append({DEVICE_OVERRIDE_ACTION_REPLACE_RE: repl})
         if self.vimarconfig.get(CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN):
             action_all.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN: True})
         if self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE):
@@ -64,6 +70,9 @@ class VimarDeviceCustomizer:
             set_light = { DEVICE_OVERRIDE_FILTER : { "object_type": "CH_Main_Automation" }, DEVICE_OVERRIDE_FILTER_RE : { "friendly_name": self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE) }, "device_type" : "light"}
             actions.append(set_switch)
             actions.append(set_light)
+        if self.vimarconfig.get(CONF_DEVICES_BINARY_SENSOR_RE):
+            set_binary = {  DEVICE_OVERRIDE_FILTER : { "device_type": "switch" }, DEVICE_OVERRIDE_FILTER_RE : { "friendly_name": self.vimarconfig.get(CONF_DEVICES_BINARY_SENSOR_RE) }, "device_type" : "binary_sensor"}
+            actions.append(set_binary)
         if not action_all:
             actions.remove(action_all_item)
         return actions
@@ -71,6 +80,12 @@ class VimarDeviceCustomizer:
 
 
     def customize_device(self, device):
+        room_name = ''
+        if "room_name" in device and device["room_name"] is not None and device["room_name"] != '':
+            room_name = device["room_name"].title().strip()
+        if "room_friendly_name" not in device or device["room_friendly_name"] == "":
+            device["room_friendly_name"] = room_name
+
         deviceold = None
         for device_override in self._device_overrides:
             try:
@@ -240,9 +255,7 @@ class VimarDeviceCustomizer:
             if (device_original is not None):
                 device_original["device_friendly_name"] = device["device_friendly_name"]
         elif (action == DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN):
-            room_name = ''
-            if "room_name" in device and device["room_name"] is not None and device["room_name"] != '':
-                room_name = device["room_name"].title().strip()
+            room_name = device.get("room_friendly_name", "")
             if room_name != '':
                 friendly_name = device["device_friendly_name"]
                 if friendly_name.upper().endswith(room_name.upper()):

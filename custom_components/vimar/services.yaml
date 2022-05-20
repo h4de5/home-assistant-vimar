@@ -17,3 +17,6 @@ exec_vimar_sql:
 reload_default:
   description: >
     Reload all entities, removing all, and then reload
+
+reload:
+  description: Reload vimar service

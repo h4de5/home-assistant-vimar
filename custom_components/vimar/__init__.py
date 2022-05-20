@@ -3,9 +3,11 @@ import asyncio
 import logging
 import os
 from datetime import timedelta
+from platform import platform
 from typing import Tuple
 
 import async_timeout
+from homeassistant.util import slugify
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.core import callback
@@ -15,6 +17,8 @@ from homeassistant.const import (
     CONF_PORT,
     CONF_TIMEOUT,
     CONF_USERNAME,
+    CONF_VERIFY_SSL,
+    SERVICE_RELOAD
 )
 from homeassistant.exceptions import PlatformNotReady, ConfigEntryNotReady
 from homeassistant.core import Config, HomeAssistant
@@ -60,8 +64,7 @@ SERVICE_RELOAD_DEFAULT_SCHEMA = vol.Schema({})
 @asyncio.coroutine
 async def async_setup(hass: HomeAssistant, config: Config):
     """Set up from config."""
-    if not DOMAIN in hass.data:
-        hass.data[DOMAIN] = {}
+    hass.data.setdefault(DOMAIN, {})
 
     await add_services(hass)
 
@@ -83,16 +86,10 @@ async def async_setup(hass: HomeAssistant, config: Config):
         if len(configured) == 0:
             # get the configuration.yaml settings and make a 'flow' task :)
             #   this will run 'async_step_import' in config_flow.py
-            conf_import = {}
-            for key in conf:
-                if key == CONF_OVERRIDE:
-                    continue
-                conf_import[key] = conf[key]
-
             log.info("Importing configuration from yaml...after you can remove from yaml")
             hass.async_create_task(
                 hass.config_entries.flow.async_init(
-                    DOMAIN, context={"source": config_entries.SOURCE_IMPORT}, data=conf_import
+                    DOMAIN, context={"source": config_entries.SOURCE_IMPORT}, data=conf.copy()
                 )
             )
         else:
@@ -103,13 +100,12 @@ async def async_setup(hass: HomeAssistant, config: Config):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """async_setup_entry"""
+    hass.data.setdefault(DOMAIN, {})
 
-    if not DOMAIN in hass.data:
-        hass.data[DOMAIN] = {}
-
-    #if entry.unique_id is None:
-    #    log.info("vimar unique id was None")
-    #    hass.config_entries.async_update_entry(entry, unique_id=VIMAR_UNIQUE_ID)
+    if entry.unique_id is None:
+        log.info("vimar unique id was None")
+        unique_id = slugify(entry.title)
+        hass.config_entries.async_update_entry(entry, unique_id=unique_id)
 
     vimarconfig = (entry.options or {}).copy()
     if CONF_HOST not in vimarconfig:
@@ -128,11 +124,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator.init_available_platforms()
 
-    if (entry.options or {}).get(CONF_DELETE_AND_RELOAD_ALL_ENTITIES):
-        options = entry.options.copy()
+    if (entry.data or {}).get(CONF_DELETE_AND_RELOAD_ALL_ENTITIES):
+        options = entry.data.copy()
         options.pop(CONF_DELETE_AND_RELOAD_ALL_ENTITIES)
         await coordinator.async_remove_old_devices()
-        hass.config_entries.async_update_entry(entry, options=options)
+        hass.config_entries.async_update_entry(entry, data=options)
 
 
     async def setup_then_listen() -> None:
@@ -182,22 +178,35 @@ async def add_services(hass: HomeAssistant):
         SERVICE_EXEC_VIMAR_SQL_SCHEMA,
     )
 
-    async def service_reload_default_call(call):
+    #async def service_reload_default_call(call):
+    #    entries_to_reload = []
+    #    for item in hass.data[DOMAIN].values():
+    #        coordinator : VimarDataUpdateCoordinator = item
+    #        coordinator.init_available_platforms()
+    #        coordinator.devices_for_platform = {} #set loaded devices as fake array empty :)
+    #        await coordinator.async_remove_old_devices()
+    #        entries_to_reload.append(coordinator.entry)
+    #    for entry in entries_to_reload:
+    #        await async_reload_entry(hass, entry)
+    #
+    #hass.services.async_register(
+    #    DOMAIN,
+    #    SERVICE_RELOAD_DEFAULT,
+    #    service_reload_default_call,
+    #    SERVICE_RELOAD_DEFAULT_SCHEMA,
+    #)
+    async def _handle_reload(service):
         entries_to_reload = []
         for item in hass.data[DOMAIN].values():
             coordinator : VimarDataUpdateCoordinator = item
-            coordinator.init_available_platforms()
-            coordinator.devices_for_platform = {} #set loaded devices as fake array empty :)
-            await coordinator.async_remove_old_devices()
             entries_to_reload.append(coordinator.entry)
         for entry in entries_to_reload:
             await async_reload_entry(hass, entry)
 
-    hass.services.async_register(
+    hass.helpers.service.async_register_admin_service(
         DOMAIN,
-        SERVICE_RELOAD_DEFAULT,
-        service_reload_default_call,
-        SERVICE_RELOAD_DEFAULT_SCHEMA,
+        SERVICE_RELOAD,
+        _handle_reload,
     )
 
 
