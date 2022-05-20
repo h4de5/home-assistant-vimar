@@ -164,8 +164,8 @@ class VimarEntity(CoordinatorEntity):
     @property
     def device_info(self):
         room_name = None
-        if self._device.get("room_name") and self._device["room_name"] != '':
-            room_name = self._device["room_name"].title().strip()
+        if self._device.get("room_friendly_name") and self._device["room_friendly_name"] != '':
+            room_name = self._device["room_friendly_name"]
         return {
             "identifiers": {(DOMAIN, self._coordinator.entity_unique_id_prefix or "", self._device_id)},
             "name": self.device_name,

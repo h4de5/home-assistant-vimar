@@ -34,9 +34,9 @@ from .vimar_coordinator import VimarDataUpdateCoordinator
 log = _LOGGER
 
 CONFIG_DOMAIN_SCHEMA = {
-    vol.Required(CONF_HOST): cv.string,
-    vol.Required(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
-    vol.Required(CONF_PASSWORD): cv.string,
+    vol.Optional(CONF_HOST): cv.string,
+    vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
+    vol.Optional(CONF_PASSWORD): cv.string,
     vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
     vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
     vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(

@@ -37,7 +37,7 @@ class VimarDeviceCustomizer:
             overrides = []
             overrides += actions
             overrides += self._device_overrides
-            self._device_overrides = actions
+            self._device_overrides = overrides
 
         for device_override in self._device_overrides:
             try:
