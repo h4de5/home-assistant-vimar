@@ -85,6 +85,8 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         user_input.pop(CONF_OVERRIDE, "") #remove override non gestito da config_flow
         schema = user_input.pop(CONF_SCHEMA, "https")
         user_input[CONF_SECURE] = schema == "https"
+        if schema == "https" and user_input.get(CONF_CERTIFICATE, "") != "":
+            user_input[CONF_VERIFY_SSL] = True
         unique_id = slugify(title)
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
@@ -258,6 +260,8 @@ def get_schema_options_two(config: dict = {}) -> dict:
     """Return a shcema configuration dict for HACS."""
     config = config or {}
     config = config if CONF_TIMEOUT in config else None
+    if config and not config.get(CONF_SCAN_INTERVAL):
+        config[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
     domains = sorted(PLATFORMS)
     schema = {
         vol.Required(CONF_TIMEOUT, description=get_vol_descr(config, CONF_TIMEOUT, DEFAULT_TIMEOUT)): int,
