@@ -4,10 +4,11 @@ import logging
 
 from homeassistant.helpers.entity import ToggleEntity
 
-from .vimar_entity import VimarEntity, vimar_setup_entry
 from .const import DEVICE_TYPE_SWITCHES as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Switch platform."""

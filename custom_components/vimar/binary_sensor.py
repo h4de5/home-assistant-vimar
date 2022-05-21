@@ -4,15 +4,12 @@
 import logging
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.helpers.entity import Entity
-from .vimar_coordinator import VimarDataUpdateCoordinator
-
-from .const import DOMAIN
-from .vimar_entity import VimarEntity, vimar_setup_entry
 
 from .const import DEVICE_TYPE_BINARY_SENSOR as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar BinarySensor platform."""
@@ -41,4 +38,3 @@ class VimarBinarySensor(VimarEntity, BinarySensorEntity):
         # elif self.has_state('comando'):
         #     return self.get_state('comando') == '1'
         return None
-

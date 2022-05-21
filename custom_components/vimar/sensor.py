@@ -44,11 +44,11 @@ from .const import DEVICE_TYPE_SENSORS as CURR_PLATFORM
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Switch platform."""
     vimar_setup_entry(VimarSensorContainer, CURR_PLATFORM, hass, entry, async_add_devices)
-    #https://github.com/custom-components/remote_homeassistant/blob/aac178b737357492cf3beb60ec3494dcf0513c3a/custom_components/remote_homeassistant/sensor.py#L4
-
+    # https://github.com/custom-components/remote_homeassistant/blob/aac178b737357492cf3beb60ec3494dcf0513c3a/custom_components/remote_homeassistant/sensor.py#L4
 
 
 class VimarSensor(VimarEntity, Entity):
@@ -111,10 +111,16 @@ class VimarSensor(VimarEntity, Entity):
             return STATE_CLASS_TOTAL_INCREASING
 
     def class_and_units(self):
-        if (not self._class_and_units is None):
+        if not self._class_and_units is None:
             return self._class_and_units
         """Return the class of this device, from component DEVICE_CLASSES."""
-        if self._device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
+        if self._device["object_type"] in [
+            "CH_Misuratore",
+            "CH_Carichi_Custom",
+            "CH_Carichi",
+            "CH_Carichi_3F",
+            "CH_KNX_GENERIC_POWER_KW",
+        ]:
             if any(x in self._measurement_name for x in ["energia", "potenza_attiva"]):
                 return [ENERGY_KILO_WATT_HOUR, DEVICE_CLASS_ENERGY]
             elif any(x in self._measurement_name for x in ["fase"]):
@@ -125,10 +131,14 @@ class VimarSensor(VimarEntity, Entity):
                 return ["", DEVICE_CLASS_TIMESTAMP]
             else:
                 return [POWER_KILO_WATT, DEVICE_CLASS_POWER]
-        elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(x in self._measurement_name for x in ["temperature"]):
+        elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(
+            x in self._measurement_name for x in ["temperature"]
+        ):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
             return [TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE]
-        elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(x in self._measurement_name for x in ["wind_speed"]):
+        elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(
+            x in self._measurement_name for x in ["wind_speed"]
+        ):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
             return [SPEED_METERS_PER_SECOND, self._device["device_class"]]
         elif any(x in self._measurement_name for x in ["brightness"]):
@@ -175,7 +185,7 @@ class VimarSensor(VimarEntity, Entity):
         """Return the ID of this device and its state."""
         # _LOGGER.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + '-' +
         # self._device['status'][self._measurement_name]['status_id'] + " - " + self.name)
-        return super().unique_id  + "-" + self._device["status"][self._measurement_name]["status_id"]
+        return super().unique_id + "-" + self._device["status"][self._measurement_name]["status_id"]
         # return str(VimarEntity.unique_id) + '-' + self._device['status'][self._measurement_name]['status_id']
 
     @property

@@ -16,6 +16,7 @@ from .const import DEVICE_TYPE_LIGHTS as CURR_PLATFORM
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Switch platform."""
     vimar_setup_entry(VimarLight, CURR_PLATFORM, hass, entry, async_add_devices)
