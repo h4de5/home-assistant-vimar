@@ -1,9 +1,12 @@
 update_entities:
+  # description: >
+  #   Esegue il loading delle entities
   description: >
-    Esegue il loading delle entities
+    Carrying out loading of the entities
   fields:
     forced:
-      description: Se forzare il caricamento di tutte le informazioni, come le info delle stanze
+      # description: Se forzare il caricamento di tutte le informazioni, come le info delle stanze
+      description: Whether to force loading of all information, such as room info
       example: True
 
 exec_vimar_sql:
