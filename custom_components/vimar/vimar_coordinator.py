@@ -174,7 +174,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
                 unique_id = device.unique_id
                 configured_entities.append(unique_id)
 
-        entity_registry = await er.async_get_registry(self.hass)
+        entity_registry = er.async_get(self.hass)
         entity_entries = er.async_entries_for_config_entry(entity_registry, self.entry.entry_id)
         for entity_entry in entity_entries:
             identifier = entity_entry.unique_id
@@ -188,7 +188,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         for enity_id in entities_to_be_removed:
             entity_registry.async_remove(enity_id)
 
-        device_registry = await dr.async_get_registry(self.hass)
+        device_registry = dr.async_get(self.hass)
         device_registry_entities = dr.async_entries_for_config_entry(device_registry, self.entry.entry_id)
         for device_entry in device_registry_entities:
             identifier = str(device_entry.identifiers)
