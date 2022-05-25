@@ -13,6 +13,6 @@
     "switch",
     "climate"
   ],
-  "homeassistant": "0.99.9",
+  "homeassistant": "2021.12.0",
   "iot_class": ["Local Polling"]
 }
