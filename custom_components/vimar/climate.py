@@ -37,7 +37,7 @@ from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_devices):
-    """Set up the Vimar Switch platform."""
+    """Set up the Vimar Climate platform."""
     vimar_setup_entry(VimarClimate, CURR_PLATFORM, hass, entry, async_add_devices)
 
 class VimarClimate(VimarEntity, ClimateEntity):

@@ -23,10 +23,13 @@ except ImportError:
     from homeassistant.const import VOLT as ELECTRIC_POTENTIAL_VOLT
 
 try:
-    from homeassistant.components.sensor import (STATE_CLASS_TOTAL_INCREASING, STATE_CLASS_MEASUREMENT)
+    from homeassistant.components.sensor import STATE_CLASS_TOTAL_INCREASING
 except ImportError:
     from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT as STATE_CLASS_TOTAL_INCREASING
-    from homeassistant.components.sense import STATE_CLASS_MEASUREMENT
+try:
+    from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
+except ImportError:
+    STATE_CLASS_MEASUREMENT = "measurement"
 
 from homeassistant.components.sensor import SensorEntity
 
@@ -46,7 +49,7 @@ from .const import DEVICE_TYPE_SENSORS as CURR_PLATFORM
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_devices):
-    """Set up the Vimar Switch platform."""
+    """Set up the Vimar Sensor platform."""
     vimar_setup_entry(VimarSensorContainer, CURR_PLATFORM, hass, entry, async_add_devices)
     #https://github.com/custom-components/remote_homeassistant/blob/aac178b737357492cf3beb60ec3494dcf0513c3a/custom_components/remote_homeassistant/sensor.py#L4
 
