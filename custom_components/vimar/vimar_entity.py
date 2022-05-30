@@ -6,12 +6,10 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.const import CONF_VERIFY_SSL
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN, PACKAGE_NAME, _LOGGER, DEVICE_TYPE_BINARY_SENSOR, CONF_IGNORE_PLATFORM
 from .vimarlink.vimarlink import VimarLink, VimarProject
 from .vimar_coordinator import VimarDataUpdateCoordinator
-#from binary_sensor import VimarStatusSensor
 
 #extend CoordinatorEntity that have all methods available / async_added_to_hass implemented
 class VimarEntity(CoordinatorEntity):
@@ -276,6 +274,7 @@ def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssis
     vimarproject = coordinator.vimarproject
 
     entities = []
+    entities_to_add = []
 
     if platform == DEVICE_TYPE_BINARY_SENSOR:
         status_sensor = VimarStatusSensor(coordinator)
@@ -285,7 +284,6 @@ def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssis
     if not platform_ignored:
         logger.debug("Vimar %s started!", platform)
         devices = vimarproject.get_by_device_type(platform)
-        entities_to_add = []
         if len(devices) != 0:
             for device_id, device in devices.items():
                 if device.get("ignored", False):
@@ -294,10 +292,11 @@ def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssis
                 entity_list = entity.get_entity_list()
                 entities_to_add += entity_list
 
-        if len(entities_to_add) != 0:
-            logger.info("Adding %d %s", len(entities_to_add), platform)
-            async_add_devices(entities_to_add)
-            entities += entities_to_add
+    if len(entities_to_add) != 0:
+        logger.info("Adding %d %s", len(entities_to_add), platform)
+    #need to call async_add_devices everytime for each registered platform (even if it's empty)! if not called, entry reload not work.
+    async_add_devices(entities_to_add)
+    entities += entities_to_add
 
     coordinator.devices_for_platform[platform] = entities
 

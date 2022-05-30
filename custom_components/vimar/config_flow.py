@@ -219,6 +219,8 @@ def set_errors_from_ex(ex: BaseException, errors: dict[str, str]):
         errors["base"] = "invalid_auth"
     elif "HTTP error occurred" in exstr or "Client Error:" in exstr or "ConnectTimeoutError" in exstr or "NewConnectionError" in exstr:
         errors["base"] = "cannot_connect"
+    elif "HTTP timeout occurred" in exstr:
+        errors["base"] = "cannot_connect"
     elif "SSLError" in exstr:
         errors["base"] = "invalid_cert"
     elif "Saving certificate failed" in exstr:

@@ -173,10 +173,14 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def async_register_devices_platforms(self):
         """execute async_forward_entry_setup for each platform"""
+        self.devices_for_platform = {}
+        ignored_platforms = self.vimarconfig.get(CONF_IGNORE_PLATFORM) or []
+        #DEVICE_TYPE_BINARY_SENSOR needed for webserver status sensor
+        platforms = [i for i in PLATFORMS if i not in ignored_platforms or i == DEVICE_TYPE_BINARY_SENSOR]
         await asyncio.gather(
                 *[
                     self.hass.config_entries.async_forward_entry_setup(self.entry, platform)
-                    for platform in PLATFORMS
+                    for platform in platforms
                 ]
             )
         self._platforms_registered = True
