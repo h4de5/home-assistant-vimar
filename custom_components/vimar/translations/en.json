@@ -20,6 +20,7 @@
         "cannot_connect": "Failed to connect, please try again",
         "invalid_auth": "Invalid authentication",
         "invalid_cert": "Invalid certificate, try change or remove",
+        "save_cert_failed": "Saving certificate failed. Check path and retry",
         "unknown": "Unexpected error"
       },
       "abort": {
@@ -64,6 +65,7 @@
         "cannot_connect": "Failed to connect, please try again",
         "invalid_auth": "Invalid authentication",
         "invalid_cert": "Invalid certificate, try change or remove",
+        "save_cert_failed": "Saving certificate failed. Check path and retry",
         "unknown": "Unexpected error",
         "regex_not_valid": "RegEx not valid"
       }

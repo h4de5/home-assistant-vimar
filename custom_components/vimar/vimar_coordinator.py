@@ -44,7 +44,9 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
     _timeout : float = DEFAULT_TIMEOUT
     webserver_id = ""
     entity_unique_id_prefix = ""
-    _init_executed = False
+    _first_update_data_executed = False
+    _platforms_registered = False
+    _last_devices_hash = ""
 
     def __init__(
         self, hass: HomeAssistant, entry: ConfigEntry, vimarconfig: ConfigType
@@ -53,7 +55,6 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         self.hass = hass
         self.entry = entry
         self.vimarconfig = vimarconfig
-        self.platforms = []
         self.devices_for_platform = {}
         if entry:
             self.entity_unique_id_prefix = entry.unique_id or ""
@@ -66,15 +67,6 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=uptade_interval)
         )
-
-    def init_available_platforms(self):
-        """Init platforms variable with AVAILABLE_PLATFORMS excluding ignored_platforms"""
-        self._init_executed = True
-        #self.platforms.append("switch")
-        ignored_platforms = self.vimarconfig.get(CONF_IGNORE_PLATFORM)
-        for platform in PLATFORMS:
-            if not ignored_platforms or platform not in ignored_platforms:
-                self.platforms.append(platform)
 
     async def _async_update_data(self):
         """Fetch data from API endpoint.
@@ -91,7 +83,17 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
                     await self.validate_vimar_credentials()
 
             async with async_timeout.timeout(self._timeout):
-                return await self.hass.async_add_executor_job(self.vimarproject.update)
+                forced = not self._first_update_data_executed or not self._platforms_registered
+                devices = await self.hass.async_add_executor_job(self.vimarproject.update, forced)
+
+            if not devices or len(devices) == 0:
+                raise UpdateFailed("Could not find any devices on Vimar Webserver")
+            if not self._first_update_data_executed:
+                self._first_update_data_executed = True
+            #if last update failed, check devices changes and reload if need
+            if not self.last_update_success or self._last_devices_hash == "":
+                self._reload_entry_if_devices_changed()
+            return devices
         # Note: asyncio.TimeoutError and aiohttp.ClientError are already
         # handled by the data update coordinator.
         except asyncio.TimeoutError:
@@ -107,6 +109,11 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {err}")
 
     async def init_vimarproject(self) -> None:
+        """Init VimarLink and VimarProject from entry config"""
+        self._last_devices_hash = ""
+        self._first_update_data_executed = False
+        self._platforms_registered = False
+        self.devices_for_platform = {}
         vimarconfig = self.vimarconfig
         schema = "https" if vimarconfig.get(CONF_SECURE) else "http"
         host = vimarconfig.get(CONF_HOST)
@@ -164,10 +171,46 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         #if not valid_login:
         #    raise PlatformNotReady
 
+    async def async_register_devices_platforms(self):
+        """execute async_forward_entry_setup for each platform"""
+        await asyncio.gather(
+                *[
+                    self.hass.config_entries.async_forward_entry_setup(self.entry, platform)
+                    for platform in PLATFORMS
+                ]
+            )
+        self._platforms_registered = True
+        if len(self.devices_for_platform) > 0:
+            await self.async_remove_old_devices()
+
+    def _reload_entry_if_devices_changed(self):
+        devices = self.vimarproject.devices
+        if devices is not None and len(devices) > 0:
+            devices_hash = ""
+            for device_id, device in devices.items():
+                device_hash = str(device["object_id"]) + "_" + str(device["room_ids"]) + device["object_type"] + device["object_name"] + device["room_name"]
+                devices_hash = devices_hash + "_" + device_hash
+            if devices_hash != self._last_devices_hash:
+                if self._last_devices_hash == "":
+                    self._last_devices_hash = devices_hash
+                else:
+                    self._last_devices_hash = devices_hash
+                    if self._platforms_registered:
+                        self.reload_entry()
+
+    def reload_entry(self):
+        """reload_entry function if platforms_registered (updating entry)"""
+        #updating entry, force to reload it :) because added event in entry.add_update_listener(async_reload_entry)
+        options = self.entry.options.copy()
+        if options.get("fake_update_value", "") == "1":
+            options.pop("fake_update_value")
+        else:
+            options["fake_update_value"] = "1"
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
+
+
     async def async_remove_old_devices(self):
         """Clear unused devices and entities"""
-        if not self._init_executed:
-            return
         configured_devices = []
         configured_entities = []
         entities_to_be_removed = []

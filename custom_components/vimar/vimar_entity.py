@@ -8,7 +8,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PACKAGE_NAME, _LOGGER, DEVICE_TYPE_BINARY_SENSOR
+from .const import DOMAIN, PACKAGE_NAME, _LOGGER, DEVICE_TYPE_BINARY_SENSOR, CONF_IGNORE_PLATFORM
 from .vimarlink.vimarlink import VimarLink, VimarProject
 from .vimar_coordinator import VimarDataUpdateCoordinator
 #from binary_sensor import VimarStatusSensor
@@ -271,7 +271,8 @@ def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssis
     """Generic method for add entities of specified platform to HASS"""
     logger = logging.getLogger(PACKAGE_NAME + "." + platform)
     coordinator : VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    platform_ignored = platform not in coordinator.platforms
+    ignored_platforms = coordinator.vimarconfig.get(CONF_IGNORE_PLATFORM) or []
+    platform_ignored = platform in ignored_platforms
     vimarproject = coordinator.vimarproject
 
     entities = []
