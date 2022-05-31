@@ -5,7 +5,7 @@
   "issue_tracker": "https://github.com/h4de5/home-assistant-vimar/issues",
   "dependencies": [],
   "config_flow": true,
-  "codeowners": ["@h4de5", "@davideciarmiello"],
-  "version": "2022.05.2",
+  "codeowners": ["@h4de5", "@robigan", "@davideciarmiello"],
+  "version": "2022.05.4",
   "iot_class": "local_polling"
 }

@@ -26,8 +26,12 @@ try:
     from homeassistant.components.sensor import STATE_CLASS_TOTAL_INCREASING
 except ImportError:
     from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT as STATE_CLASS_TOTAL_INCREASING
+try:
+    from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
+except ImportError:
+    STATE_CLASS_MEASUREMENT = "measurement"
 
-from homeassistant.helpers.entity import Entity
+from homeassistant.components.sensor import SensorEntity
 
 from .const import DOMAIN
 from .vimar_entity import VimarEntity, vimar_setup_entry
@@ -46,12 +50,12 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
-    """Set up the Vimar Switch platform."""
+    """Set up the Vimar Sensor platform."""
     vimar_setup_entry(VimarSensorContainer, CURR_PLATFORM, hass, entry, async_add_devices)
     # https://github.com/custom-components/remote_homeassistant/blob/aac178b737357492cf3beb60ec3494dcf0513c3a/custom_components/remote_homeassistant/sensor.py#L4
 
 
-class VimarSensor(VimarEntity, Entity):
+class VimarSensor(VimarEntity, SensorEntity):
     """Provide a Vimar Sensors."""
 
     # set entity_id, object_id manually due to possible duplicates
@@ -109,6 +113,8 @@ class VimarSensor(VimarEntity, Entity):
         class_and_unit = self.class_and_units()
         if class_and_unit[1] == DEVICE_CLASS_ENERGY:
             return STATE_CLASS_TOTAL_INCREASING
+        elif class_and_unit[1] == DEVICE_CLASS_POWER and any(x in self._measurement_name for x in ["totale"]):
+            return STATE_CLASS_MEASUREMENT
 
     def class_and_units(self):
         if not self._class_and_units is None:

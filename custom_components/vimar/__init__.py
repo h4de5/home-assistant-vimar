@@ -120,9 +120,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await coordinator.init_vimarproject()
     await coordinator.async_config_entry_first_refresh()
-    coordinator.vimarproject.check_devices()
-
-    coordinator.init_available_platforms()
 
     if (entry.data or {}).get(CONF_DELETE_AND_RELOAD_ALL_ENTITIES):
         options = entry.data.copy()
@@ -130,16 +127,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_remove_old_devices()
         hass.config_entries.async_update_entry(entry, data=options)
 
-
     async def setup_then_listen() -> None:
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_setup(entry, platform)
-                for platform in PLATFORMS
-            ]
-        )
-
-        await coordinator.async_remove_old_devices()
+        await coordinator.async_register_devices_platforms()
         entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     hass.async_create_task(setup_then_listen())
@@ -153,7 +142,7 @@ async def add_services(hass: HomeAssistant):
         forced = call.data.get("forced")
         for item in hass.data[DOMAIN].values():
             coordinator : VimarDataUpdateCoordinator = item
-            await hass.async_add_executor_job(coordinator.validate_vimar_credentials)
+            await coordinator.validate_vimar_credentials()
             await hass.async_add_executor_job(coordinator.vimarproject.update, forced)
 
     hass.services.async_register(
@@ -165,7 +154,7 @@ async def add_services(hass: HomeAssistant):
         sql = data.get("sql")
         for item in hass.data[DOMAIN].values():
             coordinator : VimarDataUpdateCoordinator = item
-            await hass.async_add_executor_job(coordinator.validate_vimar_credentials)
+            await coordinator.validate_vimar_credentials()
             payload = await hass.async_add_executor_job(coordinator.vimarconnection._request_vimar_sql, sql)
             _LOGGER.info(
                 SERVICE_EXEC_VIMAR_SQL + " done: SQL: %s . Result: %s", sql, str(payload)
@@ -178,23 +167,6 @@ async def add_services(hass: HomeAssistant):
         SERVICE_EXEC_VIMAR_SQL_SCHEMA,
     )
 
-    #async def service_reload_default_call(call):
-    #    entries_to_reload = []
-    #    for item in hass.data[DOMAIN].values():
-    #        coordinator : VimarDataUpdateCoordinator = item
-    #        coordinator.init_available_platforms()
-    #        coordinator.devices_for_platform = {} #set loaded devices as fake array empty :)
-    #        await coordinator.async_remove_old_devices()
-    #        entries_to_reload.append(coordinator.entry)
-    #    for entry in entries_to_reload:
-    #        await async_reload_entry(hass, entry)
-    #
-    #hass.services.async_register(
-    #    DOMAIN,
-    #    SERVICE_RELOAD_DEFAULT,
-    #    service_reload_default_call,
-    #    SERVICE_RELOAD_DEFAULT_SCHEMA,
-    #)
     async def _handle_reload(service):
         entries_to_reload = []
         for item in hass.data[DOMAIN].values():
@@ -213,12 +185,15 @@ async def add_services(hass: HomeAssistant):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Handle removal of an entry."""
-    #coordinator : VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    if not entry.entry_id in hass.data[DOMAIN]:
+        return True
+    coordinator : VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    platforms = list(coordinator.devices_for_platform.keys())
     unloaded = all(
         await asyncio.gather(
             *[
                 hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in PLATFORMS
+                for platform in platforms
             ]
         )
     )

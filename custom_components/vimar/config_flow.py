@@ -187,8 +187,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     self.hass, entry=self.config_entry, vimarconfig=self.options_with_user_input
                 )
                 await coordinator.validate_vimar_credentials()
-                await self.hass.async_add_executor_job(coordinator.vimarproject.update)
-                coordinator.vimarproject.check_devices()
+                await self.hass.async_add_executor_job(coordinator.vimarproject.update, True)
             except BaseException as ex:
                 set_errors_from_ex(ex, self.errors)
 
@@ -237,8 +236,12 @@ def set_errors_from_ex(ex: BaseException, errors: dict[str, str]):
         or "NewConnectionError" in exstr
     ):
         errors["base"] = "cannot_connect"
+    elif "HTTP timeout occurred" in exstr:
+        errors["base"] = "cannot_connect"
     elif "SSLError" in exstr:
         errors["base"] = "invalid_cert"
+    elif "Saving certificate failed" in exstr:
+        errors["base"] = "save_cert_failed"
     else:
         errors["base"] = "unknown"
 

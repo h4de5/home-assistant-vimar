@@ -12,6 +12,11 @@ from xml.etree import ElementTree
 import requests
 from requests.exceptions import HTTPError
 
+try:
+    from requests.packages import urllib3
+except ImportError:
+    import urllib3
+
 from ..const import (
     DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
     DEVICE_TYPE_COVERS,
@@ -665,7 +670,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             if self._certificate is not None:
                 check_ssl = self._certificate
             else:
-                requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
                 global SSL_IGNORED
                 if not SSL_IGNORED:
                     _LOGGER.debug("Request ignores ssl certificate")

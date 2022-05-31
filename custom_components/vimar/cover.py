@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
-    """Set up the Vimar Switch platform."""
+    """Set up the Vimar Cover platform."""
     vimar_setup_entry(VimarCover, CURR_PLATFORM, hass, entry, async_add_devices)
 
 
