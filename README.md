@@ -5,7 +5,6 @@
 [![Github Open Issues](https://img.shields.io/github/issues/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/issues)
 [![Github Open Pull Requests](https://img.shields.io/github/issues-pr/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/pulls)
 
-
 # VIMAR By-Me / By-Web Hub
 
 This is a home-assistant integration for the VIMAR By-me / By-web bus system.
@@ -33,14 +32,16 @@ In order to keep all dashboard layouts, automations and groups intact, you may w
 ## Vimar requirements
 
 Hardware:
+
 - [Vimar - 01945 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01945)
-or
+  or
 - [Vimar - 01946 - Web server Light By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01946)
 
 Software:
+
 - [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
-    
-    I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
+
+  I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
 
 ## home-assistant requirements
 
@@ -136,26 +137,56 @@ You can ignore certain platforms that should not be added to home-assistant. Jus
 #### entities customization
 
 You can override entities attribute:
-filter_vimar_name is the filter for match entity.
-In this example, i use object_name_as_vimar for all entities, i prefer a original name without custom formatter.
-After, i change a entity 'Cancello' as switches, default is readed as lights.
-you can override device_type, device_class, icon.
+Each override consists of 2 parts: Filter for match entity, and modifications to apply.
+friendly_name is the display name of entity for HA, formatted from object_name.
+
+    Avaiable Filters:
+        - filter_object_name: filter on object_name attribute matching equals string. Other possible value is '*' for get all entities.
+        - filter_object_name_regex: Filter as previus, but with regex. For example: 'LUCE SALA|LUCE CAMERA|SENSORI.*'
+        - filter_friendly_name: filter on friendly_name attribute.
+        - filter_friendly_name_regex: Filter as previus, but with regex.
+        - filter_object_id: filter on object_id attribute (id of entity getted from vimar).
+        - filter_object_id_regex: Filter as previus, but with regex.
+        - filter_room_name: filter on room_name attribute matching equals string. For example: 'CUCINA'
+        - filter_room_name_regex: Filter as previus, but with regex. For example: 'CUCINA|BAGNO'
+
+    Avaiable Modifications:
+        - friendly_name_as_vimar: set friendly_name from original object_name, without using default formatter.
+        - friendly_name_room_name_at_begin: If the entity has the room_name attribute, it is placed at the beginning of friendly_name, and removed from the end if present. For example: 'Luce Cucina' -> 'Cucina Led'
+        - friendly_name_regexsub_pattern + friendly_name_regexsub_repl: Allow to replace a string in friendly_name attribute.
+        - friendly_name: Attribute override with specified value.
+        - device_type: Attribute override with specified value.
+        - device_class: Attribute override with specified value.
+        - icon: Attribute override with specified value.
+
+Usage example:
 
     vimar:
       username: your-login-user
       password: your-login-password
       host: IP-OR-HOSTNAME
       device_override:
-        - filter_vimar_name: '*'
-          object_name_as_vimar: true
-        - filter_vimar_name: Cancello
+        # Use original name without custom formatter for all entities
+        - filter_object_name: '*'
+          friendly_name_as_vimar: true
+        # Remove multiple spaces at each entities
+        - filter_friendly_name: '*'
+          friendly_name_regexsub_pattern: '  '
+          friendly_name_regexsub_repl: ' '
+        # Move room name at begin for each entities
+        - filter_friendly_name: '*'
+          friendly_name_room_name_at_begin: true
+        # Override for all entities cancello, searched with regex. Set entities 'Cancello' as switches, default is readed as lights.
+        - filter_friendly_name_regex: '.*Cancello.*'
           device_type: switches
-          #device_class: garage
-          #icon: ''
-          #icon:
-    	  # - mdi:toggle-switch
-    	  # - mdi:toggle-switch-off
+          # device_class: garage
+          # icon: ''
+          # icon:
+    	    # - mdi:toggle-switch
+    	    # - mdi:toggle-switch-off
           icon: mdi:garage-open,mdi:garage
+
+#### credentials
 
 `username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file found, the integration will download the current CA certificate from the local vimar webserver and save it under that given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and transmition of data to the webserver (default 6 seconds). if only some platforms should be added to home-assistant you list them in the `ignore` area.
 
@@ -228,7 +259,7 @@ have a look into your home-assistant log files - usually named `home-assistant.l
 > See the explanation and the fix in: https://github.com/h4de5/home-assistant-vimar/issues/15#issuecomment-665635305
 
       When you enable the integration in home-assistant you can no longer use the vimar web server gui.
-      
+
 > Please create a separate user on your VIMAR webserver for this integration. At some point the web server does not allow to be logged in with the same user from different locations and simple drops one connection. This may have strange side effects.
 
 ## thanks

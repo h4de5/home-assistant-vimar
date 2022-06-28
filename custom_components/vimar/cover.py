@@ -2,47 +2,58 @@
 
 import logging
 
-from homeassistant.components.cover import (ATTR_POSITION, ATTR_TILT_POSITION,
-                                            SUPPORT_CLOSE, SUPPORT_CLOSE_TILT,
-                                            SUPPORT_OPEN, SUPPORT_OPEN_TILT,
-                                            SUPPORT_SET_POSITION,
-                                            SUPPORT_SET_TILT_POSITION,
-                                            SUPPORT_STOP, SUPPORT_STOP_TILT)
+from homeassistant.components.cover import (
+    ATTR_POSITION,
+    ATTR_TILT_POSITION,
+    SUPPORT_CLOSE,
+    SUPPORT_CLOSE_TILT,
+    SUPPORT_OPEN,
+    SUPPORT_OPEN_TILT,
+    SUPPORT_SET_POSITION,
+    SUPPORT_SET_TILT_POSITION,
+    SUPPORT_STOP,
+    SUPPORT_STOP_TILT,
+)
 
-from .vimar_entity import VimarEntity, vimar_setup_platform
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 try:
     from homeassistant.components.cover import CoverEntity
 except ImportError:
     from homeassistant.components.cover import CoverDevice as CoverEntity
 
+from .const import DEVICE_TYPE_COVERS as CURR_PLATFORM
+
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Cover platform."""
-    vimar_setup_platform(VimarCover, hass, async_add_entities, discovery_info)
+    vimar_setup_entry(VimarCover, CURR_PLATFORM, hass, entry, async_add_devices)
 
 
 # see: https://developers.home-assistant.io/docs/core/entity/cover
 class VimarCover(VimarEntity, CoverEntity):
     """Provides a Vimar cover."""
 
-    _platform = "cover"
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     # Return True if the state is based on our assumption instead of reading it from the device. this will ignore is_closed state
     assumed_state = True
 
-    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
+    def __init__(self, coordinator, device_id: int):
         """Initialize the cover."""
-        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+        VimarEntity.__init__(self, coordinator, device_id)
         # self.entity_id = "cover." + self._name.lower() + "_" + self._device_id
 
         # _state = False .. 0, stop has not been pressed
         # _state = True .. 1, stop has been pressed
         # _direction = 0 .. upwards
         # _direction = 1 .. downards
+
+    @property
+    def entity_platform(self):
+        return CURR_PLATFORM
 
     @property
     def is_closed(self):

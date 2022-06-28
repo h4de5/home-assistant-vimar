@@ -2,48 +2,62 @@
 
 import logging
 
-from homeassistant.components.climate.const import (CURRENT_HVAC_COOL,
-                                                    CURRENT_HVAC_HEAT,
-                                                    CURRENT_HVAC_IDLE,
-                                                    CURRENT_HVAC_OFF, FAN_HIGH,
-                                                    FAN_LOW, FAN_MEDIUM,
-                                                    FAN_OFF, FAN_ON,
-                                                    HVAC_MODE_AUTO,
-                                                    HVAC_MODE_COOL,
-                                                    HVAC_MODE_HEAT,
-                                                    HVAC_MODE_OFF,
-                                                    SUPPORT_AUX_HEAT,
-                                                    SUPPORT_FAN_MODE,
-                                                    SUPPORT_TARGET_TEMPERATURE)
+from homeassistant.components.climate.const import (
+    CURRENT_HVAC_COOL,
+    CURRENT_HVAC_HEAT,
+    CURRENT_HVAC_IDLE,
+    CURRENT_HVAC_OFF,
+    FAN_HIGH,
+    FAN_LOW,
+    FAN_MEDIUM,
+    FAN_OFF,
+    FAN_ON,
+    HVAC_MODE_AUTO,
+    HVAC_MODE_COOL,
+    HVAC_MODE_HEAT,
+    HVAC_MODE_OFF,
+    SUPPORT_AUX_HEAT,
+    SUPPORT_FAN_MODE,
+    SUPPORT_TARGET_TEMPERATURE,
+)
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
 
-from .const import (VIMAR_CLIMATE_AUTO, VIMAR_CLIMATE_AUTO_I,  # DOMAIN,
-                    VIMAR_CLIMATE_AUTO_II, VIMAR_CLIMATE_COOL,
-                    VIMAR_CLIMATE_COOL_I, VIMAR_CLIMATE_COOL_II,
-                    VIMAR_CLIMATE_HEAT, VIMAR_CLIMATE_HEAT_I,
-                    VIMAR_CLIMATE_HEAT_II, VIMAR_CLIMATE_MANUAL,
-                    VIMAR_CLIMATE_MANUAL_I, VIMAR_CLIMATE_MANUAL_II,
-                    VIMAR_CLIMATE_OFF, VIMAR_CLIMATE_OFF_I,
-                    VIMAR_CLIMATE_OFF_II)
-from .vimar_entity import VimarEntity, vimar_setup_platform
+from .const import (
+    VIMAR_CLIMATE_AUTO,
+    VIMAR_CLIMATE_AUTO_I,  # DOMAIN,
+    VIMAR_CLIMATE_AUTO_II,
+    VIMAR_CLIMATE_COOL,
+    VIMAR_CLIMATE_COOL_I,
+    VIMAR_CLIMATE_COOL_II,
+    VIMAR_CLIMATE_HEAT,
+    VIMAR_CLIMATE_HEAT_I,
+    VIMAR_CLIMATE_HEAT_II,
+    VIMAR_CLIMATE_MANUAL,
+    VIMAR_CLIMATE_MANUAL_I,
+    VIMAR_CLIMATE_MANUAL_II,
+    VIMAR_CLIMATE_OFF,
+    VIMAR_CLIMATE_OFF_I,
+    VIMAR_CLIMATE_OFF_II,
+)
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 try:
     from homeassistant.components.climate import ClimateEntity
 except ImportError:
     from homeassistant.components.climate import ClimateDevice as ClimateEntity
 
+from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
+
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Climate platform."""
-    vimar_setup_platform(VimarClimate, hass, async_add_entities, discovery_info)
+    vimar_setup_entry(VimarClimate, CURR_PLATFORM, hass, entry, async_add_devices)
 
 
 class VimarClimate(VimarEntity, ClimateEntity):
     """Provides a Vimar climates."""
-
-    _platform = "climate"
 
     # {'status_id': '2129', 'status_value': '0', 'status_range': 'min=0|max=1'},
     # 'regolazione': {'status_id': '2131', 'status_value': '2', 'status_range': ''},
@@ -92,13 +106,16 @@ class VimarClimate(VimarEntity, ClimateEntity):
     # Row000016: '62834','stato_principale_condizionamento on/off','-1','0'  #cooling on/ff
     # Row000017: '62835','stato_principale_riscaldamento on/off','-1','0'  #heating on/ff
 
-    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
+    def __init__(self, coordinator, device_id: int):
         """Initialize the climate."""
-        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+        VimarEntity.__init__(self, coordinator, device_id)
 
         # self.entity_id = "climate." + self._name.lower() + "_" + self._device_id
 
     # climate properties
+    @property
+    def entity_platform(self):
+        return CURR_PLATFORM
 
     @property
     def is_on(self):
@@ -161,12 +178,16 @@ class VimarClimate(VimarEntity, ClimateEntity):
             if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
                 return HVAC_MODE_AUTO
             else:
-                return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)]
+                return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
+                    self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)
+                ]
         else:
             if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
                 return HVAC_MODE_AUTO
             else:
-                return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)]
+                return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
+                    self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)
+                ]
 
             # if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
             #     return HVAC_MODE_COOL
@@ -196,11 +217,19 @@ class VimarClimate(VimarEntity, ClimateEntity):
         #     return CURRENT_HVAC_IDLE
 
         if self.climate_type == "heat_cool":
-            return (CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL)[self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)]
+            return (CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL)[
+                self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)
+            ]
         else:
-            if self.has_state("stato_principale_condizionamento on/off") and self.get_state("stato_principale_condizionamento on/off") == "1":
+            if (
+                self.has_state("stato_principale_condizionamento on/off")
+                and self.get_state("stato_principale_condizionamento on/off") == "1"
+            ):
                 return CURRENT_HVAC_COOL
-            elif self.has_state("stato_principale_riscaldamento on/off") and self.get_state("stato_principale_riscaldamento on/off") == "1":
+            elif (
+                self.has_state("stato_principale_riscaldamento on/off")
+                and self.get_state("stato_principale_riscaldamento on/off") == "1"
+            ):
                 return CURRENT_HVAC_HEAT
             else:
                 return CURRENT_HVAC_IDLE
@@ -281,8 +310,10 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
 
             # if heating or cooling is pressed, got to automode
-            set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL) # personal choice -robigan
-            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[hvac_mode == HVAC_MODE_COOL]
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL) # Vimar AC controllers should set to manual when setting with a temperature provided
+            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[
+                hvac_mode == HVAC_MODE_COOL
+            ]
 
             _LOGGER.info("Vimar Climate setting setup mode to heat/cool: %s", set_function_mode)
 
@@ -291,7 +322,9 @@ class VimarClimate(VimarEntity, ClimateEntity):
         elif hvac_mode in [HVAC_MODE_AUTO]:
             set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
 
-            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[self.hvac_mode == HVAC_MODE_COOL]
+            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[
+                self.hvac_mode == HVAC_MODE_COOL
+            ]
 
             _LOGGER.info("Vimar Climate setting setup mode to auto: %s", set_function_mode)
             # we only clear manual mode - no further settings
@@ -300,7 +333,9 @@ class VimarClimate(VimarEntity, ClimateEntity):
         elif hvac_mode in [HVAC_MODE_OFF]:
             set_function_mode = self.get_const_value(VIMAR_CLIMATE_OFF)
 
-            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[self.hvac_mode == HVAC_MODE_COOL]
+            set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[
+                self.hvac_mode == HVAC_MODE_COOL
+            ]
 
             _LOGGER.info("Vimar Climate setting setup mode to off: %s", set_function_mode)
             # self.change_state('funzionamento', set_function_mode)
@@ -309,9 +344,13 @@ class VimarClimate(VimarEntity, ClimateEntity):
         _LOGGER.info("Vimar Climate resetting target temperature: %s", self.target_temperature)
 
         if self.climate_type == "heat_cool":
-            self.change_state("funzionamento", set_function_mode, "stagione", set_hvac_mode, "setpoint", self.target_temperature)
+            self.change_state(
+                "funzionamento", set_function_mode, "stagione", set_hvac_mode, "setpoint", self.target_temperature
+            )
         elif self.climate_type == "heat_cool_fancoil":
-            self.change_state("funzionamento", set_function_mode, "regolazione", set_hvac_mode, "setpoint", self.target_temperature)
+            self.change_state(
+                "funzionamento", set_function_mode, "regolazione", set_hvac_mode, "setpoint", self.target_temperature
+            )
 
         # if self.climate_type == 'heat_cool':
         #     self.change_state('setpoint', str(self.target_temperature),
@@ -334,18 +373,38 @@ class VimarClimate(VimarEntity, ClimateEntity):
         # if temperatur is set, always fall back to manual mode
         set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
 
-        set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[self.hvac_mode == HVAC_MODE_COOL]
+        set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[
+            self.hvac_mode == HVAC_MODE_COOL
+        ]
 
         _LOGGER.info("Vimar Climate setting target temperature: %s", str(set_temperature))
         _LOGGER.info("Vimar Climate setting setup mode to manual: %s", set_function_mode)
 
         if self.climate_type == "heat_cool":
             self.change_state(
-                "setpoint", str(set_temperature), "unita", self.get_state("unita"), "stagione", set_hvac_mode, "centralizzato", "1", "funzionamento", set_function_mode
+                "setpoint",
+                str(set_temperature),
+                "unita",
+                self.get_state("unita"),
+                "stagione",
+                set_hvac_mode,
+                "centralizzato",
+                "1",
+                "funzionamento",
+                set_function_mode,
             )
         elif self.climate_type == "heat_cool_fancoil":
             # stato_principale_condizionamento and stato_principale_riscaldamento are results not states - i think
-            self.change_state("setpoint", str(set_temperature), "unita", self.get_state("unita"), "regolazione", set_hvac_mode, "funzionamento", set_function_mode)
+            self.change_state(
+                "setpoint",
+                str(set_temperature),
+                "unita",
+                self.get_state("unita"),
+                "regolazione",
+                set_hvac_mode,
+                "funzionamento",
+                set_function_mode,
+            )
         # self.change_state('funzionamento', set_function_mode, 'setpoint', set_temperature)
 
     # helper

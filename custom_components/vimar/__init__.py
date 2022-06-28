@@ -3,193 +3,207 @@ import asyncio
 import logging
 import os
 from datetime import timedelta
+from platform import platform
 from typing import Tuple
 
 import async_timeout
+from homeassistant.util import slugify
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_PORT,
-                                 CONF_TIMEOUT, CONF_USERNAME)
-from homeassistant.exceptions import PlatformNotReady
+from homeassistant.core import callback
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_PORT,
+    CONF_TIMEOUT,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
+    SERVICE_RELOAD
+)
+from homeassistant.exceptions import PlatformNotReady, ConfigEntryNotReady
+from homeassistant.core import Config, HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant import config_entries
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
-                                                      UpdateFailed)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import (AVAILABLE_PLATFORMS, CONF_CERTIFICATE,
-                    CONF_GLOBAL_CHANNEL_ID, CONF_IGNORE_PLATFORM,
-                    CONF_OVERRIDE, CONF_SCHEMA, DEFAULT_CERTIFICATE,
-                    DEFAULT_PORT, DEFAULT_SCHEMA, DEFAULT_TIMEOUT,
-                    DEFAULT_USERNAME, DOMAIN)
-from .vimarlink.vimarlink import VimarApiError, VimarLink, VimarProject
+from .const import *
+from .const import _LOGGER
+from .vimar_coordinator import VimarDataUpdateCoordinator
 
-_LOGGER = logging.getLogger(__name__)
+log = _LOGGER
 
+CONFIG_DOMAIN_SCHEMA = {
+    vol.Optional(CONF_HOST): cv.string,
+    vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
+    vol.Optional(CONF_PASSWORD): cv.string,
+    vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+    vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
+    vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(
+        cv.string, None
+    ),
+    vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
+    vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999),
+    vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(
+        cv.ensure_list, [cv.string]
+    ),
+    vol.Optional(CONF_OVERRIDE, default=[]): cv.ensure_list,
+}
 CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_HOST): cv.string,
-                vol.Required(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
-                vol.Required(CONF_PASSWORD): cv.string,
-                vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-                vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
-                vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
-                vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
-                vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999),
-                vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(cv.ensure_list, [cv.string]),
-                vol.Optional(CONF_OVERRIDE, default=[]): cv.ensure_list,
-            }
-        )
-    },
+    {DOMAIN: vol.Schema(CONFIG_DOMAIN_SCHEMA)},
     extra=vol.ALLOW_EXTRA,
 )
 
+SERVICE_UPDATE = "update_entities"
+SERVICE_UPDATE_SCHEMA = vol.Schema({vol.Optional("forced", default=True): cv.boolean})
+SERVICE_EXEC_VIMAR_SQL = "exec_vimar_sql"
+SERVICE_EXEC_VIMAR_SQL_SCHEMA = vol.Schema({vol.Required("sql"): cv.string})
+SERVICE_RELOAD_DEFAULT = "reload_default"
+SERVICE_RELOAD_DEFAULT_SCHEMA = vol.Schema({})
 
 @asyncio.coroutine
-async def async_setup(hass: HomeAssistantType, config: ConfigType):
-    """Connect to the Vimar Webserver, verify login and read all devices."""
-    devices = {}
-    vimarconfig = config[DOMAIN]
-
-    vimarproject, vimarconnection = await _validate_vimar_credentials(hass, vimarconfig)
-
-    # save vimar connection into hass data to share it with other platforms
+async def async_setup(hass: HomeAssistant, config: Config):
+    """Set up from config."""
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["connection"] = vimarconnection
-    hass.data[DOMAIN]["project"] = vimarproject
 
-    async def async_api_update():
-        """Fetch data from API endpoint.
+    await add_services(hass)
 
-        This is the place to pre-process the data to lookup tables
-        so entities can quickly look up their data.
-        see: https://developers.home-assistant.io/docs/integration_fetching_data/
-        """
-        try:
-            _LOGGER.debug("Updating coordinator..")
+    # if there are no configuration.yaml settings then terminate
+    if config.get(DOMAIN) is None:
+        # We get her if the integration is set up using config flow
+        return True
 
-            # Note: asyncio.TimeoutError and aiohttp.ClientError are already
-            # handled by the data update coordinator.
-            async with async_timeout.timeout(6):
-                return await hass.async_add_executor_job(vimarproject.update)
-                # will yield logger debug message: Finished fetching vimar data in xx seconds
+    conf = config.get(DOMAIN, {})
+    hass.data.setdefault(DOMAIN_CONFIG_YAML, conf)
 
-        except VimarApiError as err:
-            raise UpdateFailed(f"Error communicating with API: {err}")
+    if CONF_USERNAME in conf:
+        # https://www.programcreek.com/python/?code=davesmeghead%2Fvisonic%2Fvisonic-master%2Fcustom_components%2Fvisonic%2F__init__.py
+        # has there been a flow configured panel connection before
+        configured = set(entry for entry in hass.config_entries.async_entries(DOMAIN))
 
-    # see latest example https://github.com/home-assistant/core/blob/2088092f7cca4c82f940b3661b1ae47302670607/homeassistant/components/guardian/util.py
-    # another example: https://github.com/home-assistant/core/blob/11b786a4fc39d3a31c8ab27045d88c9a437003b5/homeassistant/components/gogogate2/common.py
-    coordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        # Name of the data. For logging purposes.
-        name="vimar",
-        update_method=async_api_update,
-        # Polling interval. Will only be polled if there are subscribers.
-        update_interval=timedelta(seconds=8),
-    )
-
-    hass.data[DOMAIN]["coordinator"] = coordinator
-
-    # initial refresh of all devices - replaces fetch of main groups and room devices
-    # also fetches the initial states
-    await coordinator.async_refresh()
-
-    devices = coordinator.data
-
-    if not devices or len(devices) == 0:
-        # _LOGGER.error("Could not find any devices on Vimar Webserver %s", host)
-        _LOGGER.error("Could not find any devices on Vimar Webserver")
-        return False
-
-    # TODO: rework platform registration
-    # according to: https://github.com/home-assistant/core/blob/83d4e5bbb734f77701073710beb74dd6b524195e/homeassistant/helpers/discovery.py#L131
-    # https://github.com/home-assistant/core/blob/dev/homeassistant/components/hive/__init__.py#L143
-
-    ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
-
-    for device_type, platform in AVAILABLE_PLATFORMS.items():
-        if not ignored_platforms or platform not in ignored_platforms:
-            device_count = vimarproject.platform_exists(device_type)
-            if device_count:
-                _LOGGER.debug("load platform %s with %d %s", platform, device_count, device_type)
-                hass.async_create_task(hass.helpers.discovery.async_load_platform(platform, DOMAIN, {"hass_data_key": device_type}, config))
+        # if there is not a flow configured connection previously
+        #   then create a flow connection from the configuration.yaml data
+        if len(configured) == 0:
+            # get the configuration.yaml settings and make a 'flow' task :)
+            #   this will run 'async_step_import' in config_flow.py
+            log.info("Importing configuration from yaml...after you can remove from yaml")
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    DOMAIN, context={"source": config_entries.SOURCE_IMPORT}, data=conf.copy()
+                )
+            )
         else:
-            _LOGGER.warning("ignore platform: %s", platform)
+            log.debug("Configuration from yaml already imported: you can remove from yaml")
 
-    # States are in the format DOMAIN.OBJECT_ID.
-    # hass.states.async_set("vimar.Hello_World", "Works!")
-
-    # Use `listen_platform` to register a callback for these events.
-    # homeassistant.helpers.discovery.async_load_platform(hass, component, platform, discovered, hass_config)
-
-    # Return boolean to indicate that initialization was successfully.
     return True
 
 
-# async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-#     """Set up vimar from a config entry."""
-#     hass.data[DOMAIN][entry.entry_id] = hub.Hub(hass, entry.data["host"])
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """async_setup_entry"""
+    hass.data.setdefault(DOMAIN, {})
 
-#     # This creates each HA object for each platform your device requires.
-#     # It's done by calling the `async_setup_entry` function in each platform module.
-#     for component in PLATFORMS:
-#         hass.async_create_task(
-#             hass.config_entries.async_forward_entry_setup(entry, component)
-#         )
+    if entry.unique_id is None:
+        log.info("vimar unique id was None")
+        unique_id = slugify(entry.title)
+        hass.config_entries.async_update_entry(entry, unique_id=unique_id)
 
-#     return True
+    vimarconfig = (entry.options or {}).copy()
+    if CONF_HOST not in vimarconfig:
+        vimarconfig.update(entry.data or {})
+
+    # Set default values on conf from yaml, that not can specified with flow
+    yamlconf = hass.data.get(DOMAIN_CONFIG_YAML, {})
+    for cfg in [CONF_OVERRIDE]:
+        vimarconfig[cfg] = yamlconf.get(cfg)
+
+    coordinator = VimarDataUpdateCoordinator(hass, entry=entry, vimarconfig=vimarconfig)
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+    await coordinator.init_vimarproject()
+    await coordinator.async_config_entry_first_refresh()
+
+    if (entry.data or {}).get(CONF_DELETE_AND_RELOAD_ALL_ENTITIES):
+        options = entry.data.copy()
+        options.pop(CONF_DELETE_AND_RELOAD_ALL_ENTITIES)
+        await coordinator.async_remove_old_devices()
+        hass.config_entries.async_update_entry(entry, data=options)
+
+    async def setup_then_listen() -> None:
+        await coordinator.async_register_devices_platforms()
+        entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+
+    hass.async_create_task(setup_then_listen())
+
+    return True
 
 
-async def _validate_vimar_credentials(hass: HomeAssistantType, vimarconfig: ConfigType) -> Tuple[VimarProject, VimarLink]:
-    """Validate Vimar credential config."""
-    schema = vimarconfig.get(CONF_SCHEMA)
-    host = vimarconfig.get(CONF_HOST)
-    port = vimarconfig.get(CONF_PORT)
-    username = vimarconfig.get(CONF_USERNAME)
-    password = vimarconfig.get(CONF_PASSWORD)
-    certificate = vimarconfig.get(CONF_CERTIFICATE)
-    timeout = vimarconfig.get(CONF_TIMEOUT)
-    global_channel_id = vimarconfig.get(CONF_GLOBAL_CHANNEL_ID)
-    # ignored_platforms = vimarconfig.get(CONF_IGNORE_PLATFORM)
-    # spunto per override: https://github.com/teharris1/insteon2/blob/master/__init__.py
-    device_overrides = vimarconfig.get(CONF_OVERRIDE, [])
+async def add_services(hass: HomeAssistant):
+    """Add services."""
+    async def service_update_call(call):
+        forced = call.data.get("forced")
+        for item in hass.data[DOMAIN].values():
+            coordinator : VimarDataUpdateCoordinator = item
+            await coordinator.validate_vimar_credentials()
+            await hass.async_add_executor_job(coordinator.vimarproject.update, forced)
 
-    # initialize a new VimarLink object
-    vimarconnection = VimarLink(schema, host, port, username, password, certificate, timeout)
+    hass.services.async_register(
+        DOMAIN, SERVICE_UPDATE, service_update_call, SERVICE_UPDATE_SCHEMA
+    )
 
-    # will hold all the devices and their states
-    vimarproject = VimarProject(vimarconnection, device_overrides)
+    async def service_exec_vimar_sql_call(call):
+        data = call.data
+        sql = data.get("sql")
+        for item in hass.data[DOMAIN].values():
+            coordinator : VimarDataUpdateCoordinator = item
+            await coordinator.validate_vimar_credentials()
+            payload = await hass.async_add_executor_job(coordinator.vimarconnection._request_vimar_sql, sql)
+            _LOGGER.info(
+                SERVICE_EXEC_VIMAR_SQL + " done: SQL: %s . Result: %s", sql, str(payload)
+            )
 
-    if global_channel_id is not None:
-        vimarproject.global_channel_id = global_channel_id
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_EXEC_VIMAR_SQL,
+        service_exec_vimar_sql_call,
+        SERVICE_EXEC_VIMAR_SQL_SCHEMA,
+    )
 
-    # if certificate is set, but file is not there - download it from the
-    # webserver
-    if schema == "https" and certificate is not None and len(certificate) != 0:
-        if os.path.isfile(certificate) is False:
-            try:
-                valid_certificate = await hass.async_add_executor_job(vimarconnection.install_certificate)
-            except VimarApiError as err:
-                _LOGGER.error("Certificate download error: %s", err)
-                valid_certificate = False
-            if not valid_certificate:
-                raise PlatformNotReady
-        else:
-            _LOGGER.info("Vimar CA Certificate is already in place: %s", certificate)
+    async def _handle_reload(service):
+        entries_to_reload = []
+        for item in hass.data[DOMAIN].values():
+            coordinator : VimarDataUpdateCoordinator = item
+            entries_to_reload.append(coordinator.entry)
+        for entry in entries_to_reload:
+            await async_reload_entry(hass, entry)
 
-    # Verify that passed in configuration works
-    # starting it outside MainThread
-    try:
-        valid_login = await hass.async_add_executor_job(vimarconnection.check_login)
-    except VimarApiError as err:
-        _LOGGER.error("Webserver %s: %s", host, err)
-        valid_login = False
-    except BaseException as err:
-        _LOGGER.error("Login Exception: %s", err)
-        valid_login = False
+    hass.helpers.service.async_register_admin_service(
+        DOMAIN,
+        SERVICE_RELOAD,
+        _handle_reload,
+    )
 
-    if not valid_login:
-        raise PlatformNotReady
 
-    return [vimarproject, vimarconnection]
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Handle removal of an entry."""
+    if not entry.entry_id in hass.data[DOMAIN]:
+        return True
+    coordinator : VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    platforms = list(coordinator.devices_for_platform.keys())
+    unloaded = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in platforms
+            ]
+        )
+    )
+    if unloaded and entry.entry_id in hass.data[DOMAIN]:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unloaded
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)

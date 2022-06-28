@@ -2,6 +2,8 @@
 
 import logging
 import sys
+import re
+import os
 
 # for communicating with vimar webserver
 import xml.etree.cElementTree as xmlTree
@@ -10,7 +12,12 @@ from xml.etree import ElementTree
 import requests
 from requests.exceptions import HTTPError
 
-from .const import (
+try:
+    from requests.packages import urllib3
+except ImportError:
+    import urllib3
+
+from ..const import (
     DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_LIGHTS,
@@ -22,19 +29,21 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER_isDebug = _LOGGER.isEnabledFor(logging.DEBUG)
 MAX_ROWS_PER_REQUEST = 300
 
 # from homeassistant/components/switch/__init__.py
 DEVICE_CLASS_OUTLET = "outlet"
 DEVICE_CLASS_SWITCH = "switch"
-# from homeassistant/components/cover/__init__.py
+## from homeassistant/components/cover/__init__.py
 DEVICE_CLASS_SHUTTER = "shutter"
 DEVICE_CLASS_WINDOW = "window"
-# from homeassistant/const.py
+## from homeassistant/const.py
 DEVICE_CLASS_POWER = "power"
 DEVICE_CLASS_TEMPERATURE = "temperature"
 DEVICE_CLASS_PRESSURE = "pressure"
 
+SSL_IGNORED = False
 
 class VimarApiError(Exception):
     """Vimar API General Exception."""
@@ -74,6 +83,7 @@ class VimarLink:
     _password = ""
     _session_id = None
     _room_ids = None
+    _rooms = None
     _certificate = None
     _timeout = 6
 
@@ -85,61 +95,99 @@ class VimarLink:
         # self._host = ''
 
         if schema is not None:
-            VimarLink._schema = schema
+            self._schema = schema
         if host is not None:
-            VimarLink._host = host
+            self._host = host
         if port is not None:
-            VimarLink._port = port
+            self._port = port
         if username is not None:
-            VimarLink._username = username
+            self._username = username
         if password is not None:
-            VimarLink._password = password
+            self._password = password
         if certificate is not None:
-            VimarLink._certificate = certificate
+            self._certificate = certificate
         if timeout is not None:
-            VimarLink._timeout = timeout
+            self._timeout = timeout
 
     def install_certificate(self):
         """Download the CA certificate from the web server to be used for the next calls."""
+        cert_changed = False
         # temporarily disable certificate requests
-        if len(self._certificate) != 0:
+        if self._certificate is not None and len(self._certificate) != 0:
             temp_certificate = self._certificate
             self._certificate = None
 
-            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (VimarLink._schema, VimarLink._host, VimarLink._port)
+            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (self._schema, self._host, self._port)
             certificate_file = self._request(downloadPath)
-
-            if certificate_file is None or certificate_file == False:
-                raise VimarConnectionError("Certificate download failed")
-
             # get it back
             self._certificate = temp_certificate
 
+            if certificate_file is None or certificate_file is False:
+                raise VimarConnectionError("Certificate download failed: %s" % str(self.request_last_exception))
+
+            #compare current cert with downloaded cert, prevent saving if not changed
+            old_cert = None
             try:
-                file = open(self._certificate, "w")
-                file.write(certificate_file)
+                file = open(self._certificate, "r")
+                old_cert = file.read()
                 file.close()
+            except IOError:
+                old_cert = None
 
-            except IOError as err:
-                raise VimarApiError("Saving certificate failed: %s" % err)
+            if (old_cert != certificate_file):
+                cert_changed = True
+                try:
+                    file = open(self._certificate, "w")
+                    file.write(certificate_file)
+                    file.close()
+                except IOError as err:
+                    raise VimarApiError("Saving certificate failed: %s" % str(err))
 
-            _LOGGER.debug("Downloaded Vimar CA certificate to: %s", self._certificate)
+                _LOGGER.debug("Downloaded Vimar CA certificate to: %s", self._certificate)
 
-        return True
+        return cert_changed
 
     def login(self):
         """Call login and store the session id."""
+        #self._port = "444"
         loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
-            VimarLink._schema,
-            VimarLink._host,
-            VimarLink._port,
-            VimarLink._username,
-            VimarLink._password,
+            self._schema,
+            self._host,
+            self._port,
+            self._username,
+            self._password,
         )
+
+        use_cert = self._certificate is not None and len(self._certificate) != 0
+        #if first time, cert not exists
+        if self._schema == "https" and use_cert and os.path.isfile(self._certificate) is False:
+            self.install_certificate()
 
         result = self._request(loginurl)
 
+        if (result is False and use_cert): #if problem is of certificate, download it again
+            curr_ex = self.request_last_exception
+            curr_ex_str = str(curr_ex)
+            #if certified not valid:
+            #SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get issuer certificate (_ssl.c:1129)
+            #SSLError(SSLError(136, '[X509: NO_CERTIFICATE_OR_CRL_FOUND] no certificate or crl found
+            #if file not found
+            #Could not find a suitable TLS CA certificate bundle, invalid path: rootCA.VIMAR.crt
+            if "SSLError" in curr_ex_str or "TLS CA" in curr_ex_str:
+                try:
+                    #return downloaded only if changed, then, if is expired
+                    cert_downloaded = self.install_certificate()
+                    #self.request_last_exception = curr_ex
+                    if (cert_downloaded):
+                        result = self._request(loginurl)
+                except BaseException:
+                    #self.request_last_exception = curr_ex
+                    pass
+
         if result is not None:
+            if result is False:
+                raise VimarConnectionError("Error during login. Error: %s", self.request_last_exception)
+
             try:
                 xml = self._parse_xml(result)
                 if xml:
@@ -160,7 +208,7 @@ class VimarLink:
                 loginsession = xml.find("sessionid")
                 if loginsession.text != "":
                     _LOGGER.debug("Got a new Vimar Session id: %s", loginsession.text)
-                    VimarLink._session_id = loginsession.text
+                    self._session_id = loginsession.text
                 else:
                     _LOGGER.warning("Missing Session id in login response: %s", result)
 
@@ -169,12 +217,16 @@ class VimarLink:
 
         return result
 
+    def is_logged(self):
+        """Check if session is available"""
+        return self._session_id is not None
+
     def check_login(self):
         """Check if session is available - if not, aquire a new one."""
-        if not VimarLink._session_id:
+        if not self._session_id:
             self.login()
 
-        return VimarLink._session_id is not None
+        return self._session_id is not None
 
     def check_session(self):
         """Check if session is valid - if not, clear session id."""
@@ -188,7 +240,7 @@ class VimarLink:
             "Expect": "",
         }
 
-        post = ("sessionid=%s&" "op=getjScriptEnvironment&" "context=runtime") % VimarLink._session_id
+        post = ("sessionid=%s&" "op=getjScriptEnvironment&" "context=runtime") % self._session_id
 
         return self._request_vimar(post, "vimarbyweb/modules/system/dpadaction.php", headers)
 
@@ -205,7 +257,7 @@ class VimarLink:
             "<idobject>%s</idobject>"
             "<operation>SETVALUE</operation>"
             "</service-runonelement></soapenv:Body></soapenv:Envelope>"
-        ) % (status, optionals, VimarLink._session_id, object_id)
+        ) % (status, optionals, self._session_id, object_id)
 
         response = self._request_vimar_soap(post)
         if response is not None and response is not False:
@@ -319,7 +371,7 @@ ORDER BY o3.ID;""" % (
 
     def get_room_devices(self, devices={}, start: int = None, limit: int = None):
         """Load all devices that belong to a room."""
-        if VimarLink._room_ids is None:
+        if self._room_ids is None:
             return None
 
         start, limit = self._sanitize_limits(start, limit)
@@ -336,7 +388,7 @@ INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND
 WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
 LIMIT %d, %d;""" % (
-            VimarLink._room_ids,
+            self._room_ids,
             start,
             limit,
         )
@@ -348,7 +400,8 @@ LIMIT %d, %d;""" % (
         # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE =
         # "1" AND o2.IS_VISIBLE = "1"
 
-        return self._generate_device_list(select, devices)
+        #passo OnlyUpdate a True, poichè deve solo riempire le informazioni delle room per gli oggetti esistenti
+        return self._generate_device_list(select, devices, True)
 
     def get_remote_devices(self, devices={}, start: int = None, limit: int = None):
         """Get all devices that can be triggered remotly (includes scenes)."""
@@ -381,57 +434,84 @@ LIMIT %d, %d;""" % (
             start = 0
         return start, limit
 
-    def _generate_device_list(self, select, devices={}):
+    def _generate_device_list(self, select, devices={}, onlyUpdate=False):
         """Generate device list from given sql statements."""
         payload = self._request_vimar_sql(select)
         if payload is not None:
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
             for device in payload:
+                deviceItem = {}
                 if device["object_id"] not in devices:
-                    devices[device["object_id"]] = {
-                        "room_ids": device["room_ids"].split(","),
+                    if onlyUpdate == True:
+                       continue
+                    deviceItem = {
+                        "room_ids": [],
+                        "room_names": [],
+                        "room_name": "",
                         "object_id": device["object_id"],
                         "object_name": device["object_name"],
                         "object_type": device["object_type"],
-                        "status": {
-                            device["status_name"]: {
-                                "status_id": device["status_id"],
-                                "status_value": device["status_value"],
-                                "status_range": device["status_range"],
-                            }
-                        },
+                        "status": {}
                     }
+                    devices[device["object_id"]] = deviceItem
                 else:
                     # if object_id is already in the device list, we only update the state
-                    if device["status_name"] != "":
-                        devices[device["object_id"]]["status"][device["status_name"]] = {
-                            "status_id": device["status_id"],
-                            "status_value": device["status_value"],
-                            "status_range": device["status_range"],
-                        }
+                    deviceItem = devices[device["object_id"]]
+
+                if device["status_name"] != "":
+                    deviceItem["status"][device["status_name"]] = {
+                        "status_id": device["status_id"],
+                        "status_value": device["status_value"]
+                    }
+                    if "status_range" in device:
+                       deviceItem["status"][device["status_name"]]["status_range"] = device["status_range"]
+
+                if device["room_ids"] is not None and device["room_ids"] != "":
+                    room_ids = []
+                    room_names = []
+                    for roomId in device["room_ids"].split(","):
+                        if roomId is not None and roomId != "" and roomId in self._rooms:
+                           room = self._rooms[roomId]
+                           room_ids.append(roomId)
+                           room_names.append(room["name"])
+                    deviceItem["room_ids"] = room_ids
+                    deviceItem["room_names"] = room_names
+                    deviceItem["room_name"] = room_names[0] if len(room_names) > 0 else ''
+
             return devices, len(payload)
 
         return None
 
     def get_room_ids(self):
         """Load main rooms - later used in get_room_devices."""
-        if VimarLink._room_ids is not None:
-            return VimarLink._room_ids
+        if self._room_ids is not None:
+            return self._room_ids
 
         _LOGGER.debug("get_main_groups start")
 
-        select = """SELECT GROUP_CONCAT(o1.id) as MAIN_GROUPS FROM DPADD_OBJECT o0
+        select = """SELECT o1.id as id, o1.name as name
+FROM DPADD_OBJECT o0
 INNER JOIN DPADD_OBJECT_RELATION r1 ON o0.ID = r1.PARENTOBJ_ID AND r1.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 INNER JOIN DPADD_OBJECT o1 ON r1.CHILDOBJ_ID = o1.ID AND o1.type = "GROUP"
 WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
         payload = self._request_vimar_sql(select)
         if payload is not None:
-            VimarLink._room_ids = payload[0]["MAIN_GROUPS"]
-            _LOGGER.info("get_room_ids ends - found %d rooms", len(VimarLink._room_ids.split(",")))
+            _LOGGER.debug("get_room_ids ends - payload: %s", str(payload))
+            roomIds = []
+            rooms = {}
+            for group in payload:
+               roomIds.append(str(group["id"]))
+               rooms[str(group["id"])] = {
+                  "id": str(group["id"]),
+                  "name": str(group["name"])
+               }
+            self._rooms = rooms
+            self._room_ids = ",".join(roomIds)
+            _LOGGER.info("get_room_ids ends - found %d rooms", len(self._room_ids.split(",")))
 
-            return VimarLink._room_ids
+            return self._room_ids
         else:
             return None
 
@@ -452,7 +532,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             "<function>DML-SQL</function><type>SELECT</type>"
             "<statement>%s</statement><statement-len>%d</statement-len>"
             "</service-databasesocketoperation></soapenv:Body></soapenv:Envelope>"
-        ) % (VimarLink._session_id, select, len(select))
+        ) % (self._session_id, select, len(select))
 
         response = self._request_vimar_soap(post)
         if response is not None and response is not False:
@@ -527,7 +607,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             _LOGGER.error("Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
             # enforce relogin
             _LOGGER.info("Start to relogin..")
-            VimarLink._session_id = None
+            self._session_id = None
             self.login()
             # raise VimarConnectionError(
             #     "Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
@@ -551,7 +631,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 
     def _request_vimar(self, post, path, headers):
         """Prepare call to vimar webserver."""
-        url = "%s://%s:%s/%s" % (VimarLink._schema, VimarLink._host, VimarLink._port, path)
+        url = "%s://%s:%s/%s" % (self._schema, self._host, self._port, path)
 
         # _LOGGER.error("calling url: " + url)
         # _LOGGER.info("in _request_vimar")
@@ -578,18 +658,23 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return root
         return None
 
+
+    request_last_exception : BaseException = None
     def _request(self, url, post=None, headers=None, check_ssl=False):
         """Call web server using post variables."""
         # _LOGGER.info("request to " + url)
         try:
             # connection, read timeout
-            timeouts = (int(VimarLink._timeout / 2), VimarLink._timeout)
+            timeouts = (int(self._timeout / 2), self._timeout)
 
             if self._certificate is not None:
                 check_ssl = self._certificate
             else:
-                requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-                _LOGGER.debug("Request ignores ssl certificate")
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                global SSL_IGNORED
+                if not SSL_IGNORED:
+                    _LOGGER.debug("Request ignores ssl certificate")
+                    SSL_IGNORED = True
 
             if post is None:
                 response = requests.get(url, headers=headers, verify=check_ssl, timeout=timeouts)
@@ -600,13 +685,16 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             response.raise_for_status()
 
         except HTTPError as http_err:
+            self.request_last_exception = http_err
             _LOGGER.error("HTTP error occurred: %s", str(http_err))
             return False
         # except ReadTimeoutError:
-        except requests.exceptions.Timeout:
+        except requests.exceptions.Timeout as ex:
+            self.request_last_exception = ex
             _LOGGER.error("HTTP timeout occurred")
             return False
         except BaseException as err:
+            self.request_last_exception = err
             _LOGGER.error("Error occurred: %s", str(err))
             return False
         else:
@@ -620,7 +708,7 @@ class VimarProject:
     _link = None
     _platforms_exists = {}
     global_channel_id = None
-    _device_overrides = []
+    _device_customizer_action = None
 
     # single device
     #   'room_ids': number[] (maybe empty, ids of rooms)
@@ -628,32 +716,33 @@ class VimarProject:
     #   'object_name': str (name of the device, reformated in format_name)
     #   'object_type': str (CH_xx channel name of vimar)
     #   'status':  dict{dict{'status_id': number, 'status_value': str }}
-    #   'device_type': str (mapped type: lights, switches, climates, covers, sensors)
+    #   'device_type': str (mapped type: light, switch, climate, cover, sensor)
     #   'device_class': str (mapped class, based on name or attributes: fan, outlet, window, power)
 
-    def __init__(self, link: VimarLink, device_overrides=[]):
+    def __init__(self, link: VimarLink, device_customizer_action =None):
         """Create new container to hold all states."""
         self._link = link
-        self._device_overrides = device_overrides
+        self._device_customizer_action = device_customizer_action
 
     @property
     def devices(self):
         """Return all devices in current project."""
         return self._devices
 
-    def update(self):
+    def update(self, forced=False):
         """Get all devices from the vimar webserver, if object list is already there, only update states."""
-        first_run = True
-
+        if self._devices is None:
+           self._devices = []
         # DONE - only update the state - not the actual devices, so we do not need to parse device types again
-        if self._devices is not None and len(self._devices) > 0:
-            first_run = False
+        devices_count = len(self._devices)
 
         # TODO - check which device states has changed and call device updates
         self._devices, state_count = self._link.get_paged_results(self._link.get_remote_devices, self._devices)
 
         # for now we run parse device types and set classes after every update
-        if first_run:
+        if devices_count != len(self._devices) or (not forced is None and forced is True):
+            self._link.get_room_ids()
+            self._link.get_paged_results(self._link.get_room_devices, self._devices)
             self.check_devices()
 
         return self._devices
@@ -663,6 +752,8 @@ class VimarProject:
         if self._devices is not None and len(self._devices) > 0:
             for device_id, device in self._devices.items():
                 self.parse_device_type(device)
+            if _LOGGER_isDebug:
+                _LOGGER.debug("check_devices end. Devices: %s", str(self._devices))
             return True
         else:
             return False
@@ -772,7 +863,8 @@ class VimarProject:
         elif device["object_type"] == "CH_Scene":
             device_type = DEVICE_TYPE_SCENES
             # device_class = DEVICE_CLASS_SWITCH
-            icon = "mdi:google-pages"
+            #icon = "mdi:google-pages"
+            icon = "hass:palette"
 
             _LOGGER.debug("Scene returned from web server: " + device["object_type"] + " / " + device["object_name"])
             _LOGGER.debug("Scene object has states: " + str(device["status"]))
@@ -825,45 +917,23 @@ class VimarProject:
             _LOGGER.warning("Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"])
             _LOGGER.debug("Unknown object has states: " + str(device["status"]))
 
-        vimar_name = device["object_name"]
+        object_name = device["object_name"]
         # TODO - make format name configurable
-        object_name = self.format_name(device["object_name"])
-
-        # _LOGGER.debug("Object returned from web server: " + device["object_type"] + " / " + device["object_name"])
-        # _LOGGER.debug("Object has states: " + str(device["status"]))
-
-        for device_override in self._device_overrides:
-            filter = device_override.get("filter_vimar_name", "").upper()
-            match = filter == "*" or vimar_name.upper() == filter
-            # _LOGGER.debug("Overriding: filter: '" + filter + "' - vimar_name: '" + vimar_name + "' - Match: " + str(match))
-            if not match:
-                continue
-            if device_override.get("object_name_as_vimar"):
-                object_name = vimar_name.title().strip()
-            if device_override.get("device_type", device_type) != device_type:
-                _LOGGER.debug(
-                    "Overriding device_type: object_name: '" + object_name + "' - device_type: '" + str(device_type) + "' -> '" + str(device_override.get("device_type")) + "'"
-                )
-                device_type = str(device_override.get("device_type"))
-            if device_override.get("device_class", device_class) != device_class:
-                _LOGGER.debug(
-                    "Overriding device_class: object_name: '" + object_name + "' - device_class: '" + str(device_class) + "' -> '" + str(device_override.get("device_class")) + "'"
-                )
-                device_class = str(device_override.get("device_class"))
-            if device_override.get("icon") is not None:
-                oldIcon = icon
-                icon = device_override.get("icon")
-                if isinstance(icon, str) and "," in icon:
-                    icon = icon.split(",")
-                if isinstance(icon, str) and icon == "":
-                    icon = None
-                if not str(icon) == str(oldIcon):
-                    _LOGGER.debug("Overriding icon: object_name: '" + object_name + "' - icon: '" + str(oldIcon) + "' -> '" + str(icon) + "'")
+        friendly_name = self.format_name(object_name)
 
         device["device_type"] = device_type
         device["device_class"] = device_class
+        device["device_friendly_name"] = friendly_name
         device["icon"] = icon
-        device["object_name"] = object_name
+
+        if self._device_customizer_action:
+            self._device_customizer_action(device)
+
+        #reload device_type: can be changed from customizer
+        device_type = device["device_type"]
+
+        # _LOGGER.debug("Object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+        # _LOGGER.debug("Object has states: " + str(device["status"]))
 
         if device_type in self._platforms_exists:
             self._platforms_exists[device_type] += 1
