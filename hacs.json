@@ -2,17 +2,5 @@
   "name": "VIMAR By-Me Hub",
   "content_in_root": false,
   "render_readme": true,
-  "domains": [
-    "media_player",
-    "cover",
-    "input_boolean",
-    "light",
-    "scene",
-    "binary_sensor",
-    "sensor",
-    "switch",
-    "climate"
-  ],
-  "homeassistant": "0.99.9",
-  "iot_class": ["Local Polling"]
+  "homeassistant": "0.99.9"
 }
