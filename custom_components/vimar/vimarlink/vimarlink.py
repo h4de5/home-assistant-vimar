@@ -748,7 +748,7 @@ class VimarProject:
             device_type = DEVICE_TYPE_LIGHTS
             icon = ["mdi:speedometer", "mdi:speedometer-slow"]
 
-        elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation", "CH_Shutter_Slat_Automation", "CH_ShutterBlind_Automation"]:
+        elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_ShutterBlindWithoutPosition_Automation", "CH_Shutter_Automation", "CH_Shutter_Slat_Automation", "CH_ShutterBlind_Automation"]:
             # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             if any(x in device["object_name"].upper() for x in ["FERNBEDIENUNG"]):
