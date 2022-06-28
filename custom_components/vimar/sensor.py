@@ -25,8 +25,8 @@ except ImportError:
 try:
     from homeassistant.components.sensor import (STATE_CLASS_TOTAL_INCREASING, STATE_CLASS_MEASUREMENT)
 except ImportError:
+    from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
     from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT as STATE_CLASS_TOTAL_INCREASING
-    from homeassistant.components.sense import STATE_CLASS_MEASUREMENT
 
 from homeassistant.components.sensor import SensorEntity
 
