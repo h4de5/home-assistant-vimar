@@ -1,9 +1,9 @@
 """Connection to vimar web server."""
 
 import logging
-import sys
-import re
 import os
+import ssl
+import sys
 
 # for communicating with vimar webserver
 import xml.etree.cElementTree as xmlTree
@@ -17,8 +17,8 @@ try:
 except ImportError:
     import urllib3
 
+from ..const import DEVICE_TYPE_CLIMATES  # DEVICE_TYPE_FANS,
 from ..const import (
-    DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_LIGHTS,
     DEVICE_TYPE_MEDIA_PLAYERS,
@@ -35,15 +35,55 @@ MAX_ROWS_PER_REQUEST = 300
 # from homeassistant/components/switch/__init__.py
 DEVICE_CLASS_OUTLET = "outlet"
 DEVICE_CLASS_SWITCH = "switch"
-## from homeassistant/components/cover/__init__.py
+# from homeassistant/components/cover/__init__.py
 DEVICE_CLASS_SHUTTER = "shutter"
 DEVICE_CLASS_WINDOW = "window"
-## from homeassistant/const.py
+# from homeassistant/const.py
 DEVICE_CLASS_POWER = "power"
 DEVICE_CLASS_TEMPERATURE = "temperature"
 DEVICE_CLASS_PRESSURE = "pressure"
 
 SSL_IGNORED = False
+
+
+class HTTPAdapter(requests.adapters.HTTPAdapter):
+    """Override the default request method to support old SSL."""
+
+    # see: https://www.reddit.com/r/learnpython/comments/hw6ann/using_requests_to_access_a_website_that_only/
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the HTTPAdapter."""
+        super().__init__(*args, **kwargs)
+
+    # def init_poolmanager(self, *args, **kwargs):
+    #     """Initialize the connection pool."""
+    #     ssl_context = ssl.create_default_context()
+    #     ssl_context.minimum_version = ssl.TLSVersion.TLSv1
+    #     kwargs["ssl_context"] = ssl_context
+    #     return super().init_poolmanager(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        """Initialize the connection pool."""
+        ssl_context = ssl.create_default_context()
+
+        # Sets up old and insecure TLSv1.
+        ssl_context.options &= ~ssl.OP_NO_TLSv1_3 & ~ssl.OP_NO_TLSv1_2 & ~ssl.OP_NO_TLSv1_1
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1
+        ssl_context.check_hostname = False
+
+        # Also you could try to set ciphers manually as it was in my case.
+        # On other ciphers their server was reset the connection with:
+        # [Errno 104] Connection reset by peer
+        # ssl_context.set_ciphers("ECDHE-RSA-AES256-SHA")
+        # https://stackoverflow.com/questions/38715570/restrieve-up-to-date-tls-cipher-suite-with-python
+        # table https://testssl.sh/openssl-iana.mapping.html
+        ssl_context.set_ciphers("AES256-SHA")
+
+        # See urllib3.poolmanager.SSL_KEYWORDS for all available keys.
+        kwargs["ssl_context"] = ssl_context
+        # kwargs["assert_hostname"] = False
+        return super().init_poolmanager(*args, **kwargs)
+
 
 class VimarApiError(Exception):
     """Vimar API General Exception."""
@@ -117,7 +157,12 @@ class VimarLink:
             temp_certificate = self._certificate
             self._certificate = None
 
-            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (self._schema, self._host, self._port)
+            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
+                self._schema,
+                self._host,
+                self._port,
+            )
+
             certificate_file = self._request(downloadPath)
             # get it back
             self._certificate = temp_certificate
@@ -125,7 +170,7 @@ class VimarLink:
             if certificate_file is None or certificate_file is False:
                 raise VimarConnectionError("Certificate download failed: %s" % str(self.request_last_exception))
 
-            #compare current cert with downloaded cert, prevent saving if not changed
+            # compare current cert with downloaded cert, prevent saving if not changed
             old_cert = None
             try:
                 file = open(self._certificate, "r")
@@ -134,7 +179,7 @@ class VimarLink:
             except IOError:
                 old_cert = None
 
-            if (old_cert != certificate_file):
+            if old_cert != certificate_file:
                 cert_changed = True
                 try:
                     file = open(self._certificate, "w")
@@ -149,39 +194,43 @@ class VimarLink:
 
     def login(self):
         """Call login and store the session id."""
-        #self._port = "444"
-        loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
-            self._schema,
-            self._host,
-            self._port,
-            self._username,
-            self._password,
+
+        # self._port = "444"
+        loginurl = (
+            "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login"
+            % (
+                self._schema,
+                self._host,
+                self._port,
+                self._username,
+                self._password,
+            )
         )
 
         use_cert = self._certificate is not None and len(self._certificate) != 0
-        #if first time, cert not exists
+        # if first time, cert not exists
         if self._schema == "https" and use_cert and os.path.isfile(self._certificate) is False:
             self.install_certificate()
 
         result = self._request(loginurl)
 
-        if (result is False and use_cert): #if problem is of certificate, download it again
+        if result is False and use_cert:  # if problem is of certificate, download it again
             curr_ex = self.request_last_exception
             curr_ex_str = str(curr_ex)
-            #if certified not valid:
-            #SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get issuer certificate (_ssl.c:1129)
-            #SSLError(SSLError(136, '[X509: NO_CERTIFICATE_OR_CRL_FOUND] no certificate or crl found
-            #if file not found
-            #Could not find a suitable TLS CA certificate bundle, invalid path: rootCA.VIMAR.crt
+            # if certified not valid:
+            # SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get issuer certificate (_ssl.c:1129)
+            # SSLError(SSLError(136, '[X509: NO_CERTIFICATE_OR_CRL_FOUND] no certificate or crl found
+            # if file not found
+            # Could not find a suitable TLS CA certificate bundle, invalid path: rootCA.VIMAR.crt
             if "SSLError" in curr_ex_str or "TLS CA" in curr_ex_str:
                 try:
-                    #return downloaded only if changed, then, if is expired
+                    # return downloaded only if changed, then, if is expired
                     cert_downloaded = self.install_certificate()
-                    #self.request_last_exception = curr_ex
-                    if (cert_downloaded):
+                    # self.request_last_exception = curr_ex
+                    if cert_downloaded:
                         result = self._request(loginurl)
                 except BaseException:
-                    #self.request_last_exception = curr_ex
+                    # self.request_last_exception = curr_ex
                     pass
 
         if result is not None:
@@ -275,7 +324,16 @@ class VimarLink:
     def get_optionals_param(self, state):
         """Return SYNCDB for climates states."""
         # if (state in ['setpoint', 'stagione', 'unita', 'centralizzato', 'funzionamento', 'temporizzazione', 'channel', 'source', 'global_channel']):
-        if state in ["setpoint", "stagione", "unita", "temporizzazione", "channel", "source", "global_channel", "centralizzato"]:
+        if state in [
+            "setpoint",
+            "stagione",
+            "unita",
+            "temporizzazione",
+            "channel",
+            "source",
+            "global_channel",
+            "centralizzato",
+        ]:
             return "SYNCDB"
         else:
             return "NO-OPTIONALS"
@@ -400,7 +458,7 @@ LIMIT %d, %d;""" % (
         # o2.ENABLE_FLAG = "1" AND o2.IS_READABLE = "1" AND o2.IS_WRITABLE =
         # "1" AND o2.IS_VISIBLE = "1"
 
-        #passo OnlyUpdate a True, poichè deve solo riempire le informazioni delle room per gli oggetti esistenti
+        # passo OnlyUpdate a True, poichè deve solo riempire le informazioni delle room per gli oggetti esistenti
         return self._generate_device_list(select, devices, True)
 
     def get_remote_devices(self, devices={}, start: int = None, limit: int = None):
@@ -443,8 +501,8 @@ LIMIT %d, %d;""" % (
             for device in payload:
                 deviceItem = {}
                 if device["object_id"] not in devices:
-                    if onlyUpdate == True:
-                       continue
+                    if onlyUpdate:
+                        continue
                     deviceItem = {
                         "room_ids": [],
                         "room_names": [],
@@ -452,7 +510,7 @@ LIMIT %d, %d;""" % (
                         "object_id": device["object_id"],
                         "object_name": device["object_name"],
                         "object_type": device["object_type"],
-                        "status": {}
+                        "status": {},
                     }
                     devices[device["object_id"]] = deviceItem
                 else:
@@ -462,22 +520,22 @@ LIMIT %d, %d;""" % (
                 if device["status_name"] != "":
                     deviceItem["status"][device["status_name"]] = {
                         "status_id": device["status_id"],
-                        "status_value": device["status_value"]
+                        "status_value": device["status_value"],
                     }
                     if "status_range" in device:
-                       deviceItem["status"][device["status_name"]]["status_range"] = device["status_range"]
+                        deviceItem["status"][device["status_name"]]["status_range"] = device["status_range"]
 
                 if device["room_ids"] is not None and device["room_ids"] != "":
                     room_ids = []
                     room_names = []
                     for roomId in device["room_ids"].split(","):
                         if roomId is not None and roomId != "" and roomId in self._rooms:
-                           room = self._rooms[roomId]
-                           room_ids.append(roomId)
-                           room_names.append(room["name"])
+                            room = self._rooms[roomId]
+                            room_ids.append(roomId)
+                            room_names.append(room["name"])
                     deviceItem["room_ids"] = room_ids
                     deviceItem["room_names"] = room_names
-                    deviceItem["room_name"] = room_names[0] if len(room_names) > 0 else ''
+                    deviceItem["room_name"] = room_names[0] if len(room_names) > 0 else ""
 
             return devices, len(payload)
 
@@ -502,11 +560,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             roomIds = []
             rooms = {}
             for group in payload:
-               roomIds.append(str(group["id"]))
-               rooms[str(group["id"])] = {
-                  "id": str(group["id"]),
-                  "name": str(group["name"])
-               }
+                roomIds.append(str(group["id"]))
+                rooms[str(group["id"])] = {"id": str(group["id"]), "name": str(group["name"])}
             self._rooms = rooms
             self._room_ids = ",".join(roomIds)
             _LOGGER.info("get_room_ids ends - found %d rooms", len(self._room_ids.split(",")))
@@ -544,7 +599,12 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 parsed_data = self._parse_sql_payload(payload.text)
 
                 if parsed_data is None:
-                    _LOGGER.warning("Received invalid data from SQL: " + ElementTree.tostring(response, encoding="unicode") + " from post: " + post)
+                    _LOGGER.warning(
+                        "Received invalid data from SQL: "
+                        + ElementTree.tostring(response, encoding="unicode")
+                        + " from post: "
+                        + post
+                    )
 
                 return parsed_data
             else:
@@ -658,8 +718,8 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             return root
         return None
 
+    request_last_exception: BaseException = None
 
-    request_last_exception : BaseException = None
     def _request(self, url, post=None, headers=None, check_ssl=False):
         """Call web server using post variables."""
         # _LOGGER.info("request to " + url)
@@ -676,10 +736,14 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                     _LOGGER.debug("Request ignores ssl certificate")
                     SSL_IGNORED = True
 
-            if post is None:
-                response = requests.get(url, headers=headers, verify=check_ssl, timeout=timeouts)
-            else:
-                response = requests.post(url, data=post, headers=headers, verify=check_ssl, timeout=timeouts)
+            with requests.Session() as s:
+                s.mount("https://", HTTPAdapter())
+                # s.verify = False
+
+                if post is None:
+                    response = s.get(url, headers=headers, verify=check_ssl, timeout=timeouts)
+                else:
+                    response = s.post(url, data=post, headers=headers, verify=check_ssl, timeout=timeouts)
 
             # If the response was successful, no Exception will be raised
             response.raise_for_status()
@@ -719,7 +783,7 @@ class VimarProject:
     #   'device_type': str (mapped type: light, switch, climate, cover, sensor)
     #   'device_class': str (mapped class, based on name or attributes: fan, outlet, window, power)
 
-    def __init__(self, link: VimarLink, device_customizer_action =None):
+    def __init__(self, link: VimarLink, device_customizer_action=None):
         """Create new container to hold all states."""
         self._link = link
         self._device_customizer_action = device_customizer_action
@@ -732,7 +796,7 @@ class VimarProject:
     def update(self, forced=False):
         """Get all devices from the vimar webserver, if object list is already there, only update states."""
         if self._devices is None:
-           self._devices = []
+            self._devices = []
         # DONE - only update the state - not the actual devices, so we do not need to parse device types again
         devices_count = len(self._devices)
 
@@ -740,7 +804,7 @@ class VimarProject:
         self._devices, state_count = self._link.get_paged_results(self._link.get_remote_devices, self._devices)
 
         # for now we run parse device types and set classes after every update
-        if devices_count != len(self._devices) or (not forced is None and forced is True):
+        if devices_count != len(self._devices) or (forced is not None and forced is True):
             self._link.get_room_ids()
             self._link.get_paged_results(self._link.get_room_devices, self._devices)
             self.check_devices()
@@ -810,7 +874,12 @@ class VimarProject:
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:motion-sensor", "mdi:motion-sensor-off"]
 
-                _LOGGER.debug("IR Sensor object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+                _LOGGER.debug(
+                    "IR Sensor object returned from web server: "
+                    + device["object_type"]
+                    + " / "
+                    + device["object_name"]
+                )
                 _LOGGER.debug("IR Sensor object has states: " + str(device["status"]))
 
             else:
@@ -818,7 +887,13 @@ class VimarProject:
                 device_type = DEVICE_TYPE_LIGHTS
                 icon = "mdi:ceiling-light"
 
-        elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF", "CH_KNX_GENERIC_TIME_S", "CH_KNX_RELE", "CH_KNX_GENERIC_ENABLE", "CH_KNX_GENERIC_RESET"]:
+        elif device["object_type"] in [
+            "CH_KNX_GENERIC_ONOFF",
+            "CH_KNX_GENERIC_TIME_S",
+            "CH_KNX_RELE",
+            "CH_KNX_GENERIC_ENABLE",
+            "CH_KNX_GENERIC_RESET",
+        ]:
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
 
             device_type = DEVICE_TYPE_SWITCHES
@@ -839,7 +914,13 @@ class VimarProject:
             device_type = DEVICE_TYPE_LIGHTS
             icon = ["mdi:speedometer", "mdi:speedometer-slow"]
 
-        elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_Shutter_Automation", "CH_Shutter_Slat_Automation", "CH_ShutterBlind_Automation"]:
+        elif device["object_type"] in [
+            "CH_ShutterWithoutPosition_Automation",
+            "CH_ShutterBlindWithoutPosition_Automation",
+            "CH_Shutter_Automation",
+            "CH_Shutter_Slat_Automation",
+            "CH_ShutterBlind_Automation",
+        ]:
             # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             if any(x in device["object_name"].upper() for x in ["FERNBEDIENUNG"]):
@@ -853,23 +934,37 @@ class VimarProject:
                 device_class = DEVICE_CLASS_SHUTTER
                 icon = ["mdi:window-shutter", "mdi:window-shutter-open"]
 
-        elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_HVAC_RiscaldamentoNoZonaNeutra", "CH_Fancoil", "CH_HVAC"]:
+        elif device["object_type"] in [
+            "CH_Clima",
+            "CH_HVAC_NoZonaNeutra",
+            "CH_HVAC_RiscaldamentoNoZonaNeutra",
+            "CH_Fancoil",
+            "CH_HVAC",
+        ]:
             device_type = DEVICE_TYPE_CLIMATES
             icon = "mdi:thermometer-lines"
 
-            _LOGGER.debug("Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug(
+                "Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Climate object has states: " + str(device["status"]))
 
         elif device["object_type"] == "CH_Scene":
             device_type = DEVICE_TYPE_SCENES
             # device_class = DEVICE_CLASS_SWITCH
-            #icon = "mdi:google-pages"
+            # icon = "mdi:google-pages"
             icon = "hass:palette"
 
             _LOGGER.debug("Scene returned from web server: " + device["object_type"] + " / " + device["object_name"])
             _LOGGER.debug("Scene object has states: " + str(device["status"]))
 
-        elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
+        elif device["object_type"] in [
+            "CH_Misuratore",
+            "CH_Carichi_Custom",
+            "CH_Carichi",
+            "CH_Carichi_3F",
+            "CH_KNX_GENERIC_POWER_KW",
+        ]:
             device_type = DEVICE_TYPE_SENSORS
             device_class = DEVICE_CLASS_POWER
             # icon = "mdi:battery-charging-high"
@@ -907,29 +1002,90 @@ class VimarProject:
             device_type = DEVICE_TYPE_MEDIA_PLAYERS
             icon = ["mdi:radio", "mdi:radio-off"]
 
-            _LOGGER.debug("Audio object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug(
+                "Audio object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Audio object has states: " + str(device["status"]))
 
         elif device["object_type"] in ["CH_SAI", "CH_Event", "CH_KNX_GENERIC_TIMEPERIODMIN"]:
-            _LOGGER.debug("Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug(
+                "Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Unsupported object has states: " + str(device["status"]))
         else:
-            _LOGGER.warning("Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.warning(
+                "Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Unknown object has states: " + str(device["status"]))
 
         object_name = device["object_name"]
-        # TODO - make format name configurable
         friendly_name = self.format_name(object_name)
+
+        # see https://github.com/h4de5/home-assistant-vimar/pull/31
+        # vimar_name = device["object_name"]
+        # DONE - make format name configurable
+        # object_name = self.format_name(device["object_name"])
+
+        # for device_override in self._device_overrides:
+        #     filter = device_override.get("filter_vimar_name", "").upper()
+        #     match = filter == "*" or vimar_name.upper() == filter
+        #     # _LOGGER.debug("Overriding: filter: '" + filter + "' - vimar_name: '" + vimar_name + "' - Match: " + str(match))
+        #     if not match:
+        #         continue
+        #     if device_override.get("object_name_as_vimar"):
+        #         object_name = vimar_name.title().strip()
+        #     if device_override.get("device_type", device_type) != device_type:
+        #         _LOGGER.debug(
+        #             "Overriding device_type: object_name: '"
+        #             + object_name
+        #             + "' - device_type: '"
+        #             + str(device_type)
+        #             + "' -> '"
+        #             + str(device_override.get("device_type"))
+        #             + "'"
+        #         )
+        #         device_type = str(device_override.get("device_type"))
+        #     if device_override.get("device_class", device_class) != device_class:
+        #         _LOGGER.debug(
+        #             "Overriding device_class: object_name: '"
+        #             + object_name
+        #             + "' - device_class: '"
+        #             + str(device_class)
+        #             + "' -> '"
+        #             + str(device_override.get("device_class"))
+        #             + "'"
+        #         )
+        #         device_class = str(device_override.get("device_class"))
+        #     if device_override.get("icon") is not None:
+        #         oldIcon = icon
+        #         icon = device_override.get("icon")
+        #         if isinstance(icon, str) and "," in icon:
+        #             icon = icon.split(",")
+        #         if isinstance(icon, str) and icon == "":
+        #             icon = None
+        #         if not str(icon) == str(oldIcon):
+        #             _LOGGER.debug(
+        #                 "Overriding icon: object_name: '"
+        #                 + object_name
+        #                 + "' - icon: '"
+        #                 + str(oldIcon)
+        #                 + "' -> '"
+        #                 + str(icon)
+        #                 + "'"
+        #             )
+
+        # send https://github.com/h4de5/home-assistant-vimar/pull/31
 
         device["device_type"] = device_type
         device["device_class"] = device_class
         device["device_friendly_name"] = friendly_name
         device["icon"] = icon
+        # device["object_name"] = object_name
 
         if self._device_customizer_action:
             self._device_customizer_action(device)
 
-        #reload device_type: can be changed from customizer
+        # reload device_type: can be changed from customizer
         device_type = device["device_type"]
 
         # _LOGGER.debug("Object returned from web server: " + device["object_type"] + " / " + device["object_name"])
