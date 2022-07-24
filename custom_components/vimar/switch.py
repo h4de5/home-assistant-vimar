@@ -4,26 +4,29 @@ import logging
 
 from homeassistant.helpers.entity import ToggleEntity
 
-from .vimar_entity import VimarEntity, vimar_setup_platform
+from .const import DEVICE_TYPE_SWITCHES as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Switch platform."""
-    vimar_setup_platform(VimarSwitch, hass, async_add_entities, discovery_info)
+    vimar_setup_entry(VimarSwitch, CURR_PLATFORM, hass, entry, async_add_devices)
 
 
 class VimarSwitch(VimarEntity, ToggleEntity):
     """Provide Vimar switches and scenes."""
 
-    _platform = "switch"
-
-    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
+    def __init__(self, coordinator, device_id: int):
         """Initialize the switch."""
-        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+        VimarEntity.__init__(self, coordinator, device_id)
 
         # self.entity_id = "switch." + self._name.lower() + "_" + self._device_id
+
+    @property
+    def entity_platform(self):
+        return CURR_PLATFORM
 
     # switch properties
     @property

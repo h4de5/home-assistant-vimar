@@ -2,5 +2,5 @@
   "name": "VIMAR By-Me Hub",
   "content_in_root": false,
   "render_readme": true,
-  "homeassistant": "0.99.9"
+  "homeassistant": "2021.12.0"
 }

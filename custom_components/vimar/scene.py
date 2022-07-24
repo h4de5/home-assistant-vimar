@@ -4,24 +4,27 @@ import logging
 
 from homeassistant.components.scene import Scene
 
-from .vimar_entity import VimarEntity, vimar_setup_platform
+from .const import DEVICE_TYPE_SCENES as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Scene platform."""
-    vimar_setup_platform(VimarScene, hass, async_add_entities, discovery_info)
+    vimar_setup_entry(VimarScene, CURR_PLATFORM, hass, entry, async_add_devices)
 
 
 class VimarScene(VimarEntity, Scene):
     """Provide Vimar scenees and scenes."""
 
-    _platform = "scene"
-
-    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
+    def __init__(self, coordinator, device_id: int):
         """Initialize the scene."""
-        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+        VimarEntity.__init__(self, coordinator, device_id)
+
+    @property
+    def entity_platform(self):
+        return CURR_PLATFORM
 
     # scene properties
 

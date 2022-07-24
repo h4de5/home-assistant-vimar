@@ -5,7 +5,6 @@
 [![Github Open Issues](https://img.shields.io/github/issues/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/issues)
 [![Github Open Pull Requests](https://img.shields.io/github/issues-pr/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/pulls)
 
-
 # VIMAR By-Me / By-Web Hub
 
 This is a home-assistant integration for the VIMAR By-me / By-web bus system.
@@ -33,14 +32,16 @@ In order to keep all dashboard layouts, automations and groups intact, you may w
 ## Vimar requirements
 
 Hardware:
+
 - [Vimar - 01945 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01945)
-or
+  or
 - [Vimar - 01946 - Web server Light By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01946)
 
 Software:
+
 - [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
-    
-    I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
+
+  I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
 
 ## home-assistant requirements
 
@@ -60,102 +61,13 @@ You will end up with something like this:
 
 ### configuration
 
-example configuration to put into `configuration.yaml`:
+After you installed the custom component either via HACS or by extracting the release zip into your `custom_components` folder you should be able to select **Vimar By-Me Hub** from the list of integration in the Home-Assistant GUI.
 
-#### minimal
+From there simply follow the instructions.
 
-this will try to connect to your webserver using https, will save the webservers CA certificate in your home-assistants config folder
+Any previous setup made in your configuration.yaml will be taken over to the GUI and can be removed afterwards.
 
-    vimar:
-      username: your-login-user
-      password: your-login-password
-      host: IP-OR-HOSTNAME
-
-#### existing CA certificate
-
-You can manualy download the CA certificate from the webserver (see settings > network) and place it in the home-assistants directory. If the file does not exist on the given filename, the integration will try to download and place it there. (Advanced usage: If you have placed your webserver behind a reverse proxy you may need to place whatever CA certificate you used to generate your proxy servers certificate.)
-
-    vimar:
-      username: your-login-user
-      password: your-login-password
-      host: IP-OR-HOSTNAME
-      certificate: rootCA.VIMAR.crt
-
-#### problems with ssl connection
-
-if the above settings do not work for you and you keep getting errors like
-
-> SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")
-
-you can try to force ignoring any ssl errors during communicating to the webserver by keeping the path to the certificate empty.
-
-    vimar:
-      username: your-login-user
-      password: your-login-password
-      host: IP-OR-HOSTNAME
-      certificate:
-
-#### trying to connect via http
-
-it possible to connect to the webserver via http as well. While it may be necessary for some setups, a direct connection to the webserver via http will not be possible, as the login process will always forward requests to https.
-
-    vimar:
-      username: your-login-user
-      password: your-login-password
-      host: IP-OR-HOSTNAME
-      schema: http
-      port: 80
-
-#### existing CA certificate
-
-You can manualy download the CA certificate from the webserver (see settings > network) and place it in the home-assistants directory. If the file does not exist on the given filename, the integration will try to download and place it there. (Advanced usage: If you have placed your webserver behind a reverse proxy you may need to place whatever CA certificate you used to generate your proxy servers certificate.)
-
-    vimar:
-      username: your-login-user
-      password: your-login-password
-      host: IP-OR-HOSTNAME
-      certificate: rootCA.VIMAR.crt
-
-#### ignore platforms
-
-You can ignore certain platforms that should not be added to home-assistant. Just list those platforms you want to ignore in the configuration:
-
-    vimar:
-      username: your-login-user
-      password: your-login-password
-      host: IP-OR-HOSTNAME
-      ignore:
-        - light
-        - switch
-        - cover
-        - climate
-        - sensor
-        - media_player
-        - scene
-
-#### entities customization
-
-You can override entities attribute:
-filter_vimar_name is the filter for match entity.
-In this example, i use object_name_as_vimar for all entities, i prefer a original name without custom formatter.
-After, i change a entity 'Cancello' as switches, default is readed as lights.
-you can override device_type, device_class, icon.
-
-    vimar:
-      username: your-login-user
-      password: your-login-password
-      host: IP-OR-HOSTNAME
-      device_override:
-        - filter_vimar_name: '*'
-          object_name_as_vimar: true
-        - filter_vimar_name: Cancello
-          device_type: switches
-          #device_class: garage
-          #icon: ''
-          #icon:
-    	  # - mdi:toggle-switch
-    	  # - mdi:toggle-switch-off
-          icon: mdi:garage-open,mdi:garage
+#### credentials
 
 `username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file found, the integration will download the current CA certificate from the local vimar webserver and save it under that given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and transmition of data to the webserver (default 6 seconds). if only some platforms should be added to home-assistant you list them in the `ignore` area.
 
@@ -228,7 +140,7 @@ have a look into your home-assistant log files - usually named `home-assistant.l
 > See the explanation and the fix in: https://github.com/h4de5/home-assistant-vimar/issues/15#issuecomment-665635305
 
       When you enable the integration in home-assistant you can no longer use the vimar web server gui.
-      
+
 > Please create a separate user on your VIMAR webserver for this integration. At some point the web server does not allow to be logged in with the same user from different locations and simple drops one connection. This may have strange side effects.
 
 ## thanks

@@ -4,3 +4,4 @@ logos/Thumbs.db
 *.bac
 examples/rootCA.VIMAR.crt
 examples/credentials.cfg
+.vs

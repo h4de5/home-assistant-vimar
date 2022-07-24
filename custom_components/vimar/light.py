@@ -5,33 +5,37 @@ import logging
 import homeassistant.util.color as color_util
 from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_HS_COLOR, SUPPORT_BRIGHTNESS, SUPPORT_COLOR
 
-from .vimar_entity import VimarEntity, vimar_setup_platform
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 try:
     from homeassistant.components.light import LightEntity
 except ImportError:
     from homeassistant.components.light import Light as LightEntity
 
+from .const import DEVICE_TYPE_LIGHTS as CURR_PLATFORM
+
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Light platform."""
-    vimar_setup_platform(VimarLight, hass, async_add_entities, discovery_info)
+    vimar_setup_entry(VimarLight, CURR_PLATFORM, hass, entry, async_add_devices)
 
 
 class VimarLight(VimarEntity, LightEntity):
     """Provides a Vimar lights."""
 
-    _platform = "light"
-
-    def __init__(self, device_id, vimarconnection, vimarproject, coordinator):
+    def __init__(self, coordinator, device_id: int):
         """Initialize the light."""
-        VimarEntity.__init__(self, device_id, vimarconnection, vimarproject, coordinator)
+        VimarEntity.__init__(self, coordinator, device_id)
 
         # self.entity_id = "light." + self._name.lower() + "_" + self._device_id
 
     # light properties
+
+    @property
+    def entity_platform(self):
+        return CURR_PLATFORM
 
     @property
     def is_on(self):
