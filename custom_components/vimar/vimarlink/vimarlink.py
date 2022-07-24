@@ -1,6 +1,7 @@
 """Connection to vimar web server."""
 
 import logging
+import ssl
 import sys
 
 # for communicating with vimar webserver
@@ -10,8 +11,8 @@ from xml.etree import ElementTree
 import requests
 from requests.exceptions import HTTPError
 
+from .const import DEVICE_TYPE_CLIMATES  # DEVICE_TYPE_FANS,
 from .const import (
-    DEVICE_TYPE_CLIMATES,  # DEVICE_TYPE_FANS,
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_LIGHTS,
     DEVICE_TYPE_MEDIA_PLAYERS,
@@ -34,6 +35,45 @@ DEVICE_CLASS_WINDOW = "window"
 DEVICE_CLASS_POWER = "power"
 DEVICE_CLASS_TEMPERATURE = "temperature"
 DEVICE_CLASS_PRESSURE = "pressure"
+
+
+class HTTPAdapter(requests.adapters.HTTPAdapter):
+    """Override the default request method to support old SSL."""
+
+    # see: https://www.reddit.com/r/learnpython/comments/hw6ann/using_requests_to_access_a_website_that_only/
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the HTTPAdapter."""
+        super().__init__(*args, **kwargs)
+
+    # def init_poolmanager(self, *args, **kwargs):
+    #     """Initialize the connection pool."""
+    #     ssl_context = ssl.create_default_context()
+    #     ssl_context.minimum_version = ssl.TLSVersion.TLSv1
+    #     kwargs["ssl_context"] = ssl_context
+    #     return super().init_poolmanager(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        """Initialize the connection pool."""
+        ssl_context = ssl.create_default_context()
+
+        # Sets up old and insecure TLSv1.
+        ssl_context.options &= ~ssl.OP_NO_TLSv1_3 & ~ssl.OP_NO_TLSv1_2 & ~ssl.OP_NO_TLSv1_1
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1
+        ssl_context.check_hostname = False
+
+        # Also you could try to set ciphers manually as it was in my case.
+        # On other ciphers their server was reset the connection with:
+        # [Errno 104] Connection reset by peer
+        # ssl_context.set_ciphers("ECDHE-RSA-AES256-SHA")
+        # https://stackoverflow.com/questions/38715570/restrieve-up-to-date-tls-cipher-suite-with-python
+        # table https://testssl.sh/openssl-iana.mapping.html
+        ssl_context.set_ciphers("AES256-SHA")
+
+        # See urllib3.poolmanager.SSL_KEYWORDS for all available keys.
+        kwargs["ssl_context"] = ssl_context
+        # kwargs["assert_hostname"] = False
+        return super().init_poolmanager(*args, **kwargs)
 
 
 class VimarApiError(Exception):
@@ -106,7 +146,11 @@ class VimarLink:
             temp_certificate = self._certificate
             self._certificate = None
 
-            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (VimarLink._schema, VimarLink._host, VimarLink._port)
+            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
+                VimarLink._schema,
+                VimarLink._host,
+                VimarLink._port,
+            )
             certificate_file = self._request(downloadPath)
 
             if certificate_file is None or certificate_file == False:
@@ -129,12 +173,15 @@ class VimarLink:
 
     def login(self):
         """Call login and store the session id."""
-        loginurl = "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login" % (
-            VimarLink._schema,
-            VimarLink._host,
-            VimarLink._port,
-            VimarLink._username,
-            VimarLink._password,
+        loginurl = (
+            "%s://%s:%s/vimarbyweb/modules/system/user_login.php?sessionid=&username=%s&password=%s&remember=0&op=login"
+            % (
+                VimarLink._schema,
+                VimarLink._host,
+                VimarLink._port,
+                VimarLink._username,
+                VimarLink._password,
+            )
         )
 
         result = self._request(loginurl)
@@ -223,7 +270,16 @@ class VimarLink:
     def get_optionals_param(self, state):
         """Return SYNCDB for climates states."""
         # if (state in ['setpoint', 'stagione', 'unita', 'centralizzato', 'funzionamento', 'temporizzazione', 'channel', 'source', 'global_channel']):
-        if state in ["setpoint", "stagione", "unita", "temporizzazione", "channel", "source", "global_channel", "centralizzato"]:
+        if state in [
+            "setpoint",
+            "stagione",
+            "unita",
+            "temporizzazione",
+            "channel",
+            "source",
+            "global_channel",
+            "centralizzato",
+        ]:
             return "SYNCDB"
         else:
             return "NO-OPTIONALS"
@@ -464,7 +520,12 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 parsed_data = self._parse_sql_payload(payload.text)
 
                 if parsed_data is None:
-                    _LOGGER.warning("Received invalid data from SQL: " + ElementTree.tostring(response, encoding="unicode") + " from post: " + post)
+                    _LOGGER.warning(
+                        "Received invalid data from SQL: "
+                        + ElementTree.tostring(response, encoding="unicode")
+                        + " from post: "
+                        + post
+                    )
 
                 return parsed_data
             else:
@@ -591,10 +652,14 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
                 _LOGGER.debug("Request ignores ssl certificate")
 
-            if post is None:
-                response = requests.get(url, headers=headers, verify=check_ssl, timeout=timeouts)
-            else:
-                response = requests.post(url, data=post, headers=headers, verify=check_ssl, timeout=timeouts)
+            with requests.Session() as s:
+                s.mount("https://", HTTPAdapter())
+                # s.verify = False
+
+                if post is None:
+                    response = s.get(url, headers=headers, verify=check_ssl, timeout=timeouts)
+                else:
+                    response = s.post(url, data=post, headers=headers, verify=check_ssl, timeout=timeouts)
 
             # If the response was successful, no Exception will be raised
             response.raise_for_status()
@@ -719,7 +784,12 @@ class VimarProject:
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:motion-sensor", "mdi:motion-sensor-off"]
 
-                _LOGGER.debug("IR Sensor object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+                _LOGGER.debug(
+                    "IR Sensor object returned from web server: "
+                    + device["object_type"]
+                    + " / "
+                    + device["object_name"]
+                )
                 _LOGGER.debug("IR Sensor object has states: " + str(device["status"]))
 
             else:
@@ -727,7 +797,13 @@ class VimarProject:
                 device_type = DEVICE_TYPE_LIGHTS
                 icon = "mdi:ceiling-light"
 
-        elif device["object_type"] in ["CH_KNX_GENERIC_ONOFF", "CH_KNX_GENERIC_TIME_S", "CH_KNX_RELE", "CH_KNX_GENERIC_ENABLE", "CH_KNX_GENERIC_RESET"]:
+        elif device["object_type"] in [
+            "CH_KNX_GENERIC_ONOFF",
+            "CH_KNX_GENERIC_TIME_S",
+            "CH_KNX_RELE",
+            "CH_KNX_GENERIC_ENABLE",
+            "CH_KNX_GENERIC_RESET",
+        ]:
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
 
             device_type = DEVICE_TYPE_SWITCHES
@@ -748,7 +824,13 @@ class VimarProject:
             device_type = DEVICE_TYPE_LIGHTS
             icon = ["mdi:speedometer", "mdi:speedometer-slow"]
 
-        elif device["object_type"] in ["CH_ShutterWithoutPosition_Automation", "CH_ShutterBlindWithoutPosition_Automation", "CH_Shutter_Automation", "CH_Shutter_Slat_Automation", "CH_ShutterBlind_Automation"]:
+        elif device["object_type"] in [
+            "CH_ShutterWithoutPosition_Automation",
+            "CH_ShutterBlindWithoutPosition_Automation",
+            "CH_Shutter_Automation",
+            "CH_Shutter_Slat_Automation",
+            "CH_ShutterBlind_Automation",
+        ]:
             # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             # if device["object_name"].find("F-FERNBEDIENUNG") != -1:
             if any(x in device["object_name"].upper() for x in ["FERNBEDIENUNG"]):
@@ -762,11 +844,19 @@ class VimarProject:
                 device_class = DEVICE_CLASS_SHUTTER
                 icon = ["mdi:window-shutter", "mdi:window-shutter-open"]
 
-        elif device["object_type"] in ["CH_Clima", "CH_HVAC_NoZonaNeutra", "CH_HVAC_RiscaldamentoNoZonaNeutra", "CH_Fancoil", "CH_HVAC"]:
+        elif device["object_type"] in [
+            "CH_Clima",
+            "CH_HVAC_NoZonaNeutra",
+            "CH_HVAC_RiscaldamentoNoZonaNeutra",
+            "CH_Fancoil",
+            "CH_HVAC",
+        ]:
             device_type = DEVICE_TYPE_CLIMATES
             icon = "mdi:thermometer-lines"
 
-            _LOGGER.debug("Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug(
+                "Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Climate object has states: " + str(device["status"]))
 
         elif device["object_type"] == "CH_Scene":
@@ -777,7 +867,13 @@ class VimarProject:
             _LOGGER.debug("Scene returned from web server: " + device["object_type"] + " / " + device["object_name"])
             _LOGGER.debug("Scene object has states: " + str(device["status"]))
 
-        elif device["object_type"] in ["CH_Misuratore", "CH_Carichi_Custom", "CH_Carichi", "CH_Carichi_3F", "CH_KNX_GENERIC_POWER_KW"]:
+        elif device["object_type"] in [
+            "CH_Misuratore",
+            "CH_Carichi_Custom",
+            "CH_Carichi",
+            "CH_Carichi_3F",
+            "CH_KNX_GENERIC_POWER_KW",
+        ]:
             device_type = DEVICE_TYPE_SENSORS
             device_class = DEVICE_CLASS_POWER
             # icon = "mdi:battery-charging-high"
@@ -815,14 +911,20 @@ class VimarProject:
             device_type = DEVICE_TYPE_MEDIA_PLAYERS
             icon = ["mdi:radio", "mdi:radio-off"]
 
-            _LOGGER.debug("Audio object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug(
+                "Audio object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Audio object has states: " + str(device["status"]))
 
         elif device["object_type"] in ["CH_SAI", "CH_Event", "CH_KNX_GENERIC_TIMEPERIODMIN"]:
-            _LOGGER.debug("Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.debug(
+                "Unsupported object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Unsupported object has states: " + str(device["status"]))
         else:
-            _LOGGER.warning("Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"])
+            _LOGGER.warning(
+                "Unknown object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
             _LOGGER.debug("Unknown object has states: " + str(device["status"]))
 
         vimar_name = device["object_name"]
@@ -842,12 +944,24 @@ class VimarProject:
                 object_name = vimar_name.title().strip()
             if device_override.get("device_type", device_type) != device_type:
                 _LOGGER.debug(
-                    "Overriding device_type: object_name: '" + object_name + "' - device_type: '" + str(device_type) + "' -> '" + str(device_override.get("device_type")) + "'"
+                    "Overriding device_type: object_name: '"
+                    + object_name
+                    + "' - device_type: '"
+                    + str(device_type)
+                    + "' -> '"
+                    + str(device_override.get("device_type"))
+                    + "'"
                 )
                 device_type = str(device_override.get("device_type"))
             if device_override.get("device_class", device_class) != device_class:
                 _LOGGER.debug(
-                    "Overriding device_class: object_name: '" + object_name + "' - device_class: '" + str(device_class) + "' -> '" + str(device_override.get("device_class")) + "'"
+                    "Overriding device_class: object_name: '"
+                    + object_name
+                    + "' - device_class: '"
+                    + str(device_class)
+                    + "' -> '"
+                    + str(device_override.get("device_class"))
+                    + "'"
                 )
                 device_class = str(device_override.get("device_class"))
             if device_override.get("icon") is not None:
@@ -858,7 +972,15 @@ class VimarProject:
                 if isinstance(icon, str) and icon == "":
                     icon = None
                 if not str(icon) == str(oldIcon):
-                    _LOGGER.debug("Overriding icon: object_name: '" + object_name + "' - icon: '" + str(oldIcon) + "' -> '" + str(icon) + "'")
+                    _LOGGER.debug(
+                        "Overriding icon: object_name: '"
+                        + object_name
+                        + "' - icon: '"
+                        + str(oldIcon)
+                        + "' -> '"
+                        + str(icon)
+                        + "'"
+                    )
 
         device["device_type"] = device_type
         device["device_class"] = device_class
