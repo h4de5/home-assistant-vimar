@@ -33,7 +33,6 @@ except ImportError:
 
 from homeassistant.components.sensor import SensorEntity
 
-from .const import DOMAIN
 from .vimar_entity import VimarEntity, vimar_setup_entry
 
 # from . import format_name
@@ -117,7 +116,8 @@ class VimarSensor(VimarEntity, SensorEntity):
             return STATE_CLASS_MEASUREMENT
 
     def class_and_units(self):
-        if not self._class_and_units is None:
+        """Return the class and unit of measurement."""
+        if self._class_and_units is not None:
             return self._class_and_units
         """Return the class of this device, from component DEVICE_CLASSES."""
         if self._device["object_type"] in [
@@ -236,6 +236,7 @@ class VimarSensorContainer(VimarEntity):
 
     @property
     def entity_platform(self):
+        """Return the platform of the entity."""
         return CURR_PLATFORM
 
     def get_entity_list(self):
