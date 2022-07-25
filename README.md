@@ -39,7 +39,7 @@ Hardware:
 
 Software:
 
-- [By-me Web Server Firmware](https://www.vimar.com/en/int/by-me-web-server-4014162.html)
+- [By-me Web Server Firmware](https://www.vimar.com/de/int/catalog/product/index/code/R01945)
 
   I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
 
