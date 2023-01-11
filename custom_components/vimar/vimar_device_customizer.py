@@ -328,4 +328,6 @@ class VimarDeviceCustomizer:
             return DEVICE_TYPE_SENSORS
         if device_type == "switches":
             return DEVICE_TYPE_SWITCHES
+        if device_type == "humidifiers":
+            return DEVICE_TYPE_HUMIDIFIERS
         return device_type

@@ -17,7 +17,7 @@ try:
 except ImportError:
     import urllib3
 
-from ..const import DEVICE_TYPE_CLIMATES  # DEVICE_TYPE_FANS,
+from ..const import DEVICE_TYPE_CLIMATES, DEVICE_TYPE_HUMIDIFIERS  # DEVICE_TYPE_FANS,
 from ..const import (
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_LIGHTS,
@@ -936,7 +936,6 @@ class VimarProject:
 
         elif device["object_type"] in [
             "CH_Clima",
-            "CH_Clima_ControlloOnOffMisuraUmidita",
             "CH_HVAC_NoZonaNeutra",
             "CH_HVAC_RiscaldamentoNoZonaNeutra",
             "CH_Fancoil",
@@ -949,6 +948,17 @@ class VimarProject:
                 "Climate object returned from web server: " + device["object_type"] + " / " + device["object_name"]
             )
             _LOGGER.debug("Climate object has states: " + str(device["status"]))
+
+        elif device["object_type"] in [
+            "CH_Clima_ControlloOnOffMisuraUmidita",
+        ]:
+            device_type = DEVICE_TYPE_HUMIDIFIERS
+            icon = ["mdi:air-humidifier", "mdi:air-humidifier-off"]
+
+            _LOGGER.debug(
+                "Humidifier object returned from web server: " + device["object_type"] + " / " + device["object_name"]
+            )
+            _LOGGER.debug("Humidifier object has states: " + str(device["status"]))
 
         elif device["object_type"] == "CH_Scene":
             device_type = DEVICE_TYPE_SCENES
