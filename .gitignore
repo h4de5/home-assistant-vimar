@@ -5,3 +5,7 @@ logos/Thumbs.db
 examples/rootCA.VIMAR.crt
 examples/credentials.cfg
 .vs
+.vscode/settings.json
+.gitignore
+examples/vimarlink
+examples/session.pid

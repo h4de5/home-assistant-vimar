@@ -7,6 +7,7 @@ from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_IDLE,
     CURRENT_HVAC_OFF,
+    CURRENT_HVAC_DRY,
     FAN_HIGH,
     FAN_LOW,
     FAN_MEDIUM,
@@ -16,9 +17,11 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_COOL,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
+    HVAC_MODE_DRY,
     SUPPORT_AUX_HEAT,
     SUPPORT_FAN_MODE,
     SUPPORT_TARGET_TEMPERATURE,
+    SUPPORT_TARGET_HUMIDITY,
 )
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
 
@@ -115,21 +118,29 @@ class VimarClimate(VimarEntity, ClimateEntity):
     # climate properties
     @property
     def entity_platform(self):
+        """Return current platform."""
         return CURR_PLATFORM
 
     @property
     def is_on(self):
         """Return True if the device is on or completely off."""
-        return (True, False)[self.get_state("funzionamento") == self.get_const_value(VIMAR_CLIMATE_OFF)]
+        if self.has_state("funzionamento"):
+            return (True, False)[self.get_state("funzionamento") == self.get_const_value(VIMAR_CLIMATE_OFF)]
+        elif self.has_state("enable"):
+            return (True, False)[self.get_state("enable") == 0]
 
     @property
     def supported_features(self):
         """Flag supported features. The device supports a target temperature."""
-        flags = SUPPORT_TARGET_TEMPERATURE
+        flags = 0
+        if self.has_state("temperatura") or self.has_state("temperatura_misurata"):
+            flags |= SUPPORT_TARGET_TEMPERATURE
         if self.has_state("velocita_fancoil"):
             flags |= SUPPORT_FAN_MODE
         if self.has_state("stato_boost on/off"):
             flags |= SUPPORT_AUX_HEAT
+        if self.has_state("dynamic_mode"):
+            flags |= SUPPORT_TARGET_HUMIDITY
         return flags
 
     @property
@@ -145,6 +156,15 @@ class VimarClimate(VimarEntity, ClimateEntity):
         """Return current humidity."""
         if self.has_state("umidita"):
             return float(self.get_state("umidita"))
+        if self.has_state("value"):
+            return float(self.get_state("value"))
+
+    @property
+    def target_humidity(self) -> int | None:
+        """Return the humidity we try to reach."""
+        # CH_Clima_ControlloOnOffMisuraUmidita
+        if self.has_state("setpoint"):
+            return float(self.get_state("setpoint"))
 
     @property
     def target_temperature(self):
@@ -181,13 +201,15 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
                     self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)
                 ]
-        else:
+        elif self.climate_type == "heat_cool":
             if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
                 return HVAC_MODE_AUTO
             else:
                 return (HVAC_MODE_HEAT, HVAC_MODE_COOL)[
                     self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)
                 ]
+        elif self.climate_type == "dry":
+            return HVAC_MODE_DRY
 
             # if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
             #     return HVAC_MODE_COOL
@@ -200,12 +222,14 @@ class VimarClimate(VimarEntity, ClimateEntity):
     def hvac_modes(self):
         """List of available operation modes. See below."""
         # button for auto is still there, to clear manual mode, but will not change highlighted icon
-        return [HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF, HVAC_MODE_AUTO]
+        if self.has_state("dynamic_mode"):
+            return [HVAC_MODE_DRY]
+        else:
+            return [HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF, HVAC_MODE_AUTO]
 
     @property
     def hvac_action(self):
         """Return current HVAC action (heating, cooling, idle, off)."""
-        # CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL, CURRENT_HVAC_OFF, CURRENT_HVAC_IDLE
         if not self.is_on:
             return CURRENT_HVAC_OFF
 
@@ -220,7 +244,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
             return (CURRENT_HVAC_HEAT, CURRENT_HVAC_COOL)[
                 self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)
             ]
-        else:
+        elif self.climate_type == "heat_cool_fancoil":
             if (
                 self.has_state("stato_principale_condizionamento on/off")
                 and self.get_state("stato_principale_condizionamento on/off") == "1"
@@ -233,6 +257,8 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return CURRENT_HVAC_HEAT
             else:
                 return CURRENT_HVAC_IDLE
+        elif self.climate_type == "dry":
+            return CURRENT_HVAC_DRY
 
     @property
     def is_aux_heat(self):
@@ -310,6 +336,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
 
             # if heating or cooling is pressed, got to automode
+            # no longer sure why?
             set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
             set_hvac_mode = (self.get_const_value(VIMAR_CLIMATE_HEAT), self.get_const_value(VIMAR_CLIMATE_COOL))[
                 hvac_mode == HVAC_MODE_COOL
@@ -407,6 +434,10 @@ class VimarClimate(VimarEntity, ClimateEntity):
             )
         # self.change_state('funzionamento', set_function_mode, 'setpoint', set_temperature)
 
+    def set_humidity(self, humidity: int) -> None:
+        """Set new target humidity."""
+        self.change_state("setpoint", str(humidity))
+
     # helper
 
     @property
@@ -414,8 +445,10 @@ class VimarClimate(VimarEntity, ClimateEntity):
         """Return type of climate control - either has heating and cooling or also fancoil."""
         if self.has_state("velocita_fancoil"):
             return "heat_cool_fancoil"
-        else:
+        elif self.has_state("temperatura_misurata") or self.has_state("temperatura"):
             return "heat_cool"
+        elif self.has_state("dynamic_mode"):
+            return "dry"
 
     def get_const_value(self, const):
         """Return ids depending on the climate type."""
@@ -447,7 +480,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return VIMAR_CLIMATE_HEAT_I
             else:
                 return None
-        else:
+        elif self.climate_type == "heat_cool_fancoil":
             if const == VIMAR_CLIMATE_OFF:
                 return VIMAR_CLIMATE_OFF_II
             elif const == VIMAR_CLIMATE_MANUAL:

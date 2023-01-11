@@ -936,6 +936,7 @@ class VimarProject:
 
         elif device["object_type"] in [
             "CH_Clima",
+            "CH_Clima_ControlloOnOffMisuraUmidita",
             "CH_HVAC_NoZonaNeutra",
             "CH_HVAC_RiscaldamentoNoZonaNeutra",
             "CH_Fancoil",
