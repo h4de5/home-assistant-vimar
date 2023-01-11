@@ -4,24 +4,26 @@
 import logging
 
 # from datetime import timedelta
-from homeassistant.const import (
-    DEVICE_CLASS_CURRENT,
-    DEVICE_CLASS_ENERGY,
-    DEVICE_CLASS_ILLUMINANCE,
-    DEVICE_CLASS_POWER,
-    DEVICE_CLASS_TEMPERATURE,
-    DEVICE_CLASS_TIMESTAMP,
-    ENERGY_KILO_WATT_HOUR,
-    POWER_KILO_WATT,
-    SPEED_METERS_PER_SECOND,
-    TEMP_CELSIUS,
-)
+# from homeassistant.const import (
+# DEVICE_CLASS_CURRENT,
+# DEVICE_CLASS_ENERGY,
+# DEVICE_CLASS_ILLUMINANCE,
+# DEVICE_CLASS_POWER,
+# DEVICE_CLASS_TEMPERATURE,
+# DEVICE_CLASS_TIMESTAMP,
+# ENERGY_KILO_WATT_HOUR,
+# POWER_KILO_WATT,
+# SPEED_METERS_PER_SECOND,
+# TEMP_CELSIUS,
+# )
+from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfSpeed
+
+from homeassistant.components.sensor import SensorDeviceClass
 
 try:
     from homeassistant.const import ELECTRIC_POTENTIAL_VOLT
 except ImportError:
     from homeassistant.const import VOLT as ELECTRIC_POTENTIAL_VOLT
-
 try:
     from homeassistant.components.sensor import STATE_CLASS_TOTAL_INCREASING
 except ImportError:
@@ -86,6 +88,7 @@ class VimarSensor(VimarEntity, SensorEntity):
 
     @property
     def entity_platform(self):
+        """Return the platform of this entity."""
         return CURR_PLATFORM
 
     @property
@@ -110,9 +113,9 @@ class VimarSensor(VimarEntity, SensorEntity):
     def state_class(self) -> str:
         """Return the state class of this entity."""
         class_and_unit = self.class_and_units()
-        if class_and_unit[1] == DEVICE_CLASS_ENERGY:
+        if class_and_unit[1] == SensorDeviceClass.ENERGY:
             return STATE_CLASS_TOTAL_INCREASING
-        elif class_and_unit[1] == DEVICE_CLASS_POWER and any(x in self._measurement_name for x in ["totale"]):
+        elif class_and_unit[1] == SensorDeviceClass.POWER and any(x in self._measurement_name for x in ["totale"]):
             return STATE_CLASS_MEASUREMENT
 
     def class_and_units(self):
@@ -128,28 +131,28 @@ class VimarSensor(VimarEntity, SensorEntity):
             "CH_KNX_GENERIC_POWER_KW",
         ]:
             if any(x in self._measurement_name for x in ["energia", "potenza_attiva"]):
-                return [ENERGY_KILO_WATT_HOUR, DEVICE_CLASS_ENERGY]
+                return [UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY]
             elif any(x in self._measurement_name for x in ["fase"]):
-                return [ELECTRIC_POTENTIAL_VOLT, DEVICE_CLASS_CURRENT]
+                return [ELECTRIC_POTENTIAL_VOLT, SensorDeviceClass.CURRENT]
             # elif any(x in self._measurement_name for x in ["fase"]):
-            #     return [ELECTRIC_POTENTIAL_VOLT, DEVICE_CLASS_VOLTAGE]
+            #     return [ELECTRIC_POTENTIAL_VOLT, SensorDeviceClass.VOLTAGE]
             elif any(x in self._measurement_name for x in ["_date", "_time", "_datetime"]):
-                return ["", DEVICE_CLASS_TIMESTAMP]
+                return ["", SensorDeviceClass.TIMESTAMP]
             else:
-                return [POWER_KILO_WATT, DEVICE_CLASS_POWER]
+                return [UnitOfPower.KILO_WATT, SensorDeviceClass.POWER]
         elif self._device["object_type"] in ["CH_KNX_GENERIC_TEMPERATURE_C"] or any(
             x in self._measurement_name for x in ["temperature"]
         ):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
-            return [TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE]
+            return [UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE]
         elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(
             x in self._measurement_name for x in ["wind_speed"]
         ):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
-            return [SPEED_METERS_PER_SECOND, self._device["device_class"]]
+            return [UnitOfSpeed.METERS_PER_SECOND, self._device["device_class"]]
         elif any(x in self._measurement_name for x in ["brightness"]):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
-            return ["lm", DEVICE_CLASS_ILLUMINANCE]
+            return ["lm", SensorDeviceClass.ILLUMINANCE]
         else:
             return [None, self._device["device_class"]]
 
