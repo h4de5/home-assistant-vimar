@@ -1,7 +1,6 @@
 """Platform for climate integration."""
 
 import logging
-
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_COOL,
     CURRENT_HVAC_HEAT,
@@ -20,8 +19,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_FAN_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
-
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from .const import (
     VIMAR_CLIMATE_AUTO,
     VIMAR_CLIMATE_AUTO_I,  # DOMAIN,
@@ -45,7 +43,6 @@ try:
     from homeassistant.components.climate import ClimateEntity
 except ImportError:
     from homeassistant.components.climate import ClimateDevice as ClimateEntity
-
 from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
 
 _LOGGER = logging.getLogger(__name__)
@@ -115,6 +112,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
     # climate properties
     @property
     def entity_platform(self):
+        """Return the platform of the entity."""
         return CURR_PLATFORM
 
     @property
@@ -158,12 +156,12 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
     @property
     def temperature_unit(self):
-        """Return unit of temperature measurement for the system (TEMP_CELSIUS or TEMP_FAHRENHEIT)."""
+        """Return unit of temperature measurement for the system (UnitOfTemperature.CELSIUS or UnitOfTemperature.FAHRENHEIT)."""
         # TODO - find a way to handle different units from vimar device
         if self.has_state("unita"):
-            return (TEMP_FAHRENHEIT, TEMP_CELSIUS)[self.get_state("unita") == "0"]
+            return (UnitOfTemperature.FAHRENHEIT, UnitOfTemperature.CELSIUS)[self.get_state("unita") == "0"]
         else:
-            return TEMP_CELSIUS
+            return UnitOfTemperature.CELSIUS
 
     @property
     def hvac_mode(self):
