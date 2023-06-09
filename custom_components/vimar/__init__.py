@@ -61,7 +61,7 @@ SERVICE_EXEC_VIMAR_SQL_SCHEMA = vol.Schema({vol.Required("sql"): cv.string})
 SERVICE_RELOAD_DEFAULT = "reload_default"
 SERVICE_RELOAD_DEFAULT_SCHEMA = vol.Schema({})
 
-@asyncio.coroutine
+# @ asyncio.coroutine
 async def async_setup(hass: HomeAssistant, config: Config):
     """Set up from config."""
     hass.data.setdefault(DOMAIN, {})
