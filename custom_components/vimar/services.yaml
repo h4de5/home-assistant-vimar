@@ -1,8 +1,7 @@
 update_entities:
-  # description: >
-  #   Esegue il loading delle entities
+  name: Update all entities
   description: >
-    Carrying out loading of the entities
+    Carrying out loading of the entities.
   fields:
     forced:
       # description: Se forzare il caricamento di tutte le informazioni, come le info delle stanze
@@ -10,16 +9,19 @@ update_entities:
       example: True
 
 exec_vimar_sql:
+  name: Execute Vimar SQL
   description: >
-    Execute a SQL query on vimar.
+    Execute a SQL query on the Vimar web server.
   fields:
     sql:
       description: SQL Query
       example: SELECT 1
 
 reload_default:
+  name: Remove and reload
   description: >
-    Reload all entities, removing all, and then reload
+    Removing all entites and then reload - reseting everything to default names.
 
 reload:
-  description: Reload vimar service
+  name: Reload
+  description: Reload Vimar integration.
