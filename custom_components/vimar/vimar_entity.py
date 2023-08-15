@@ -240,6 +240,7 @@ class VimarStatusSensor(BinarySensorEntity):
             ),
             "Certificate": coordinator.vimarconnection._certificate,
             "Username": coordinator.vimarconnection._username,
+            "SessionID": coordinator.vimarconnection._session_id,
         }
         self._data = self._attributes
         self._state = False
