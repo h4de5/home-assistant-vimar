@@ -5,6 +5,7 @@ update_entities:
   fields:
     forced:
       # description: Se forzare il caricamento di tutte le informazioni, come le info delle stanze
+      name: Force loading
       description: Whether to force loading of all information, such as room info
       example: True
 
@@ -14,7 +15,8 @@ exec_vimar_sql:
     Execute a SQL query on the Vimar web server.
   fields:
     sql:
-      description: SQL Query
+      name: SQL Query
+      description: SQL Query to be run on the webserver.
       example: SELECT 1
 
 reload_default:
