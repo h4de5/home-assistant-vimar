@@ -15,7 +15,6 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_COOL,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
-    SUPPORT_AUX_HEAT,
     SUPPORT_FAN_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
@@ -126,8 +125,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
         flags = SUPPORT_TARGET_TEMPERATURE
         if self.has_state("velocita_fancoil"):
             flags |= SUPPORT_FAN_MODE
-        if self.has_state("stato_boost on/off"):
-            flags |= SUPPORT_AUX_HEAT
         return flags
 
     @property
@@ -233,12 +230,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return CURRENT_HVAC_IDLE
 
     @property
-    def is_aux_heat(self):
-        """Return True if an auxiliary heater is on. Requires SUPPORT_AUX_HEAT."""
-        if self.has_state("stato_boost on/off"):
-            return self.get_state("stato_boost on/off") != "0"
-
-    @property
     def fan_modes(self):
         """Return the list of available fan modes. Requires SUPPORT_FAN_MODE."""
         return (FAN_ON, FAN_OFF, FAN_LOW, FAN_MEDIUM, FAN_HIGH)
@@ -289,17 +280,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 elif fan_mode == FAN_HIGH:
                     fancoil_speed = "100"
                 self.change_state("modalita_fancoil", "1", "velocita_fancoil", fancoil_speed)
-
-    # aux heating is just an output status
-    async def async_turn_aux_heat_on(self):
-        """Turn auxiliary heater on."""
-        _LOGGER.info("Vimar Climate setting aux_heat: %s", "on")
-        self.change_state("stato_boost on/off", "1")
-
-    async def async_turn_aux_heat_off(self):
-        """Turn auxiliary heater off."""
-        _LOGGER.info("Vimar Climate setting aux_heat: %s", "off")
-        self.change_state("stato_boost on/off", "0")
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
