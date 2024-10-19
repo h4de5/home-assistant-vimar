@@ -1,18 +1,24 @@
 """Insteon base entity."""
+
+from functools import cached_property
 import logging
 
-# import string
-
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import CONF_VERIFY_SSL
-
-# from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN, PACKAGE_NAME, _LOGGER, DEVICE_TYPE_BINARY_SENSOR, CONF_IGNORE_PLATFORM
-from .vimarlink.vimarlink import VimarLink, VimarProject
+from .const import (
+    CONF_IGNORE_PLATFORM,
+    DEVICE_TYPE_BINARY_SENSOR,
+    DOMAIN,
+    PACKAGE_NAME,
+    _LOGGER,
+)
 from .vimar_coordinator import VimarDataUpdateCoordinator
+from .vimarlink.vimarlink import VimarLink, VimarProject
 
 
 class VimarEntity(CoordinatorEntity):
@@ -22,9 +28,9 @@ class VimarEntity(CoordinatorEntity):
     _logger_is_debug = False
     _device = []
     _device_id = 0
-    _vimarconnection: VimarLink = None
-    _vimarproject: VimarProject = None
-    _coordinator: VimarDataUpdateCoordinator = None
+    _vimarconnection: VimarLink | None = None
+    _vimarproject: VimarProject | None = None
+    _coordinator: VimarDataUpdateCoordinator | None = None
     _attributes = {}
 
     ICON = "mdi:checkbox-marked"
@@ -55,12 +61,12 @@ class VimarEntity(CoordinatorEntity):
             name = self._device["object_name"]
         return name
 
-    @property
+    @cached_property
     def name(self):
         """Return the name of the device."""
         return self.device_name
 
-    @property
+    @cached_property
     def extra_state_attributes(self):
         """Return device specific state attributes."""
         # see: https://developers.home-assistant.io/docs/dev_101_states/
@@ -69,7 +75,10 @@ class VimarEntity(CoordinatorEntity):
             for key in self._device:
                 value = self._device[key]
                 if self._logger_is_debug is False and (
-                    key == "status" or key == "device_class" or key == "device_friendly_name" or key == "vimar_icon"
+                    key == "status"
+                    or key == "device_class"
+                    or key == "device_friendly_name"
+                    or key == "vimar_icon"
                 ):
                     # for status_name in value:
                     #    deviceItem["state_" + status_name.replace("/", "_").replace(" ", "_")] = value[status_name]["status_value"]
@@ -145,33 +154,42 @@ class VimarEntity(CoordinatorEntity):
             return self._device["status"][state]["status_value"]
         else:
             self._logger.warning(
-                "Could not find state %s in device %s - %s - could not get value", state, self.name, self._device_id
+                "Could not find state %s in device %s - %s - could not get value",
+                state,
+                self.name,
+                self._device_id,
             )
         return None
 
     def has_state(self, state):
         """Return true if local device has a given state."""
-        if "status" in self._device and self._device["status"] and state in self._device["status"]:
+        if (
+            "status" in self._device
+            and self._device["status"]
+            and state in self._device["status"]
+        ):
             return True
         else:
             return False
 
-    @property
+    @cached_property
     def icon(self):
         """Icon to use in the frontend, if any."""
         if isinstance(self._device["icon"], str):
             return self._device["icon"]
         elif isinstance(self._device["icon"], list):
-            return (self._device["icon"][1], self._device["icon"][0])[self.is_default_state]
+            return (self._device["icon"][1], self._device["icon"][0])[
+                self.is_default_state
+            ]
 
         return self.ICON
 
-    @property
+    @cached_property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         return self._device["device_class"]
 
-    @property
+    @cached_property
     def unique_id(self):
         """Return the ID of this device."""
         # self._logger.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
@@ -183,23 +201,34 @@ class VimarEntity(CoordinatorEntity):
     def _reset_status(self):
         """Set status from _device to class variables."""
 
-    @property
+    @cached_property
     def is_default_state(self):
         """Return True of in default state - resulting in default icon."""
         return False
 
-    @property
-    def device_info(self):
+    @cached_property
+    def device_info(self) -> DeviceInfo | None:
         room_name = None
-        if self._device.get("room_friendly_name") and self._device["room_friendly_name"] != "":
+        if (
+            self._device.get("room_friendly_name")
+            and self._device["room_friendly_name"] != ""
+        ):
             room_name = self._device["room_friendly_name"]
-        return {
-            "identifiers": {(DOMAIN, self._coordinator.entity_unique_id_prefix or "", self._device_id)},
+
+        device : DeviceInfo = {
+            "identifiers": {
+                (
+                    DOMAIN,
+                    self._coordinator.entity_unique_id_prefix or "",
+                    self._device_id,
+                )
+            },
             "name": self.device_name,
             "model": self._device.get("object_type"),
             "manufacturer": "Vimar",
             "suggested_area": room_name,
         }
+        return device
 
     @property
     def entity_platform(self):
@@ -226,12 +255,13 @@ class VimarStatusSensor(BinarySensorEntity):
             + ":"
             + str(coordinator.vimarconnection._port)
         )
-        self._type = "connectivity"
+        self._type: BinarySensorDeviceClass = "connectivity"
         self._attributes = {
             "Host": coordinator.vimarconnection._host,
             "Port": coordinator.vimarconnection._port,
             "Secure": coordinator.vimarconnection._schema == "https",
-            "Verify SSL": coordinator.vimarconnection._schema == "https" and vimarconfig.get(CONF_VERIFY_SSL),
+            "Verify SSL": coordinator.vimarconnection._schema == "https"
+            and vimarconfig.get(CONF_VERIFY_SSL),
             "Vimar Url": "%s://%s:%s"
             % (
                 coordinator.vimarconnection._schema,
@@ -245,22 +275,22 @@ class VimarStatusSensor(BinarySensorEntity):
         self._data = self._attributes
         self._state = False
 
-    @property
+    @cached_property
     def device_class(self):
         """Return the class of this sensor."""
         return self._type
 
-    @property
+    @cached_property
     def should_poll(self):
         """Polling needed for a demo binary sensor."""
         return True
 
-    @property
+    @cached_property
     def name(self):
         """Return the name of the binary sensor."""
         return self._name
 
-    @property
+    @cached_property
     def unique_id(self):
         """Return the ID of this device."""
         # self._logger.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
@@ -277,21 +307,23 @@ class VimarStatusSensor(BinarySensorEntity):
         else:
             return None
 
-    @property
+    @cached_property
     def extra_state_attributes(self):
         """Return device specific state attributes."""
         return self._attributes
 
-    @property
+    @cached_property
     def device_info(self):
         return {
-            "identifiers": {(DOMAIN, self._coordinator.entity_unique_id_prefix or "", "status")},
+            "identifiers": {
+                (DOMAIN, self._coordinator.entity_unique_id_prefix or "", "status")
+            },
             "name": "Vimar WebServer",
             "model": "Vimar WebServer",
             "manufacturer": "Vimar",
         }
 
-    @property
+    @cached_property
     def is_on(self):
         """Return true if the binary sensor is on."""
         return self._state
@@ -308,7 +340,13 @@ class VimarStatusSensor(BinarySensorEntity):
             self._state = False
 
 
-def vimar_setup_entry(vimar_entity_class: VimarEntity, platform, hass: HomeAssistantType, entry, async_add_devices):
+def vimar_setup_entry(
+    vimar_entity_class: VimarEntity,
+    platform,
+    hass: HomeAssistant,
+    entry,
+    async_add_devices,
+):
     """Generic method for add entities of specified platform to HASS"""
     logger = logging.getLogger(PACKAGE_NAME + "." + platform)
     coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]

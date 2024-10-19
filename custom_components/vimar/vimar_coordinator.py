@@ -45,8 +45,8 @@ log = _LOGGER
 class VimarDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    vimarconnection: VimarLink = None
-    vimarproject: VimarProject = None
+    vimarconnection: VimarLink | None = None
+    vimarproject: VimarProject | None = None
     _timeout: float = DEFAULT_TIMEOUT
     webserver_id = ""
     entity_unique_id_prefix = ""
@@ -79,6 +79,9 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Updating coordinator..")
 
         try:
+            if self.vimarproject is None:
+                raise PlatformNotReady
+
             # if not logged, execute login with another timeout
             if self.vimarconnection is None or not self.vimarconnection.is_logged():
                 async with async_timeout.timeout(self._timeout):
@@ -156,6 +159,8 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         # starting it outside MainThread
         # host = self.vimarconfig.get(CONF_HOST)
         try:
+            if self.vimarconnection is None:
+                raise PlatformNotReady
             valid_login = await self.hass.async_add_executor_job(self.vimarconnection.check_login)
             if not valid_login:
                 raise PlatformNotReady
@@ -177,34 +182,34 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         ignored_platforms = self.vimarconfig.get(CONF_IGNORE_PLATFORM) or []
         # DEVICE_TYPE_BINARY_SENSOR needed for webserver status sensor
         platforms = [i for i in PLATFORMS if i not in ignored_platforms or i == DEVICE_TYPE_BINARY_SENSOR]
-        await asyncio.gather(
-            *[self.hass.config_entries.async_forward_entry_setup(self.entry, platform) for platform in platforms]
-        )
+        await self.hass.config_entries.async_forward_entry_setups(self.entry, platforms)
+        
         self._platforms_registered = True
         if len(self.devices_for_platform) > 0:
             await self.async_remove_old_devices()
 
     def _reload_entry_if_devices_changed(self):
-        devices = self.vimarproject.devices
-        if devices is not None and len(devices) > 0:
-            devices_hash = ""
-            for device_id, device in devices.items():
-                device_hash = (
-                    str(device["object_id"])
-                    + "_"
-                    + str(device["room_ids"])
-                    + device["object_type"]
-                    + device["object_name"]
-                    + device["room_name"]
-                )
-                devices_hash = devices_hash + "_" + device_hash
-            if devices_hash != self._last_devices_hash:
-                if self._last_devices_hash == "":
-                    self._last_devices_hash = devices_hash
-                else:
-                    self._last_devices_hash = devices_hash
-                    if self._platforms_registered:
-                        self.reload_entry()
+        if self.vimarproject:
+            devices = self.vimarproject.devices
+            if devices is not None and len(devices) > 0:
+                devices_hash = ""
+                for device_id, device in devices.items():
+                    device_hash = (
+                        str(device["object_id"])
+                        + "_"
+                        + str(device["room_ids"])
+                        + device["object_type"]
+                        + device["object_name"]
+                        + device["room_name"]
+                    )
+                    devices_hash = devices_hash + "_" + device_hash
+                if devices_hash != self._last_devices_hash:
+                    if self._last_devices_hash == "":
+                        self._last_devices_hash = devices_hash
+                    else:
+                        self._last_devices_hash = devices_hash
+                        if self._platforms_registered:
+                            self.reload_entry()
 
     def reload_entry(self):
         """Reload_entry function if platforms_registered (updating entry)."""

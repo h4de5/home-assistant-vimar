@@ -1,31 +1,30 @@
 """Vimar Platform integration."""
-import asyncio
-import logging
-import os
-from datetime import timedelta
-from platform import platform
-from typing import Tuple
 
-import async_timeout
-from homeassistant.util import slugify
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
-from homeassistant.core import callback
+import asyncio
+# from datetime import timedelta
+# import logging
+# import os
+# from platform import platform
+# from typing import Tuple
+
+# import async_timeout
+from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
     CONF_PORT,
     CONF_TIMEOUT,
     CONF_USERNAME,
-    CONF_VERIFY_SSL,
-    SERVICE_RELOAD
+    # CONF_VERIFY_SSL,
+    SERVICE_RELOAD,
 )
-from homeassistant.exceptions import PlatformNotReady, ConfigEntryNotReady
+# from homeassistant.core import callback
 from homeassistant.core import Config, HomeAssistant
-from homeassistant.config_entries import ConfigEntry
-from homeassistant import config_entries
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.service import async_register_admin_service
+from homeassistant.util import slugify
+import voluptuous as vol
 
 from .const import *
 from .const import _LOGGER
@@ -61,6 +60,7 @@ SERVICE_EXEC_VIMAR_SQL_SCHEMA = vol.Schema({vol.Required("sql"): cv.string})
 SERVICE_RELOAD_DEFAULT = "reload_default"
 SERVICE_RELOAD_DEFAULT_SCHEMA = vol.Schema({})
 
+
 # @ asyncio.coroutine
 async def async_setup(hass: HomeAssistant, config: Config):
     """Set up from config."""
@@ -86,14 +86,20 @@ async def async_setup(hass: HomeAssistant, config: Config):
         if len(configured) == 0:
             # get the configuration.yaml settings and make a 'flow' task :)
             #   this will run 'async_step_import' in config_flow.py
-            log.info("Importing configuration from yaml...after you can remove from yaml")
+            log.info(
+                "Importing configuration from yaml...after you can remove from yaml"
+            )
             hass.async_create_task(
                 hass.config_entries.flow.async_init(
-                    DOMAIN, context={"source": config_entries.SOURCE_IMPORT}, data=conf.copy()
+                    DOMAIN,
+                    context={"source": config_entries.SOURCE_IMPORT},
+                    data=conf.copy(),
                 )
             )
         else:
-            log.debug("Configuration from yaml already imported: you can remove from yaml")
+            log.debug(
+                "Configuration from yaml already imported: you can remove from yaml"
+            )
 
     return True
 
@@ -138,10 +144,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def add_services(hass: HomeAssistant):
     """Add services."""
+
     async def service_update_call(call):
         forced = call.data.get("forced")
         for item in hass.data[DOMAIN].values():
-            coordinator : VimarDataUpdateCoordinator = item
+            coordinator: VimarDataUpdateCoordinator = item
             await coordinator.validate_vimar_credentials()
             await hass.async_add_executor_job(coordinator.vimarproject.update, forced)
 
@@ -153,11 +160,15 @@ async def add_services(hass: HomeAssistant):
         data = call.data
         sql = data.get("sql")
         for item in hass.data[DOMAIN].values():
-            coordinator : VimarDataUpdateCoordinator = item
+            coordinator: VimarDataUpdateCoordinator = item
             await coordinator.validate_vimar_credentials()
-            payload = await hass.async_add_executor_job(coordinator.vimarconnection._request_vimar_sql, sql)
+            payload = await hass.async_add_executor_job(
+                coordinator.vimarconnection._request_vimar_sql, sql
+            )
             _LOGGER.info(
-                SERVICE_EXEC_VIMAR_SQL + " done: SQL: %s . Result: %s", sql, str(payload)
+                SERVICE_EXEC_VIMAR_SQL + " done: SQL: %s . Result: %s",
+                sql,
+                str(payload),
             )
 
     hass.services.async_register(
@@ -170,24 +181,24 @@ async def add_services(hass: HomeAssistant):
     async def _handle_reload(service):
         entries_to_reload = []
         for item in hass.data[DOMAIN].values():
-            coordinator : VimarDataUpdateCoordinator = item
+            coordinator: VimarDataUpdateCoordinator = item
             entries_to_reload.append(coordinator.entry)
         for entry in entries_to_reload:
             await async_reload_entry(hass, entry)
 
-    hass.helpers.service.async_register_admin_service(
+    async_register_admin_service(
+        hass,
         DOMAIN,
         SERVICE_RELOAD,
         _handle_reload,
     )
 
 
-
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Handle removal of an entry."""
     if not entry.entry_id in hass.data[DOMAIN]:
         return True
-    coordinator : VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     platforms = list(coordinator.devices_for_platform.keys())
     unloaded = all(
         await asyncio.gather(
