@@ -1,28 +1,16 @@
 """Platform for cover integration."""
 
 import logging
-
 from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
-    SUPPORT_CLOSE,
-    SUPPORT_CLOSE_TILT,
-    SUPPORT_OPEN,
-    SUPPORT_OPEN_TILT,
-    SUPPORT_SET_POSITION,
-    SUPPORT_SET_TILT_POSITION,
-    SUPPORT_STOP,
-    SUPPORT_STOP_TILT,
+    CoverEntityFeature,
 )
 
 from .vimar_entity import VimarEntity, vimar_setup_entry
-
-try:
-    from homeassistant.components.cover import CoverEntity
-except ImportError:
-    from homeassistant.components.cover import CoverDevice as CoverEntity
-
+from homeassistant.components.cover import CoverEntity
 from .const import DEVICE_TYPE_COVERS as CURR_PLATFORM
+from functools import cached_property
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +27,10 @@ class VimarCover(VimarEntity, CoverEntity):
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     # Return True if the state is based on our assumption instead of reading it from the device. this will ignore is_closed state
-    assumed_state = True
+    @cached_property
+    def assumed_state(self) -> bool:
+        """Return True if unable to access real state of the entity."""
+        return True
 
     def __init__(self, coordinator, device_id: int):
         """Initialize the cover."""
@@ -55,8 +46,8 @@ class VimarCover(VimarEntity, CoverEntity):
     def entity_platform(self):
         return CURR_PLATFORM
 
-    @property
-    def is_closed(self):
+    @cached_property
+    def is_closed(self) -> bool | None:
         """Return if the cover is closed."""
         # if _state (stopped) is 1, than stopped was pressed, therefor it cannot be completely closed
         # if its 0, and direction 1, than it was going downwards and it was
@@ -71,7 +62,7 @@ class VimarCover(VimarEntity, CoverEntity):
         else:
             return None
 
-    @property
+    @cached_property
     def current_cover_position(self):
         """Return current position of cover.
 
@@ -82,7 +73,7 @@ class VimarCover(VimarEntity, CoverEntity):
         else:
             return None
 
-    @property
+    @cached_property
     def current_cover_tilt_position(self):
         """
         Return current position of cover tilt.
@@ -94,20 +85,28 @@ class VimarCover(VimarEntity, CoverEntity):
         else:
             return None
 
-    @property
+    @cached_property
     def is_default_state(self):
         """Return True of in default state - resulting in default icon."""
         return (self.is_closed, True)[self.is_closed is None]
 
-    @property
-    def supported_features(self):
+    @cached_property
+    def supported_features(self) -> CoverEntityFeature:
         """Flag supported features."""
-        flags = SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
+        flags = (
+            CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
+        )
         if self.has_state("position"):
-            flags |= SUPPORT_SET_POSITION
-        if self.has_state("slat_position") and self.has_state("clockwise/counterclockwise"):
-            flags |= SUPPORT_STOP_TILT | SUPPORT_OPEN_TILT | SUPPORT_CLOSE_TILT | SUPPORT_SET_TILT_POSITION
-            # flags |= SUPPORT_STOP_TILT | SUPPORT_SET_TILT_POSITION
+            flags |= CoverEntityFeature.SET_POSITION
+        if self.has_state("slat_position") and self.has_state(
+            "clockwise/counterclockwise"
+        ):
+            flags |= (
+                CoverEntityFeature.STOP_TILT
+                | CoverEntityFeature.OPEN_TILT
+                | CoverEntityFeature.CLOSE_TILT
+                | CoverEntityFeature.SET_TILT_POSITION
+            )
 
         return flags
 
@@ -143,7 +142,9 @@ class VimarCover(VimarEntity, CoverEntity):
         """Move the cover tilt to a specific position. vimar 100 is down and 0 is up, hass: 100 is up and 0 is down."""
         if kwargs:
             if ATTR_TILT_POSITION in kwargs and self.has_state("slat_position"):
-                self.change_state("slat_position", 100 - int(kwargs[ATTR_TILT_POSITION]))
+                self.change_state(
+                    "slat_position", 100 - int(kwargs[ATTR_TILT_POSITION])
+                )
 
     async def async_stop_cover_tilt(self, **kwargs):
         """Stop the cover."""

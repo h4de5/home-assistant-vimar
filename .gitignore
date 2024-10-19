@@ -5,3 +5,4 @@ logos/Thumbs.db
 examples/rootCA.VIMAR.crt
 examples/credentials.cfg
 .vs
+.venv

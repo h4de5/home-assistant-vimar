@@ -1,15 +1,19 @@
 """Platform for light integration."""
 
+from functools import cached_property
 import logging
-import homeassistant.util.color as color_util
+from typing import Any
+
 from homeassistant.components.light import (
-    LightEntity,
     ATTR_BRIGHTNESS,
     ATTR_HS_COLOR,
     ColorMode,
+    LightEntity,
 )
-from .vimar_entity import VimarEntity, vimar_setup_entry
+import homeassistant.util.color as color_util
+
 from .const import DEVICE_TYPE_LIGHTS as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,32 +38,32 @@ class VimarLight(VimarEntity, LightEntity):
     def entity_platform(self):
         return CURR_PLATFORM
 
-    @property
+    @cached_property
     def is_on(self):
         """Set to True if the device is on."""
         return self.get_state("on/off") == "1"
 
-    @property
+    @cached_property
     def is_default_state(self):
         """Return True of in default state - resulting in default icon."""
         return self.is_on
 
-    @property
+    @cached_property
     def brightness(self):
         """Return Brightness of this light between 0..255."""
-        return self.recalculate_brightness(int(self.get_state("value")))
+        return self.recalculate_brightness(int(self.get_state("value") or 0))
 
-    @property
-    def rgb_color(self):
+    @cached_property
+    def rgb_color(self) -> tuple[int, int, int] | None:
         """Return RGB colors."""
-        return (self.get_state("red"), self.get_state("green"), self.get_state("blue"))
+        return (self.get_state("red") or 0, self.get_state("green") or 0, self.get_state("blue") or 0) 
 
-    @property
+    @cached_property
     def hs_color(self):
         """Return the hue and saturation."""
         return color_util.color_RGB_to_hs(*self.rgb_color)
 
-    @property
+    @cached_property
     def color_mode(self) -> ColorMode:
         """Return the color mode of the light."""
         if self.has_state("red") and self.has_state("green") and self.has_state("blue"):
@@ -68,11 +72,11 @@ class VimarLight(VimarEntity, LightEntity):
             return ColorMode.BRIGHTNESS
         return ColorMode.ONOFF
 
-    @property
+    @cached_property
     def supported_color_modes(self) -> set[ColorMode] | None:
         """Flag supported color modes."""
         flags: set[ColorMode] = set()
-        
+
         if self.has_state("red") and self.has_state("green") and self.has_state("blue"):
             flags.add(ColorMode.RGB)
             # flags.add(ColorMode.HS)
@@ -103,7 +107,7 @@ class VimarLight(VimarEntity, LightEntity):
                 rgb = color_util.color_hs_to_RGB(*kwargs[ATTR_HS_COLOR])
                 self.change_state("red", rgb[0], "green", rgb[1], "blue", rgb[2])
 
-    async def async_turn_off(self):
+    async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the Vimar light off."""
         self.change_state("on/off", "0")
 
