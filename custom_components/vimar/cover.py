@@ -10,7 +10,6 @@ from homeassistant.components.cover import (
 from .vimar_entity import VimarEntity, vimar_setup_entry
 from homeassistant.components.cover import CoverEntity
 from .const import DEVICE_TYPE_COVERS as CURR_PLATFORM
-from functools import cached_property
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class VimarCover(VimarEntity, CoverEntity):
     # see:
     # https://developers.home-assistant.io/docs/entity_index/#generic-properties
     # Return True if the state is based on our assumption instead of reading it from the device. this will ignore is_closed state
-    @cached_property
+    @property
     def assumed_state(self) -> bool:
         """Return True if unable to access real state of the entity."""
         return True
@@ -46,7 +45,7 @@ class VimarCover(VimarEntity, CoverEntity):
     def entity_platform(self):
         return CURR_PLATFORM
 
-    @cached_property
+    @property
     def is_closed(self) -> bool | None:
         """Return if the cover is closed."""
         # if _state (stopped) is 1, than stopped was pressed, therefor it cannot be completely closed
@@ -62,7 +61,7 @@ class VimarCover(VimarEntity, CoverEntity):
         else:
             return None
 
-    @cached_property
+    @property
     def current_cover_position(self):
         """Return current position of cover.
 
@@ -73,7 +72,7 @@ class VimarCover(VimarEntity, CoverEntity):
         else:
             return None
 
-    @cached_property
+    @property
     def current_cover_tilt_position(self):
         """
         Return current position of cover tilt.
@@ -85,12 +84,12 @@ class VimarCover(VimarEntity, CoverEntity):
         else:
             return None
 
-    @cached_property
+    @property
     def is_default_state(self):
         """Return True of in default state - resulting in default icon."""
         return (self.is_closed, True)[self.is_closed is None]
 
-    @cached_property
+    @property
     def supported_features(self) -> CoverEntityFeature:
         """Flag supported features."""
         flags = (

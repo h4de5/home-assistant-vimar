@@ -1,7 +1,7 @@
 """Insteon base entity."""
 
-from functools import cached_property
 import logging
+from typing import Dict
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
@@ -18,7 +18,7 @@ from .const import (
     _LOGGER,
 )
 from .vimar_coordinator import VimarDataUpdateCoordinator
-from .vimarlink.vimarlink import VimarLink, VimarProject
+from .vimarlink.vimarlink import VimarDevice, VimarLink, VimarProject
 
 
 class VimarEntity(CoordinatorEntity):
@@ -26,7 +26,7 @@ class VimarEntity(CoordinatorEntity):
 
     _logger = _LOGGER
     _logger_is_debug = False
-    _device = []
+    _device: VimarDevice | None = None
     _device_id = 0
     _vimarconnection: VimarLink | None = None
     _vimarproject: VimarProject | None = None
@@ -44,7 +44,7 @@ class VimarEntity(CoordinatorEntity):
         self._vimarproject = coordinator.vimarproject
         self._reset_status()
 
-        if self._device_id in self._vimarproject.devices:
+        if self._vimarproject is not None and self._device_id in self._vimarproject.devices:
             self._device = self._vimarproject.devices[self._device_id]
             self._logger = logging.getLogger(PACKAGE_NAME + "." + self.entity_platform)
             self._logger_is_debug = self._logger.isEnabledFor(logging.DEBUG)
@@ -61,12 +61,12 @@ class VimarEntity(CoordinatorEntity):
             name = self._device["object_name"]
         return name
 
-    @cached_property
+    @property
     def name(self):
         """Return the name of the device."""
         return self.device_name
 
-    @cached_property
+    @property
     def extra_state_attributes(self):
         """Return device specific state attributes."""
         # see: https://developers.home-assistant.io/docs/dev_101_states/
@@ -172,7 +172,7 @@ class VimarEntity(CoordinatorEntity):
         else:
             return False
 
-    @cached_property
+    @property
     def icon(self):
         """Icon to use in the frontend, if any."""
         if isinstance(self._device["icon"], str):
@@ -184,12 +184,12 @@ class VimarEntity(CoordinatorEntity):
 
         return self.ICON
 
-    @cached_property
+    @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         return self._device["device_class"]
 
-    @cached_property
+    @property
     def unique_id(self):
         """Return the ID of this device."""
         # self._logger.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
@@ -201,12 +201,12 @@ class VimarEntity(CoordinatorEntity):
     def _reset_status(self):
         """Set status from _device to class variables."""
 
-    @cached_property
+    @property
     def is_default_state(self):
         """Return True of in default state - resulting in default icon."""
         return False
 
-    @cached_property
+    @property
     def device_info(self) -> DeviceInfo | None:
         room_name = None
         if (
@@ -275,22 +275,22 @@ class VimarStatusSensor(BinarySensorEntity):
         self._data = self._attributes
         self._state = False
 
-    @cached_property
+    @property
     def device_class(self):
         """Return the class of this sensor."""
         return self._type
 
-    @cached_property
+    @property
     def should_poll(self):
         """Polling needed for a demo binary sensor."""
         return True
 
-    @cached_property
+    @property
     def name(self):
         """Return the name of the binary sensor."""
         return self._name
 
-    @cached_property
+    @property
     def unique_id(self):
         """Return the ID of this device."""
         # self._logger.debug("Unique Id: " + DOMAIN + '_' + self._platform + '_' + self._device_id + " - " + self.name)
@@ -307,12 +307,12 @@ class VimarStatusSensor(BinarySensorEntity):
         else:
             return None
 
-    @cached_property
+    @property
     def extra_state_attributes(self):
         """Return device specific state attributes."""
         return self._attributes
 
-    @cached_property
+    @property
     def device_info(self):
         return {
             "identifiers": {
@@ -323,7 +323,7 @@ class VimarStatusSensor(BinarySensorEntity):
             "manufacturer": "Vimar",
         }
 
-    @cached_property
+    @property
     def is_on(self):
         """Return true if the binary sensor is on."""
         return self._state
