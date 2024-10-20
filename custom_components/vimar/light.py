@@ -1,6 +1,5 @@
 """Platform for light integration."""
 
-from functools import cached_property
 import logging
 from typing import Any
 
@@ -38,32 +37,36 @@ class VimarLight(VimarEntity, LightEntity):
     def entity_platform(self):
         return CURR_PLATFORM
 
-    @cached_property
-    def is_on(self):
+    @property
+    def is_on(self) -> bool:
         """Set to True if the device is on."""
         return self.get_state("on/off") == "1"
 
-    @cached_property
+    @property
     def is_default_state(self):
         """Return True of in default state - resulting in default icon."""
         return self.is_on
 
-    @cached_property
+    @property
     def brightness(self):
         """Return Brightness of this light between 0..255."""
         return self.recalculate_brightness(int(self.get_state("value") or 0))
 
-    @cached_property
+    @property
     def rgb_color(self) -> tuple[int, int, int] | None:
         """Return RGB colors."""
-        return (self.get_state("red") or 0, self.get_state("green") or 0, self.get_state("blue") or 0) 
+        return (
+            self.get_state("red") or 0,
+            self.get_state("green") or 0,
+            self.get_state("blue") or 0,
+        )
 
-    @cached_property
+    @property
     def hs_color(self):
         """Return the hue and saturation."""
         return color_util.color_RGB_to_hs(*self.rgb_color)
 
-    @cached_property
+    @property
     def color_mode(self) -> ColorMode:
         """Return the color mode of the light."""
         if self.has_state("red") and self.has_state("green") and self.has_state("blue"):
@@ -72,7 +75,7 @@ class VimarLight(VimarEntity, LightEntity):
             return ColorMode.BRIGHTNESS
         return ColorMode.ONOFF
 
-    @cached_property
+    @property
     def supported_color_modes(self) -> set[ColorMode] | None:
         """Flag supported color modes."""
         flags: set[ColorMode] = set()

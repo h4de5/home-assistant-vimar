@@ -1,10 +1,11 @@
 """Connection to vimar web server."""
 
-from functools import cached_property
+from collections.abc import Callable
 import logging
 import os
 import ssl
 import sys
+from typing import Dict, List, Tuple, TypedDict
 from xml.etree import ElementTree
 import xml.etree.cElementTree as xmlTree
 
@@ -106,6 +107,32 @@ class VimarConfigError(VimarApiError):
 class VimarConnectionError(VimarApiError):
     """Vimar API Connection Exception."""
 
+    pass
+
+
+# single device
+#   'room_ids': number[] (maybe empty, ids of rooms)
+#   'object_id': number (unique id of entity)
+#   'object_name': str (name of the device, reformated in format_name)
+#   'object_type': str (CH_xx channel name of vimar)
+#   'status':  dict{dict{'status_id': number, 'status_value': str }}
+#   'device_type': str (mapped type: light, switch, climate, cover, sensor)
+#   'device_class': str (mapped class, based on name or attributes: fan, outlet, window, power)
+class VimarDevice(TypedDict):
+    """Single Vimar device for typing"""
+
+    object_id: str
+    room_ids: List[int]
+    room_names: List[str]
+    room_name: str
+    object_name: str
+    object_type: str
+    status: Dict[str, Dict[str, str]]
+
+    device_type: str
+    device_class: str
+    device_friendly_name: str
+    icon: str
     pass
 
 
@@ -450,7 +477,15 @@ ORDER BY o3.ID;""" % (
     #   'IS_WRITABLE' => string '1' (length=1)
     #   'IS_VISIBLE' => string '1' (length=1)
 
-    def get_paged_results(self, method, objectlist={}, start=0):
+    def get_paged_results(
+        self,
+        method: Callable[
+            [Dict[str, VimarDevice], int | None, int | None],
+            Tuple[Dict[str, VimarDevice], int] | None,
+        ],
+        objectlist: Dict[str, VimarDevice] = {},
+        start=0,
+    ):
         """Page results from a method automatically."""
         # define a page size
         limit = MAX_ROWS_PER_REQUEST
@@ -466,7 +501,12 @@ ORDER BY o3.ID;""" % (
         else:
             raise VimarApiError("Calling invalid method for paged results: %s", method)
 
-    def get_room_devices(self, devices={}, start: int | None = None, limit: int | None = None):
+    def get_room_devices(
+        self,
+        devices: Dict[str, VimarDevice] = {},
+        start: int | None = None,
+        limit: int | None = None,
+    ):
         """Load all devices that belong to a room."""
         if self._room_ids is None:
             return None
@@ -500,11 +540,18 @@ LIMIT %d, %d;""" % (
         # passo OnlyUpdate a True, poichè deve solo riempire le informazioni delle room per gli oggetti esistenti
         return self._generate_device_list(select, devices, True)
 
-    def get_remote_devices(self, devices={}, start: int | None = None, limit: int | None = None):
+    def get_remote_devices(
+        self,
+        devices: Dict[str, VimarDevice] = {},
+        start: int | None = None,
+        limit: int | None = None,
+    ):
         """Get all devices that can be triggered remotly (includes scenes)."""
         if len(devices) == 0:
             _LOGGER.debug(
-                "get_remote_devices started - from %d to %d", start, (start or 0) + (limit or 0)
+                "get_remote_devices started - from %d to %d",
+                start,
+                (start or 0) + (limit or 0),
             )
 
         start, limit = self._sanitize_limits(start, limit)
@@ -533,7 +580,9 @@ LIMIT %d, %d;""" % (
             start = 0
         return start, limit
 
-    def _generate_device_list(self, select, devices={}, onlyUpdate=False):
+    def _generate_device_list(
+        self, select, devices: Dict[str, VimarDevice] = {}, onlyUpdate=False
+    ):
         """Generate device list from given sql statements."""
         payload = self._request_vimar_sql(select)
         if payload is not None:
@@ -544,7 +593,7 @@ LIMIT %d, %d;""" % (
                 if device["object_id"] not in devices:
                     if onlyUpdate:
                         continue
-                    deviceItem = {
+                    deviceItem: VimarDevice = {
                         "room_ids": [],
                         "room_names": [],
                         "room_name": "",
@@ -552,6 +601,10 @@ LIMIT %d, %d;""" % (
                         "object_name": device["object_name"],
                         "object_type": device["object_type"],
                         "status": {},
+                        "device_type": "",
+                        "device_class": "",
+                        "device_friendly_name": "",
+                        "icon": "",
                     }
                     devices[device["object_id"]] = deviceItem
                 else:
@@ -841,20 +894,11 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 class VimarProject:
     """Container that holds all vimar devices and its states."""
 
-    _devices = {}
+    _devices: Dict[str, VimarDevice] = {}
     _link: VimarLink
     _platforms_exists = {}
     global_channel_id = None
     _device_customizer_action = None
-
-    # single device
-    #   'room_ids': number[] (maybe empty, ids of rooms)
-    #   'object_id': number (unique id of entity)
-    #   'object_name': str (name of the device, reformated in format_name)
-    #   'object_type': str (CH_xx channel name of vimar)
-    #   'status':  dict{dict{'status_id': number, 'status_value': str }}
-    #   'device_type': str (mapped type: light, switch, climate, cover, sensor)
-    #   'device_class': str (mapped class, based on name or attributes: fan, outlet, window, power)
 
     def __init__(self, link: VimarLink, device_customizer_action=None):
         """Create new container to hold all states."""
@@ -1210,6 +1254,10 @@ class VimarProject:
     def format_name(self, name):
         """Format device name to get rid of unused terms."""
         parts = name.split(" ")
+        level_name = ""
+        room_name = ""
+        device_type = ""
+        entity_number = ""
 
         if len(parts) > 0:
             if len(parts) >= 4:

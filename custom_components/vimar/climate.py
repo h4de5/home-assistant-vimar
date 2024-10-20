@@ -1,6 +1,5 @@
 """Platform for climate integration."""
 
-from functools import cached_property
 import logging
 
 from homeassistant.components.climate import ClimateEntity
@@ -113,7 +112,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
             self.get_state("funzionamento") == self.get_const_value(VIMAR_CLIMATE_OFF)
         ]
 
-    @cached_property
+    @property
     def supported_features(self):
         """Flag supported features. The device supports a target temperature."""
         flags = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.TURN_OFF | ClimateEntityFeature.TURN_ON
@@ -123,7 +122,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
             flags |= ClimateEntityFeature.AUX_HEAT
         return flags
 
-    @cached_property
+    @property
     def current_temperature(self):
         """Return current temperature."""
         if self.has_state("temperatura"):
@@ -131,23 +130,23 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if self.has_state("temperatura_misurata"):
             return float(self.get_state("temperatura_misurata") or 0)
 
-    @cached_property
+    @property
     def current_humidity(self):
         """Return current humidity."""
         if self.has_state("umidita"):
             return float(self.get_state("umidita") or 0)
 
-    @cached_property
+    @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
         return float(self.get_state("setpoint") or 0)
 
-    @cached_property
+    @property
     def target_temperature_step(self):
         """Return the supported step of target temperature."""
         return 0.1
 
-    @cached_property
+    @property
     def temperature_unit(self):
         """Return unit of temperature measurement for the system (UnitOfTemperature.CELSIUS or UnitOfTemperature.FAHRENHEIT)."""
         # TODO - find a way to handle different units from vimar device
@@ -158,7 +157,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
         else:
             return UnitOfTemperature.CELSIUS
 
-    @cached_property
+    @property
     def hvac_mode(self):
         """Return target operation (e.g.heat, cool, auto, off). Used to determine state."""
         # can be HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF
@@ -195,13 +194,13 @@ class VimarClimate(VimarEntity, ClimateEntity):
             # else:
             #     return HVACMode.OFF
 
-    @cached_property
+    @property
     def hvac_modes(self):
         """List of available operation modes. See below."""
         # button for auto is still there, to clear manual mode, but will not change highlighted icon
         return [HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF, HVACMode.AUTO]
 
-    @cached_property
+    @property
     def hvac_action(self):
         """Return current HVAC action (heating, cooling, idle, off)."""
         # HVACAction.HEATING, HVACAction.COOLING, HVACAction.OFF, HVACAction.IDLE
@@ -233,18 +232,18 @@ class VimarClimate(VimarEntity, ClimateEntity):
             else:
                 return HVACAction.IDLE
 
-    @cached_property
+    @property
     def is_aux_heat(self):
         """Return True if an auxiliary heater is on. Requires ClimateEntityFeature.AUX_HEAT."""
         if self.has_state("stato_boost on/off"):
             return self.get_state("stato_boost on/off") != "0"
 
-    @cached_property
+    @property
     def fan_modes(self) -> list[str] | None:
         """Return the list of available fan modes. Requires ClimateEntityFeature.FAN_MODE."""
         return [FAN_ON, FAN_OFF, FAN_LOW, FAN_MEDIUM, FAN_HIGH]
 
-    @cached_property
+    @property
     def fan_mode(self):
         """Return the current fan mode. Requires ClimateEntityFeature.FAN_MODE."""
         if self.has_state("modalita_fancoil"):
