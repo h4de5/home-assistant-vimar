@@ -3,44 +3,18 @@
 # import copy
 import logging
 
-# from datetime import timedelta
-# from homeassistant.const import (
-# DEVICE_CLASS_CURRENT,
-# DEVICE_CLASS_ENERGY,
-# DEVICE_CLASS_ILLUMINANCE,
-# DEVICE_CLASS_POWER,
-# DEVICE_CLASS_TEMPERATURE,
-# DEVICE_CLASS_TIMESTAMP,
-# ENERGY_KILO_WATT_HOUR,
-# POWER_KILO_WATT,
-# SPEED_METERS_PER_SECOND,
-# TEMP_CELSIUS,
-# )
-from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfSpeed
-
-from homeassistant.components.sensor import SensorDeviceClass
-
-try:
-    from homeassistant.const import ELECTRIC_POTENTIAL_VOLT
-except ImportError:
-    from homeassistant.const import VOLT as ELECTRIC_POTENTIAL_VOLT
-try:
-    from homeassistant.components.sensor import STATE_CLASS_TOTAL_INCREASING
-except ImportError:
-    from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT as STATE_CLASS_TOTAL_INCREASING
-try:
-    from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
-except ImportError:
-    STATE_CLASS_MEASUREMENT = "measurement"
-
 from homeassistant.components.sensor import SensorEntity
-
-from .vimar_entity import VimarEntity, vimar_setup_entry
-
-# from . import format_name
-
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfSpeed,
+    UnitOfTemperature,
+)
+from homeassistant.const import UnitOfElectricPotential
 
 from .const import DEVICE_TYPE_SENSORS as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 # SCAN_INTERVAL = timedelta(seconds=20)
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
@@ -114,9 +88,10 @@ class VimarSensor(VimarEntity, SensorEntity):
         """Return the state class of this entity."""
         class_and_unit = self.class_and_units()
         if class_and_unit[1] == SensorDeviceClass.ENERGY:
-            return STATE_CLASS_TOTAL_INCREASING
+            return SensorStateClass.TOTAL_INCREASING
         elif class_and_unit[1] == SensorDeviceClass.POWER and any(x in self._measurement_name for x in ["totale"]):
-            return STATE_CLASS_MEASUREMENT
+            return SensorStateClass.MEASUREMENT
+        return ""
 
     def class_and_units(self):
         """Return the class and unit of measurement."""
@@ -133,9 +108,9 @@ class VimarSensor(VimarEntity, SensorEntity):
             if any(x in self._measurement_name for x in ["energia", "potenza_attiva"]):
                 return [UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY]
             elif any(x in self._measurement_name for x in ["fase"]):
-                return [ELECTRIC_POTENTIAL_VOLT, SensorDeviceClass.CURRENT]
+                return [UnitOfElectricPotential.VOLT, SensorDeviceClass.CURRENT]
             # elif any(x in self._measurement_name for x in ["fase"]):
-            #     return [ELECTRIC_POTENTIAL_VOLT, SensorDeviceClass.VOLTAGE]
+            #     return [UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE]
             elif any(x in self._measurement_name for x in ["_date", "_time", "_datetime"]):
                 return ["", SensorDeviceClass.TIMESTAMP]
             else:
