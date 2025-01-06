@@ -20,7 +20,8 @@ from homeassistant.const import (
     SERVICE_RELOAD,
 )
 # from homeassistant.core import callback
-from homeassistant.core import Config, HomeAssistant
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.util import slugify
@@ -62,7 +63,7 @@ SERVICE_RELOAD_DEFAULT_SCHEMA = vol.Schema({})
 
 
 # @ asyncio.coroutine
-async def async_setup(hass: HomeAssistant, config: Config):
+async def async_setup(hass: HomeAssistant, config: ConfigType):
     """Set up from config."""
     hass.data.setdefault(DOMAIN, {})
 
@@ -150,7 +151,8 @@ async def add_services(hass: HomeAssistant):
         for item in hass.data[DOMAIN].values():
             coordinator: VimarDataUpdateCoordinator = item
             await coordinator.validate_vimar_credentials()
-            await hass.async_add_executor_job(coordinator.vimarproject.update, forced)
+            if(coordinator.vimarproject):
+                await hass.async_add_executor_job(coordinator.vimarproject.update, forced)
 
     hass.services.async_register(
         DOMAIN, SERVICE_UPDATE, service_update_call, SERVICE_UPDATE_SCHEMA
@@ -162,14 +164,15 @@ async def add_services(hass: HomeAssistant):
         for item in hass.data[DOMAIN].values():
             coordinator: VimarDataUpdateCoordinator = item
             await coordinator.validate_vimar_credentials()
-            payload = await hass.async_add_executor_job(
-                coordinator.vimarconnection._request_vimar_sql, sql
-            )
-            _LOGGER.info(
-                SERVICE_EXEC_VIMAR_SQL + " done: SQL: %s . Result: %s",
-                sql,
-                str(payload),
-            )
+            if(coordinator.vimarconnection): 
+                payload = await hass.async_add_executor_job(
+                    coordinator.vimarconnection._request_vimar_sql, sql
+                )
+                _LOGGER.info(
+                    SERVICE_EXEC_VIMAR_SQL + " done: SQL: %s . Result: %s",
+                    sql,
+                    str(payload),
+                )
 
     hass.services.async_register(
         DOMAIN,
