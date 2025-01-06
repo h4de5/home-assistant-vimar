@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 import xml.etree.cElementTree as xmlTree
 
 import requests
+from requests import adapters
 from requests.exceptions import HTTPError
 import urllib3
 
@@ -42,7 +43,7 @@ DEVICE_CLASS_PRESSURE = "pressure"
 SSL_IGNORED = False
 
 
-class HTTPAdapter(requests.adapters.HTTPAdapter):
+class HTTPAdapter(adapters.HTTPAdapter):
     """Override the default request method to support old SSL."""
 
     # see: https://www.reddit.com/r/learnpython/comments/hw6ann/using_requests_to_access_a_website_that_only/
@@ -491,13 +492,17 @@ ORDER BY o3.ID;""" % (
         limit = MAX_ROWS_PER_REQUEST
 
         if callable(method):
-            objectlist, state_count = method(objectlist, start, limit)
-            # if method returns excatly page size results - we check for another page
-            if state_count == limit:
-                objectlist, state_count = self.get_paged_results(
-                    method, objectlist, start + state_count
-                )
-            return objectlist, start + state_count
+            result = method(objectlist, start, limit)
+            if result != None:
+                objectlist, state_count = result
+                # if method returns excatly page size results - we check for another page
+                if state_count == limit:
+                    objectlist, state_count = self.get_paged_results(
+                        method, objectlist, start + state_count
+                    )
+                return objectlist, start + state_count
+            else:
+                raise VimarApiError("Calling invalid method results: %s", method)
         else:
             raise VimarApiError("Calling invalid method for paged results: %s", method)
 
@@ -589,11 +594,11 @@ LIMIT %d, %d;""" % (
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
             for device in payload:
-                deviceItem = {}
+                deviceItem: VimarDevice | None = None
                 if device["object_id"] not in devices:
                     if onlyUpdate:
                         continue
-                    deviceItem: VimarDevice = {
+                    deviceItem = {
                         "room_ids": [],
                         "room_names": [],
                         "room_name": "",
@@ -781,7 +786,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             _, _, exc_tb = sys.exc_info()
             _LOGGER.error(
                 "Error parsing SQL: %s in line: %d - payload: %s"
-                % (err, exc_tb.tb_lineno, string)
+                % (err, exc_tb.tb_lineno if exc_tb is not None else 0, string)
             )
             # enforce relogin
             _LOGGER.info("Start to relogin..")
@@ -913,7 +918,7 @@ class VimarProject:
     def update(self, forced=False):
         """Get all devices from the vimar webserver, if object list is already there, only update states."""
         if self._devices is None:
-            self._devices = []
+            self._devices = {}
         # DONE - only update the state - not the actual devices, so we do not need to parse device types again
         devices_count = len(self._devices)
 
