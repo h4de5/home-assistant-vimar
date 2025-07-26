@@ -46,7 +46,7 @@ class VimarEntity(CoordinatorEntity):
 
         if self._vimarproject is not None and self._device_id in self._vimarproject.devices:
             self._device = self._vimarproject.devices[self._device_id]
-            self._logger = logging.getLogger(PACKAGE_NAME + "." + self.entity_platform)
+            self._logger = logging.getLogger(str(PACKAGE_NAME) + "." + self.entity_platform)
             self._logger_is_debug = self._logger.isEnabledFor(logging.DEBUG)
         else:
             self._logger.warning("Cannot find device #%s", self._device_id)
@@ -348,7 +348,7 @@ def vimar_setup_entry(
     async_add_devices,
 ):
     """Generic method for add entities of specified platform to HASS"""
-    logger = logging.getLogger(PACKAGE_NAME + "." + platform)
+    logger = logging.getLogger(str(PACKAGE_NAME) + "." + platform)
     coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     ignored_platforms = coordinator.vimarconfig.get(CONF_IGNORE_PLATFORM) or []
     platform_ignored = platform in ignored_platforms

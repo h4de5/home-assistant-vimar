@@ -42,7 +42,6 @@ async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Climate platform."""
     vimar_setup_entry(VimarClimate, CURR_PLATFORM, hass, entry, async_add_devices)
 
-
 class VimarClimate(VimarEntity, ClimateEntity):
     """Provides a Vimar climates."""
 
@@ -67,11 +66,6 @@ class VimarClimate(VimarEntity, ClimateEntity):
     #    'principale_riscaldamento=1|boost_riscaldamento=0|principale_condizionamento=0|boost_condizionamento=0'},
     # 'forzatura off': {'status_id': '3282', 'status_value': '0', 'status_range': ''}}
 
-    # # my climate (heat_cool)
-    # Row000004: '947','funzionamento','-1','0'  #mode of operation on/off
-    # Row000005: '948','centralizzato','-1','1'
-    # Row000006: '949','stagione','-1','1'  # heat/cool
-    # Row000007: '950','terziario','-1','0'
     # Row000008: '951','on/off','-1','0' # idle/working
     # Row000009: '952','setpoint','-1','15.6'  #desired temperature
     # Row000010: '953','temporizzazione','-1','0'  #timer (forcing temp)
@@ -118,8 +112,9 @@ class VimarClimate(VimarEntity, ClimateEntity):
         flags = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.TURN_OFF | ClimateEntityFeature.TURN_ON
         if self.has_state("velocita_fancoil"):
             flags |= ClimateEntityFeature.FAN_MODE
-        if self.has_state("stato_boost on/off"):
-            flags |= ClimateEntityFeature.AUX_HEAT
+        # NO LONGER SUPPORTED https://developers.home-assistant.io/blog/2024/03/10/climate-aux-heater-deprecated/
+        # if self.has_state("stato_boost on/off"):
+        #     flags |= ClimateEntityFeature.AUX_HEAT
         return flags
 
     @property
@@ -232,11 +227,11 @@ class VimarClimate(VimarEntity, ClimateEntity):
             else:
                 return HVACAction.IDLE
 
-    @property
-    def is_aux_heat(self):
-        """Return True if an auxiliary heater is on. Requires ClimateEntityFeature.AUX_HEAT."""
-        if self.has_state("stato_boost on/off"):
-            return self.get_state("stato_boost on/off") != "0"
+    # @property
+    # def is_aux_heat(self):
+    #     """Return True if an auxiliary heater is on. Requires ClimateEntityFeature.AUX_HEAT."""
+    #     if self.has_state("stato_boost on/off"):
+    #         return self.get_state("stato_boost on/off") != "0"
 
     @property
     def fan_modes(self) -> list[str] | None:
@@ -293,15 +288,15 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 )
 
     # aux heating is just an output status
-    async def async_turn_aux_heat_on(self):
-        """Turn auxiliary heater on."""
-        _LOGGER.info("Vimar Climate setting aux_heat: %s", "on")
-        self.change_state("stato_boost on/off", "1")
+    # async def async_turn_aux_heat_on(self):
+    #     """Turn auxiliary heater on."""
+    #     _LOGGER.info("Vimar Climate setting aux_heat: %s", "on")
+    #     self.change_state("stato_boost on/off", "1")
 
-    async def async_turn_aux_heat_off(self):
-        """Turn auxiliary heater off."""
-        _LOGGER.info("Vimar Climate setting aux_heat: %s", "off")
-        self.change_state("stato_boost on/off", "0")
+    # async def async_turn_aux_heat_off(self):
+    #     """Turn auxiliary heater off."""
+    #     _LOGGER.info("Vimar Climate setting aux_heat: %s", "off")
+    #     self.change_state("stato_boost on/off", "0")
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""

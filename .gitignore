@@ -6,3 +6,4 @@ examples/rootCA.VIMAR.crt
 examples/credentials.cfg
 .vs
 .venv
+venv

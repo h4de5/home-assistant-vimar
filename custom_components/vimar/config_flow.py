@@ -25,8 +25,6 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
     CONF_TIMEOUT,
     CONF_USERNAME,
-    CONF_PASSWORD,
-    CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
 import homeassistant.helpers.config_validation as cv
