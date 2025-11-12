@@ -318,8 +318,8 @@ class VimarDeviceCustomizer:
             return DEVICE_TYPE_COVERS
         if device_type == "lights":
             return DEVICE_TYPE_LIGHTS
-        if device_type == "media_players":
-            return DEVICE_TYPE_MEDIA_PLAYERS
+        # if device_type == "media_players":
+        #     return DEVICE_TYPE_MEDIA_PLAYERS
         if device_type == "others":
             return DEVICE_TYPE_OTHERS
         if device_type == "scenes":
