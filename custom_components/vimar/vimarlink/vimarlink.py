@@ -18,7 +18,7 @@ from ..const import DEVICE_TYPE_CLIMATES
 from ..const import (
     DEVICE_TYPE_COVERS,
     DEVICE_TYPE_LIGHTS,
-    # DEVICE_TYPE_MEDIA_PLAYERS,
+    DEVICE_TYPE_MEDIA_PLAYERS,
     DEVICE_TYPE_OTHERS,
     DEVICE_TYPE_SCENES,
     DEVICE_TYPE_SENSORS,
@@ -977,9 +977,6 @@ class VimarProject:
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:fan", "mdi:fan-off"]
 
-                # device_type = DEVICE_TYPE_MEDIA_PLAYERS
-                # icon = ["mdi:radio", "mdi:radio-off"]
-
             # elif device["object_name"].find("LAMPE") != -1:
             elif any(x in device["object_name"].upper() for x in ["LAMPE"]):
                 device_type = DEVICE_TYPE_LIGHTS
@@ -1145,17 +1142,17 @@ class VimarProject:
             device_type = DEVICE_TYPE_SENSORS
             icon = "mdi:weather-partly-snowy-rainy"
 
-        # elif device["object_type"] in ["CH_Audio"]:
-        #     device_type = DEVICE_TYPE_MEDIA_PLAYERS
-        #     icon = ["mdi:radio", "mdi:radio-off"]
+        elif device["object_type"] in ["CH_Audio"]:
+            device_type = DEVICE_TYPE_MEDIA_PLAYERS
+            icon = ["mdi:radio", "mdi:radio-off"]
 
-        #     _LOGGER.debug(
-        #         "Audio object returned from web server: "
-        #         + device["object_type"]
-        #         + " / "
-        #         + device["object_name"]
-        #     )
-        #     _LOGGER.debug("Audio object has states: " + str(device["status"]))
+            _LOGGER.debug(
+                "Audio object returned from web server: "
+                + device["object_type"]
+                + " / "
+                + device["object_name"]
+            )
+            _LOGGER.debug("Audio object has states: " + str(device["status"]))
 
         elif device["object_type"] in [
             "CH_SAI",
