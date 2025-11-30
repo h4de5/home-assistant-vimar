@@ -2,26 +2,12 @@
 
 import logging
 
-from homeassistant.components.media_player.const import (
-    MEDIA_TYPE_CHANNEL,
-    MEDIA_TYPE_MUSIC,
-    SUPPORT_NEXT_TRACK,
-    SUPPORT_SELECT_SOURCE,
-    SUPPORT_TURN_OFF,
-    SUPPORT_TURN_ON,
-    SUPPORT_VOLUME_MUTE,
-    SUPPORT_VOLUME_SET,
-    SUPPORT_VOLUME_STEP,
-)
 from homeassistant.const import STATE_OFF, STATE_PLAYING  # STATE_IDLE,
-
+from homeassistant.components.media_player import (
+    MediaPlayerEntityFeature,
+    MediaPlayerEntity,
+    MediaType)
 from .vimar_entity import VimarEntity, vimar_setup_entry
-
-try:
-    from homeassistant.components.media_player import MediaPlayerEntity
-except ImportError:
-    from homeassistant.components.media_player import MediaPlayerDevice as MediaPlayerEntity
-
 from .const import DEVICE_TYPE_MEDIA_PLAYERS as CURR_PLATFORM
 
 _LOGGER = logging.getLogger(__name__)
@@ -128,9 +114,9 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         """Content type of current playing media."""
         # if self.has_state('source') and self.get_state('source') == self._channel_source_id:
         if self.has_state("channel") and self.get_state("channel") == self._channel_source_id:
-            return MEDIA_TYPE_CHANNEL
+            return MediaType.CHANNEL
         else:
-            return MEDIA_TYPE_MUSIC
+            return MediaType.MUSIC
 
     @property
     def media_title(self):
@@ -158,12 +144,12 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         """Flag supported features."""
         flags = 0
         if self.has_state("on/off"):
-            flags |= SUPPORT_TURN_ON | SUPPORT_TURN_OFF
+            flags |= MediaPlayerEntityFeature.TURN_ON | MediaPlayerEntityFeature.TURN_OFF
         if self.has_state("volume"):
-            flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_VOLUME_STEP
+            flags |= MediaPlayerEntityFeature.VOLUME_SET | MediaPlayerEntityFeature.VOLUME_MUTE | MediaPlayerEntityFeature.VOLUME_STEP 
         # if self.has_state('source'):
         if self.has_state("channel"):
-            flags |= SUPPORT_SELECT_SOURCE
+            flags |= MediaPlayerEntityFeature.SELECT_SOURCE 
             # channel only available on source == 0 /
             # if self.get_state('source') == 0 and self.has_state('channel'):
             # if self.get_state('channel') == self._channel_source_id and self.has_state('source'):
@@ -172,7 +158,7 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         if self.has_state("source"):
             # we can only do next track
             # flags |= SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
-            flags |= SUPPORT_NEXT_TRACK
+            flags |= MediaPlayerEntityFeature.NEXT_TRACK
 
         # FIXED FIX ME - remove me in live
         # flags |= SUPPORT_VOLUME_SET | SUPPORT_VOLUME_MUTE | SUPPORT_SELECT_SOURCE | SUPPORT_NEXT_TRACK | SUPPORT_PREVIOUS_TRACK
