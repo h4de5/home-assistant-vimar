@@ -7,8 +7,6 @@ from homeassistant.core import Context, HomeAssistant, State
 # see: https://git.edevau.net/Ede_Vau/home-assistant-core/src/branch/dev/script/scaffold/templates/reproduce_state/integration/reproduce_state.py
 
 
-
-
 # _LOGGER = logging.getLogger(__name__)
 
 # # TODO add valid states here

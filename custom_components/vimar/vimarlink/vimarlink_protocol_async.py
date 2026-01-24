@@ -6,10 +6,8 @@ It can be used as an alternative to the sync protocol.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import ssl
-from typing import Optional
 
 import aiohttp
 
@@ -24,7 +22,7 @@ class VimarProtocolAsync:
         schema: str,
         host: str,
         port: int,
-        certificate: Optional[str] = None,
+        certificate: str | None = None,
         timeout: int = 6,
     ):
         """Initialize async protocol handler."""
@@ -33,17 +31,15 @@ class VimarProtocolAsync:
         self._port = port
         self._certificate = certificate
         self._timeout = timeout
-        self.request_last_exception: Optional[Exception] = None
-        self._session: Optional[aiohttp.ClientSession] = None
+        self.request_last_exception: Exception | None = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session with VIMAR-compatible SSL."""
         if self._session is None or self._session.closed:
             # Match sync version's SSL settings for VIMAR compatibility
             ssl_context = ssl.create_default_context()
-            ssl_context.options &= (
-                ~ssl.OP_NO_TLSv1_3 & ~ssl.OP_NO_TLSv1_2 & ~ssl.OP_NO_TLSv1_1
-            )
+            ssl_context.options &= ~ssl.OP_NO_TLSv1_3 & ~ssl.OP_NO_TLSv1_2 & ~ssl.OP_NO_TLSv1_1
             ssl_context.minimum_version = ssl.TLSVersion.TLSv1
             ssl_context.check_hostname = False
             ssl_context.set_ciphers("AES256-SHA")
@@ -55,9 +51,7 @@ class VimarProtocolAsync:
                 ssl_context.verify_mode = ssl.CERT_NONE
 
             connector = aiohttp.TCPConnector(ssl=ssl_context)
-            timeout = aiohttp.ClientTimeout(
-                total=self._timeout, connect=int(self._timeout / 2)
-            )
+            timeout = aiohttp.ClientTimeout(total=self._timeout, connect=int(self._timeout / 2))
             self._session = aiohttp.ClientSession(connector=connector, timeout=timeout)
 
         return self._session
@@ -71,8 +65,8 @@ class VimarProtocolAsync:
     async def _request(
         self,
         url: str,
-        post: Optional[str] = None,
-        headers: Optional[dict[str, str]] = None,
+        post: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> str | bool | None:
         """Make async HTTP request.
 
@@ -99,7 +93,7 @@ class VimarProtocolAsync:
             self.request_last_exception = ex
             _LOGGER.error("Connection error: %s", str(ex))
             return False
-        except asyncio.TimeoutError as ex:
+        except TimeoutError as ex:
             self.request_last_exception = ex
             _LOGGER.error("HTTP timeout after %ss", self._timeout)
             return False

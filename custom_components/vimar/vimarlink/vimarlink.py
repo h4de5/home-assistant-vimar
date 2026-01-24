@@ -591,7 +591,9 @@ LIMIT %d, %d;""" % (
             start = 0
         return start, limit
 
-    def _generate_device_list(self, select, devices: dict[str, VimarDevice] | None = None, onlyUpdate: bool = False):
+    def _generate_device_list(
+        self, select, devices: dict[str, VimarDevice] | None = None, onlyUpdate: bool = False
+    ):
         """Generate device list from given sql statements."""
         if devices is None:
             devices = {}

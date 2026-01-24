@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import ssl
-from typing import Optional
 
 from requests import adapters
 
@@ -51,7 +50,7 @@ class VimarAuth:
         port: int,
         username: str,
         password: str,
-        certificate: Optional[str] = None,
+        certificate: str | None = None,
     ):
         """Initialize authentication handler."""
         self._schema = schema
@@ -60,15 +59,15 @@ class VimarAuth:
         self._username = username
         self._password = password
         self._certificate = certificate
-        self._session_id: Optional[str] = None
+        self._session_id: str | None = None
 
     @property
-    def session_id(self) -> Optional[str]:
+    def session_id(self) -> str | None:
         """Return current session ID."""
         return self._session_id
 
     @session_id.setter
-    def session_id(self, value: Optional[str]) -> None:
+    def session_id(self, value: str | None) -> None:
         """Set session ID."""
         self._session_id = value
 
@@ -92,6 +91,6 @@ class VimarAuth:
         return self._password
 
     @property
-    def certificate(self) -> Optional[str]:
+    def certificate(self) -> str | None:
         """Return certificate path."""
         return self._certificate

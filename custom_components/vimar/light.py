@@ -56,9 +56,9 @@ class VimarLight(VimarEntity, LightEntity):
     def rgb_color(self) -> tuple[int, int, int] | None:
         """Return RGB colors."""
         return (
-            self.get_state("red") or 0,
-            self.get_state("green") or 0,
-            self.get_state("blue") or 0,
+            int(self.get_state("red") or 0),
+            int(self.get_state("green") or 0),
+            int(self.get_state("blue") or 0),
         )
 
     @property

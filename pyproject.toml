@@ -32,7 +32,15 @@ select = [
     "I",    # isort
 ]
 ignore = [
-    "E501",  # line too long (black handles this)
+    "E501",   # line too long (black handles this)
+    "UP031",  # Use format specifiers instead of percent format (legacy code)
+    "B904",   # raise exceptions with raise ... from err (legacy code)
+    "B007",   # Loop control variable not used (intentional in some cases)
+    "SIM102", # Use single if statement (readability preference)
+    "SIM103", # Return condition directly (readability preference)
+    "SIM109", # Use tuple for multiple comparisons (readability preference)
+    "SIM115", # Use context handler for opening files (legacy code)
+    "SIM118", # Use key in dict instead of key in dict.keys()
 ]
 
 [tool.ruff.lint.per-file-ignores]
