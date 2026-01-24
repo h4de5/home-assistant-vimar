@@ -3,13 +3,13 @@
 import logging
 from typing import Any
 
+import homeassistant.util.color as color_util
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_HS_COLOR,
     ColorMode,
     LightEntity,
 )
-import homeassistant.util.color as color_util
 
 from .const import DEVICE_TYPE_LIGHTS as CURR_PLATFORM
 from .vimar_entity import VimarEntity, vimar_setup_entry

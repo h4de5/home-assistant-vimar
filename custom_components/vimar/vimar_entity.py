@@ -1,21 +1,19 @@
 """Insteon base entity."""
 
 import logging
-from typing import Dict
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.const import CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    _LOGGER,
     CONF_IGNORE_PLATFORM,
     DEVICE_TYPE_BINARY_SENSOR,
     DOMAIN,
     PACKAGE_NAME,
-    _LOGGER,
 )
 from .vimar_coordinator import VimarDataUpdateCoordinator
 from .vimarlink.vimarlink import VimarDevice, VimarLink, VimarProject
@@ -102,7 +100,7 @@ class VimarEntity(CoordinatorEntity):
 
             if args and len(args) > 0:
                 iter_args = iter(args)
-                for state, value in zip(iter_args, iter_args):
+                for state, value in zip(iter_args, iter_args, strict=False):
                     if state in self._device["status"]:
                         state_changed = True
                         optionals = self._vimarconnection.get_optionals_param(state)
@@ -163,11 +161,7 @@ class VimarEntity(CoordinatorEntity):
 
     def has_state(self, state):
         """Return true if local device has a given state."""
-        if (
-            "status" in self._device
-            and self._device["status"]
-            and state in self._device["status"]
-        ):
+        if "status" in self._device and self._device["status"] and state in self._device["status"]:
             return True
         else:
             return False
@@ -178,9 +172,7 @@ class VimarEntity(CoordinatorEntity):
         if isinstance(self._device["icon"], str):
             return self._device["icon"]
         elif isinstance(self._device["icon"], list):
-            return (self._device["icon"][1], self._device["icon"][0])[
-                self.is_default_state
-            ]
+            return (self._device["icon"][1], self._device["icon"][0])[self.is_default_state]
 
         return self.ICON
 
@@ -209,20 +201,18 @@ class VimarEntity(CoordinatorEntity):
     @property
     def device_info(self) -> DeviceInfo | None:
         room_name = None
-        if (
-            self._device.get("room_friendly_name")
-            and self._device["room_friendly_name"] != ""
-        ):
+        if self._device.get("room_friendly_name") and self._device["room_friendly_name"] != "":
             room_name = self._device["room_friendly_name"]
 
-        device : DeviceInfo = {
+        # Keep original 3-element tuple format for backward compatibility with existing device registry
+        device: DeviceInfo = {
             "identifiers": {
                 (
                     DOMAIN,
                     self._coordinator.entity_unique_id_prefix or "",
                     self._device_id,
                 )
-            },
+            },  # type: ignore[arg-type]
             "name": self.device_name,
             "model": self._device.get("object_type"),
             "manufacturer": "Vimar",
@@ -243,7 +233,7 @@ class VimarEntity(CoordinatorEntity):
 class VimarStatusSensor(BinarySensorEntity):
     """Representation of a Sensor."""
 
-    _coordinator: VimarDataUpdateCoordinator = None
+    _coordinator: VimarDataUpdateCoordinator
 
     def __init__(self, coordinator: VimarDataUpdateCoordinator):
         """Initialize the sensor."""
@@ -255,7 +245,7 @@ class VimarStatusSensor(BinarySensorEntity):
             + ":"
             + str(coordinator.vimarconnection._port)
         )
-        self._type: BinarySensorDeviceClass = "connectivity"
+        self._type = BinarySensorDeviceClass.CONNECTIVITY
         self._attributes = {
             "Host": coordinator.vimarconnection._host,
             "Port": coordinator.vimarconnection._port,
@@ -313,15 +303,14 @@ class VimarStatusSensor(BinarySensorEntity):
         return self._attributes
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {
-                (DOMAIN, self._coordinator.entity_unique_id_prefix or "", "status")
-            },
-            "name": "Vimar WebServer",
-            "model": "Vimar WebServer",
-            "manufacturer": "Vimar",
-        }
+    def device_info(self) -> DeviceInfo:
+        # Keep original 3-element tuple format for backward compatibility with existing device registry
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._coordinator.entity_unique_id_prefix or "", "status")},  # type: ignore[arg-type]
+            name="Vimar WebServer",
+            model="Vimar WebServer",
+            manufacturer="Vimar",
+        )
 
     @property
     def is_on(self):
@@ -341,8 +330,8 @@ class VimarStatusSensor(BinarySensorEntity):
 
 
 def vimar_setup_entry(
-    vimar_entity_class: VimarEntity,
-    platform,
+    vimar_entity_class: type[VimarEntity],
+    platform: str,
     hass: HomeAssistant,
     entry,
     async_add_devices,

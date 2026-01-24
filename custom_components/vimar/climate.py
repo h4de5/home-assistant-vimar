@@ -4,17 +4,18 @@ import logging
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
-    ClimateEntityFeature,
     FAN_HIGH,
     FAN_LOW,
     FAN_MEDIUM,
     FAN_OFF,
     FAN_ON,
+    ClimateEntityFeature,
     HVACAction,
     HVACMode,
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
+from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
 from .const import (
     VIMAR_CLIMATE_AUTO,
     VIMAR_CLIMATE_AUTO_I,
@@ -32,7 +33,6 @@ from .const import (
     VIMAR_CLIMATE_OFF_I,
     VIMAR_CLIMATE_OFF_II,
 )
-from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
 from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Climate platform."""
     vimar_setup_entry(VimarClimate, CURR_PLATFORM, hass, entry, async_add_devices)
+
 
 class VimarClimate(VimarEntity, ClimateEntity):
     """Provides a Vimar climates."""
@@ -109,7 +110,11 @@ class VimarClimate(VimarEntity, ClimateEntity):
     @property
     def supported_features(self):
         """Flag supported features. The device supports a target temperature."""
-        flags = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.TURN_OFF | ClimateEntityFeature.TURN_ON
+        flags = (
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.TURN_OFF
+            | ClimateEntityFeature.TURN_ON
+        )
         if self.has_state("velocita_fancoil"):
             flags |= ClimateEntityFeature.FAN_MODE
         # NO LONGER SUPPORTED https://developers.home-assistant.io/blog/2024/03/10/climate-aux-heater-deprecated/
@@ -162,24 +167,18 @@ class VimarClimate(VimarEntity, ClimateEntity):
             return HVACMode.OFF
 
         if self.climate_type == "heat_cool":
-            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state(
-                "funzionamento"
-            ):
+            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
                 return HVACMode.AUTO
             else:
                 return (HVACMode.HEAT, HVACMode.COOL)[
-                    self.get_state("stagione")
-                    == self.get_const_value(VIMAR_CLIMATE_COOL)
+                    self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)
                 ]
         else:
-            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state(
-                "funzionamento"
-            ):
+            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
                 return HVACMode.AUTO
             else:
                 return (HVACMode.HEAT, HVACMode.COOL)[
-                    self.get_state("regolazione")
-                    == self.get_const_value(VIMAR_CLIMATE_COOL)
+                    self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)
                 ]
 
             # if self.has_state('stato_principale_condizionamento on/off') and self.get_state('stato_principale_condizionamento on/off') == '1':
@@ -283,9 +282,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
                     fancoil_speed = "66"
                 elif fan_mode == FAN_HIGH:
                     fancoil_speed = "100"
-                self.change_state(
-                    "modalita_fancoil", "1", "velocita_fancoil", fancoil_speed
-                )
+                self.change_state("modalita_fancoil", "1", "velocita_fancoil", fancoil_speed)
 
     # aux heating is just an output status
     # async def async_turn_aux_heat_on(self):
@@ -312,9 +309,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 self.get_const_value(VIMAR_CLIMATE_COOL),
             )[hvac_mode == HVACMode.COOL]
 
-            _LOGGER.info(
-                "Vimar Climate setting setup mode to heat/cool: %s", set_function_mode
-            )
+            _LOGGER.info("Vimar Climate setting setup mode to heat/cool: %s", set_function_mode)
 
             # DONE - get current set_temperatur and set it again
 
@@ -326,9 +321,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 self.get_const_value(VIMAR_CLIMATE_COOL),
             )[self.hvac_mode == HVACMode.COOL]
 
-            _LOGGER.info(
-                "Vimar Climate setting setup mode to auto: %s", set_function_mode
-            )
+            _LOGGER.info("Vimar Climate setting setup mode to auto: %s", set_function_mode)
             # we only clear manual mode - no further settings
             # self.change_state('funzionamento', set_function_mode)
 
@@ -340,15 +333,11 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 self.get_const_value(VIMAR_CLIMATE_COOL),
             )[self.hvac_mode == HVACMode.COOL]
 
-            _LOGGER.info(
-                "Vimar Climate setting setup mode to off: %s", set_function_mode
-            )
+            _LOGGER.info("Vimar Climate setting setup mode to off: %s", set_function_mode)
             # self.change_state('funzionamento', set_function_mode)
 
         _LOGGER.info("Vimar Climate setting hvac_mode: %s", set_hvac_mode)
-        _LOGGER.info(
-            "Vimar Climate resetting target temperature: %s", self.target_temperature
-        )
+        _LOGGER.info("Vimar Climate resetting target temperature: %s", self.target_temperature)
 
         if set_hvac_mode is not None:
             if self.climate_type == "heat_cool":
@@ -396,12 +385,8 @@ class VimarClimate(VimarEntity, ClimateEntity):
             self.get_const_value(VIMAR_CLIMATE_COOL),
         )[self.hvac_mode == HVACMode.COOL]
 
-        _LOGGER.info(
-            "Vimar Climate setting target temperature: %s", str(set_temperature)
-        )
-        _LOGGER.info(
-            "Vimar Climate setting setup mode to manual: %s", set_function_mode
-        )
+        _LOGGER.info("Vimar Climate setting target temperature: %s", str(set_temperature))
+        _LOGGER.info("Vimar Climate setting setup mode to manual: %s", set_function_mode)
 
         if self.climate_type == "heat_cool":
             self.change_state(

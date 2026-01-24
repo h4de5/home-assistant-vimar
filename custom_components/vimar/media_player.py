@@ -2,13 +2,15 @@
 
 import logging
 
-from homeassistant.const import STATE_OFF, STATE_PLAYING  # STATE_IDLE,
 from homeassistant.components.media_player import (
-    MediaPlayerEntityFeature,
     MediaPlayerEntity,
-    MediaType)
-from .vimar_entity import VimarEntity, vimar_setup_entry
+    MediaPlayerEntityFeature,
+    MediaType,
+)
+from homeassistant.const import STATE_OFF, STATE_PLAYING  # STATE_IDLE,
+
 from .const import DEVICE_TYPE_MEDIA_PLAYERS as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,10 +148,14 @@ class VimarMediaplayer(VimarEntity, MediaPlayerEntity):
         if self.has_state("on/off"):
             flags |= MediaPlayerEntityFeature.TURN_ON | MediaPlayerEntityFeature.TURN_OFF
         if self.has_state("volume"):
-            flags |= MediaPlayerEntityFeature.VOLUME_SET | MediaPlayerEntityFeature.VOLUME_MUTE | MediaPlayerEntityFeature.VOLUME_STEP 
+            flags |= (
+                MediaPlayerEntityFeature.VOLUME_SET
+                | MediaPlayerEntityFeature.VOLUME_MUTE
+                | MediaPlayerEntityFeature.VOLUME_STEP
+            )
         # if self.has_state('source'):
         if self.has_state("channel"):
-            flags |= MediaPlayerEntityFeature.SELECT_SOURCE 
+            flags |= MediaPlayerEntityFeature.SELECT_SOURCE
             # channel only available on source == 0 /
             # if self.get_state('source') == 0 and self.has_state('channel'):
             # if self.get_state('channel') == self._channel_source_id and self.has_state('source'):

@@ -1,12 +1,15 @@
 """Vimar Platform integration."""
 
 import asyncio
+
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
+
 # from datetime import timedelta
 # import logging
 # import os
 # from platform import platform
 # from typing import Tuple
-
 # import async_timeout
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
@@ -19,16 +22,29 @@ from homeassistant.const import (
     # CONF_VERIFY_SSL,
     SERVICE_RELOAD,
 )
+
 # from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service import async_register_admin_service
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import slugify
-import voluptuous as vol
 
-from .const import *
-from .const import _LOGGER
+from .const import (
+    _LOGGER,
+    CONF_CERTIFICATE,
+    CONF_DELETE_AND_RELOAD_ALL_ENTITIES,
+    CONF_GLOBAL_CHANNEL_ID,
+    CONF_IGNORE_PLATFORM,
+    CONF_OVERRIDE,
+    CONF_SCHEMA,
+    DEFAULT_CERTIFICATE,
+    DEFAULT_PORT,
+    DEFAULT_SCHEMA,
+    DEFAULT_TIMEOUT,
+    DEFAULT_USERNAME,
+    DOMAIN,
+    DOMAIN_CONFIG_YAML,
+)
 from .vimar_coordinator import VimarDataUpdateCoordinator
 
 log = _LOGGER
@@ -39,14 +55,10 @@ CONFIG_DOMAIN_SCHEMA = {
     vol.Optional(CONF_PASSWORD): cv.string,
     vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
     vol.Optional(CONF_SCHEMA, default=DEFAULT_SCHEMA): cv.string,
-    vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(
-        cv.string, None
-    ),
+    vol.Optional(CONF_CERTIFICATE, default=DEFAULT_CERTIFICATE): vol.Any(cv.string, None),
     vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Range(min=2, max=60),
     vol.Optional(CONF_GLOBAL_CHANNEL_ID): vol.Range(min=1, max=99999),
-    vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(
-        cv.ensure_list, [cv.string]
-    ),
+    vol.Optional(CONF_IGNORE_PLATFORM, default=[]): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_OVERRIDE, default=[]): cv.ensure_list,
 }
 CONFIG_SCHEMA = vol.Schema(
@@ -87,9 +99,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
         if len(configured) == 0:
             # get the configuration.yaml settings and make a 'flow' task :)
             #   this will run 'async_step_import' in config_flow.py
-            log.info(
-                "Importing configuration from yaml...after you can remove from yaml"
-            )
+            log.info("Importing configuration from yaml...after you can remove from yaml")
             hass.async_create_task(
                 hass.config_entries.flow.async_init(
                     DOMAIN,
@@ -98,9 +108,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
                 )
             )
         else:
-            log.debug(
-                "Configuration from yaml already imported: you can remove from yaml"
-            )
+            log.debug("Configuration from yaml already imported: you can remove from yaml")
 
     return True
 
@@ -151,12 +159,10 @@ async def add_services(hass: HomeAssistant):
         for item in hass.data[DOMAIN].values():
             coordinator: VimarDataUpdateCoordinator = item
             await coordinator.validate_vimar_credentials()
-            if(coordinator.vimarproject):
+            if coordinator.vimarproject:
                 await hass.async_add_executor_job(coordinator.vimarproject.update, forced)
 
-    hass.services.async_register(
-        DOMAIN, SERVICE_UPDATE, service_update_call, SERVICE_UPDATE_SCHEMA
-    )
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE, service_update_call, SERVICE_UPDATE_SCHEMA)
 
     async def service_exec_vimar_sql_call(call):
         data = call.data
@@ -164,7 +170,7 @@ async def add_services(hass: HomeAssistant):
         for item in hass.data[DOMAIN].values():
             coordinator: VimarDataUpdateCoordinator = item
             await coordinator.validate_vimar_credentials()
-            if(coordinator.vimarconnection): 
+            if coordinator.vimarconnection:
                 payload = await hass.async_add_executor_job(
                     coordinator.vimarconnection._request_vimar_sql, sql
                 )
@@ -199,7 +205,7 @@ async def add_services(hass: HomeAssistant):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Handle removal of an entry."""
-    if not entry.entry_id in hass.data[DOMAIN]:
+    if entry.entry_id not in hass.data[DOMAIN]:
         return True
     coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     platforms = list(coordinator.devices_for_platform.keys())

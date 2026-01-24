@@ -1,0 +1,1 @@
+"""VIMAR integration tests."""

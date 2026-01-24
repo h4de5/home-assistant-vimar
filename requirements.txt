@@ -1,2 +1,2 @@
-
-pre-commit
+# Standalone vimarlink dependencies (NO Home Assistant required)
+requests>=2.31.0

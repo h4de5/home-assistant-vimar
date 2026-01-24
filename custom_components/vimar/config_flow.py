@@ -1,23 +1,14 @@
 """Config flow for the Vimar Security System component."""
+
 # https://aiqianji.com/home-assistant/core/raw/frenck-2020-0790/homeassistant/components/abode/config_flow.py
 
 import re
 
 # from Vimarpy import Vimar
 # from Vimarpy.exceptions import VimarException
-from calendar import c
-from requests.exceptions import ConnectTimeout, HTTPError
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from typing import Any, Dict, Optional
-
 from homeassistant import config_entries
-from homeassistant.core import callback
-from homeassistant.util import slugify
-
-from .__init__ import CONFIG_DOMAIN_SCHEMA
-from .const import *
-from .const import _LOGGER
-
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -27,9 +18,33 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-import homeassistant.helpers.config_validation as cv
-from .vimar_coordinator import VimarDataUpdateCoordinator
+from homeassistant.core import callback
+from homeassistant.util import slugify
 
+from .const import (
+    _LOGGER,
+    CONF_CERTIFICATE,
+    CONF_DELETE_AND_RELOAD_ALL_ENTITIES,
+    CONF_DEVICES_BINARY_SENSOR_RE,
+    CONF_DEVICES_LIGHTS_RE,
+    CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN,
+    CONF_GLOBAL_CHANNEL_ID,
+    CONF_IGNORE_PLATFORM,
+    CONF_OVERRIDE,
+    CONF_SCHEMA,
+    CONF_SECURE,
+    CONF_TITLE,
+    CONF_USE_VIMAR_NAMING,
+    DEFAULT_CERTIFICATE,
+    DEFAULT_PORT,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SECURE,
+    DEFAULT_TIMEOUT,
+    DEFAULT_VERIFY_SSL,
+    DOMAIN,
+    PLATFORMS,
+)
+from .vimar_coordinator import VimarDataUpdateCoordinator
 
 # def get_vol_optional(name, config, default) -> Optional:
 #    if name not in config and default is None:
@@ -55,7 +70,7 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Get options flow for this handler."""
-        return OptionsFlowHandler(config_entry)
+        return OptionsFlowHandler()
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -63,10 +78,16 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            title = user_input.pop(CONF_TITLE, "") or user_input.get(CONF_HOST) or user_input.get(CONF_USERNAME)
+            title = (
+                user_input.pop(CONF_TITLE, "")
+                or user_input.get(CONF_HOST)
+                or user_input.get(CONF_USERNAME)
+            )
             unique_id = slugify(title)
             try:
-                coordinator = VimarDataUpdateCoordinator(self.hass, entry=None, vimarconfig=user_input)
+                coordinator = VimarDataUpdateCoordinator(
+                    self.hass, entry=None, vimarconfig=user_input
+                )
                 await coordinator.validate_vimar_credentials()
             except BaseException as ex:
                 set_errors_from_ex(ex, errors)
@@ -85,7 +106,11 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.warning("Only one configuration of Vimar is allowed.")
             return self.async_abort(reason="single_instance_allowed")
         user_input = import_config.copy()
-        title = user_input.pop(CONF_TITLE, "") or user_input.get(CONF_HOST) or user_input.get(CONF_USERNAME)
+        title = (
+            user_input.pop(CONF_TITLE, "")
+            or user_input.get(CONF_HOST)
+            or user_input.get(CONF_USERNAME)
+        )
         user_input.pop(CONF_OVERRIDE, "")  # remove override non gestito da config_flow
         schema = user_input.pop(CONF_SCHEMA, "https")
         user_input[CONF_SECURE] = schema == "https"
@@ -100,15 +125,20 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for the Home Assistant remote integration."""
 
-    def __init__(self, config_entry):
+    def __init__(self):
         """Initialize remote_homeassistant options flow."""
-        self.config_entry = config_entry
-        self.options = {}
-        self.options.update(config_entry.data or {})
-        self.options.update(config_entry.options or {})
-        # if CONF_HOST not in self.options:
-        #    self.options.update(config_entry.options or {})
-        self._init_schema({}, {})
+        self.options: dict = {}
+        self.schema: dict = {}
+        self.schema_vol: vol.Schema | None = None
+        self.errors: dict[str, str] = {}
+        self.user_input: dict = {}
+        self.options_with_user_input: dict = {}
+
+    def _ensure_options_initialized(self):
+        """Initialize options from config_entry if not already done."""
+        if not self.options:
+            self.options.update(self.config_entry.data or {})
+            self.options.update(self.config_entry.options or {})
 
     def _init_schema(self, user_input, schema):
         self.schema = schema
@@ -122,7 +152,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def _option_changed(self, key):
         original = self.config_entry.data.get(key, self.config_entry.options.get(key, ""))
         new = self.options.get(key, "")
-        return not original == new
+        return original != new
 
     def _validate_regex(self, key):
         search_regex = self.options_with_user_input.get(key, "")
@@ -131,7 +161,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 re.search(search_regex, "x", re.IGNORECASE)
             except BaseException as err:
                 _LOGGER.error(
-                    "Error occurred in validate_regex. Key: '" + key + "', Regex: '" + search_regex + "' - %s", str(err)
+                    "Error occurred in validate_regex. Key: '"
+                    + key
+                    + "', Regex: '"
+                    + search_regex
+                    + "' - %s",
+                    str(err),
                 )
                 self.errors[key] = "regex_not_valid"
 
@@ -156,6 +191,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Manage basic options."""
+        self._ensure_options_initialized()
         self._init_schema(user_input, get_schema_options_init(user_input or self.options))
         if user_input is not None:
             try:
@@ -232,9 +268,7 @@ def set_errors_from_ex(ex: BaseException, errors: dict[str, str]):
         or "Client Error:" in exstr
         or "ConnectTimeoutError" in exstr
         or "NewConnectionError" in exstr
-    ):
-        errors["base"] = "cannot_connect"
-    elif "HTTP timeout occurred" in exstr:
+    ) or "HTTP timeout occurred" in exstr:
         errors["base"] = "cannot_connect"
     elif "SSLError" in exstr:
         errors["base"] = "invalid_cert"
@@ -244,77 +278,96 @@ def set_errors_from_ex(ex: BaseException, errors: dict[str, str]):
         errors["base"] = "unknown"
 
 
-def get_vol_default(config: dict, key, default=None):
+def get_vol_default(config: dict | None, key, default=None):
     if config:
         return config.get(key) or vol.UNDEFINED
     return default or vol.UNDEFINED
 
 
-def get_vol_descr(config: dict, key, default=None):
+def get_vol_descr(config: dict | None, key, default=None):
     def_value = get_vol_default(config, key, default)
     res = ({"suggested_value": def_value}) if def_value and def_value is not vol.UNDEFINED else {}
     return res
 
 
-def get_schema_config_user(config: dict = {}) -> dict:
+def get_schema_config_user(config: dict | None = None) -> dict:
     """Return a shcema configuration dict for HACS."""
-    config = config if CONF_HOST in (config or {}) else None
+    config = config if config and CONF_HOST in config else None
     schema = {
         vol.Required(CONF_TITLE, description=get_vol_descr(config, CONF_TITLE)): str,
         vol.Required(CONF_HOST, description=get_vol_descr(config, CONF_HOST)): str,
         vol.Required(CONF_PORT, description=get_vol_descr(config, CONF_PORT, DEFAULT_PORT)): int,
-        vol.Required(CONF_SECURE, description=get_vol_descr(config, CONF_SECURE, DEFAULT_SECURE)): bool,
-        vol.Required(CONF_VERIFY_SSL, description=get_vol_descr(config, CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): bool,
+        vol.Required(
+            CONF_SECURE, description=get_vol_descr(config, CONF_SECURE, DEFAULT_SECURE)
+        ): bool,
+        vol.Required(
+            CONF_VERIFY_SSL, description=get_vol_descr(config, CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
+        ): bool,
         vol.Required(CONF_USERNAME, description=get_vol_descr(config, CONF_USERNAME)): str,
         vol.Required(CONF_PASSWORD, description=get_vol_descr(config, CONF_PASSWORD)): str,
-        vol.Optional(CONF_CERTIFICATE, description=get_vol_descr(config, CONF_CERTIFICATE, DEFAULT_CERTIFICATE)): str,
+        vol.Optional(
+            CONF_CERTIFICATE,
+            description=get_vol_descr(config, CONF_CERTIFICATE, DEFAULT_CERTIFICATE),
+        ): str,
     }
     return schema
 
 
-def get_schema_options_init(config: dict = {}) -> dict:
+def get_schema_options_init(config: dict | None = None) -> dict:
     """Return a shcema configuration dict for HACS."""
     schema = get_schema_config_user(config=config)
     schema.pop(CONF_TITLE, "")
     return schema
 
 
-def get_schema_options_two(config: dict = {}) -> dict:
+def get_schema_options_two(config: dict | None = None) -> dict:
     """Return a shcema configuration dict for HACS."""
-    config = config or {}
+    if config is None:
+        config = {}
     config = config if CONF_TIMEOUT in config else None
     if config and not config.get(CONF_SCAN_INTERVAL):
         config[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
     domains = sorted(PLATFORMS)
     schema = {
-        vol.Required(CONF_TIMEOUT, description=get_vol_descr(config, CONF_TIMEOUT, DEFAULT_TIMEOUT)): int,
         vol.Required(
-            CONF_SCAN_INTERVAL, description=get_vol_descr(config, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            CONF_TIMEOUT, description=get_vol_descr(config, CONF_TIMEOUT, DEFAULT_TIMEOUT)
         ): int,
-        vol.Optional(CONF_GLOBAL_CHANNEL_ID, description=get_vol_descr(config, CONF_GLOBAL_CHANNEL_ID)): int,
-        vol.Optional(CONF_IGNORE_PLATFORM, description=get_vol_descr(config, CONF_IGNORE_PLATFORM)): cv.multi_select(
-            domains
-        ),
-        vol.Optional(CONF_USE_VIMAR_NAMING, description=get_vol_descr(config, CONF_USE_VIMAR_NAMING)): bool,
+        vol.Required(
+            CONF_SCAN_INTERVAL,
+            description=get_vol_descr(config, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+        ): int,
+        vol.Optional(
+            CONF_GLOBAL_CHANNEL_ID, description=get_vol_descr(config, CONF_GLOBAL_CHANNEL_ID)
+        ): int,
+        vol.Optional(
+            CONF_IGNORE_PLATFORM, description=get_vol_descr(config, CONF_IGNORE_PLATFORM)
+        ): cv.multi_select(domains),
+        vol.Optional(
+            CONF_USE_VIMAR_NAMING, description=get_vol_descr(config, CONF_USE_VIMAR_NAMING)
+        ): bool,
         vol.Optional(
             CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN,
             description=get_vol_descr(config, CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN),
         ): bool,
-        vol.Optional(CONF_DEVICES_LIGHTS_RE, description=get_vol_descr(config, CONF_DEVICES_LIGHTS_RE)): str,
         vol.Optional(
-            CONF_DEVICES_BINARY_SENSOR_RE, description=get_vol_descr(config, CONF_DEVICES_BINARY_SENSOR_RE)
+            CONF_DEVICES_LIGHTS_RE, description=get_vol_descr(config, CONF_DEVICES_LIGHTS_RE)
+        ): str,
+        vol.Optional(
+            CONF_DEVICES_BINARY_SENSOR_RE,
+            description=get_vol_descr(config, CONF_DEVICES_BINARY_SENSOR_RE),
         ): str,
     }
     return schema
 
 
-def get_schema_options_three(config: dict = {}) -> dict:
+def get_schema_options_three(config: dict | None = None) -> dict:
     """Return a shcema configuration dict for HACS."""
     # config = config or {}
     # config = config if CONF_TIMEOUT in config else None
     schema = {
         vol.Optional(
-            CONF_DELETE_AND_RELOAD_ALL_ENTITIES, description=get_vol_descr(config, CONF_DELETE_AND_RELOAD_ALL_ENTITIES)
+            CONF_DELETE_AND_RELOAD_ALL_ENTITIES,
+            description=get_vol_descr(config, CONF_DELETE_AND_RELOAD_ALL_ENTITIES),
         ): bool,
     }
     return schema

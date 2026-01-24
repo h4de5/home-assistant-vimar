@@ -6,10 +6,10 @@
         "**/node_modules",
         "**/__pycache__",
     ],
-    "pythonVersion": "3.12",
+    "pythonVersion": "3.13",
     "pythonPlatform": "Linux",
     
     "reportDeprecated": "error",
     "reportIncompatibleMethodOverride": "none",
-    "reportIncompatibleVariableOverride ": "none",
+    "reportIncompatibleVariableOverride": "none"
 }
