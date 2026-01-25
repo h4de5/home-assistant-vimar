@@ -33,7 +33,7 @@ In order to keep all dashboard layouts, automations and groups intact, you may w
 
 Hardware:
 
-- [Vimar - 01945 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01945)
+- [Vimar - 01945 - Web server By-me](https://www.vimar.com/de/int/catalog/obsolete/index/code/R01945)
   or
 - [Vimar - 01946 - Web server Light By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01946)
 
