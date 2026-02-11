@@ -1,6 +1,9 @@
 """Vimar Update State coordinator."""
 
-import asyncio
+from __future__ import annotations
+
+import hashlib
+import json
 from datetime import timedelta
 
 import aiohttp
@@ -24,17 +27,17 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import (
     _LOGGER,
-    DOMAIN,
-    DEFAULT_TIMEOUT,
-    DEFAULT_SCAN_INTERVAL,
-    CONF_SECURE,
     CONF_CERTIFICATE,
-    DEFAULT_CERTIFICATE,
     CONF_GLOBAL_CHANNEL_ID,
-    CONF_OVERRIDE,
     CONF_IGNORE_PLATFORM,
-    PLATFORMS,
+    CONF_OVERRIDE,
+    CONF_SECURE,
+    DEFAULT_CERTIFICATE,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TIMEOUT,
     DEVICE_TYPE_BINARY_SENSOR,
+    DOMAIN,
+    PLATFORMS,
 )
 from .vimar_device_customizer import VimarDeviceCustomizer
 from .vimarlink.vimarlink import VimarLink, VimarProject
@@ -53,6 +56,8 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
     _first_update_data_executed = False
     _platforms_registered = False
     _last_devices_hash = ""
+    _device_state_hashes: dict[str, str] = {}
+    _changed_device_ids: set[str] = set()
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry, vimarconfig: ConfigType) -> None:
         """Initialize."""
@@ -68,7 +73,9 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         uptade_interval = float(vimarconfig.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL)
         if uptade_interval < 1:
             uptade_interval = DEFAULT_SCAN_INTERVAL
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=uptade_interval))
+        super().__init__(
+            hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=uptade_interval)
+        )
 
     async def _async_update_data(self):
         """Fetch data from API endpoint.
@@ -101,7 +108,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
             return devices
         # Note: asyncio.TimeoutError and aiohttp.ClientError are already
         # handled by the data update coordinator.
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise
         except aiohttp.ClientError:
             raise
@@ -181,9 +188,11 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         self.devices_for_platform = {}
         ignored_platforms = self.vimarconfig.get(CONF_IGNORE_PLATFORM) or []
         # DEVICE_TYPE_BINARY_SENSOR needed for webserver status sensor
-        platforms = [i for i in PLATFORMS if i not in ignored_platforms or i == DEVICE_TYPE_BINARY_SENSOR]
+        platforms = [
+            i for i in PLATFORMS if i not in ignored_platforms or i == DEVICE_TYPE_BINARY_SENSOR
+        ]
         await self.hass.config_entries.async_forward_entry_setups(self.entry, platforms)
-        
+
         self._platforms_registered = True
         if len(self.devices_for_platform) > 0:
             await self.async_remove_old_devices()
@@ -250,11 +259,61 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
             entity_registry.async_remove(enity_id)
 
         device_registry = dr.async_get(self.hass)
-        device_registry_entities = dr.async_entries_for_config_entry(device_registry, self.entry.entry_id)
+        device_registry_entities = dr.async_entries_for_config_entry(
+            device_registry, self.entry.entry_id
+        )
         for device_entry in device_registry_entities:
             identifier = str(device_entry.identifiers)
-            if identifier and identifier not in configured_devices and device_entry.id not in devices_to_be_removed:
+            if (
+                identifier
+                and identifier not in configured_devices
+                and device_entry.id not in devices_to_be_removed
+            ):
                 devices_to_be_removed.append(device_entry.id)
 
         for device_id in devices_to_be_removed:
             device_registry.async_remove_device(device_id)
+
+    def _hash_device_state(self, device: dict) -> str:
+        """Generate hash of device state for change detection.
+
+        Only includes dynamic state values, not static properties.
+        object_id is included to prevent hash collisions.
+        """
+        state_data = {
+            "object_id": device["object_id"],
+            "status": device.get("status", {}),
+        }
+        state_json = json.dumps(state_data, sort_keys=True)
+        return hashlib.md5(state_json.encode()).hexdigest()
+
+    def _detect_state_changes(self, devices: dict[str, dict]) -> set[str]:
+        """Detect which devices have changed states.
+
+        Returns:
+            Set of object_ids that changed
+        """
+        changed_ids = set()
+
+        for device_id, device in devices.items():
+            new_hash = self._hash_device_state(device)
+            old_hash = self._device_state_hashes.get(device_id)
+
+            if old_hash is None:
+                # New device
+                changed_ids.add(device_id)
+                log.debug("New device detected: %s", device_id)
+            elif new_hash != old_hash:
+                # State changed
+                changed_ids.add(device_id)
+                if log.isEnabledFor(10):  # DEBUG level
+                    log.debug(
+                        "Device %s (%s) state changed",
+                        device_id,
+                        device.get("device_friendly_name", "unknown"),
+                    )
+
+            # Update hash
+            self._device_state_hashes[device_id] = new_hash
+
+        return changed_ids

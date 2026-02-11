@@ -33,7 +33,7 @@ In order to keep all dashboard layouts, automations and groups intact, you may w
 
 Hardware:
 
-- [Vimar - 01945 - Web server By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01945)
+- [Vimar - 01945 - Web server By-me](https://www.vimar.com/de/int/catalog/obsolete/index/code/R01945)
   or
 - [Vimar - 01946 - Web server Light By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01946)
 
@@ -81,21 +81,46 @@ The integration can currently list and control all lights, rgb dimmers, audio de
 
 ## Command line usage
 
-You can use the vimarlink library in the command line like this:
+You can use the vimarlink library standalone (without Home Assistant) to test connectivity and control devices:
 
 ```bash
-# install python3.9
-# install some requirements
-python3.9 -m pip install async_timeout homeassistant
-# see examples
+# Create and activate Python 3.13 virtual environment
+cd /path/to/home-assistant-vimar
+python3.13 -m venv .venv
+source .venv/bin/activate
+
+# Install minimal dependencies (NO Home Assistant required)
+pip install requests
+
+# Setup credentials
 cd examples
-# copy credentials.cfg.dist to credentials.cfg and add your credentials
-# run the example script - print help
-python3.9 example.py -h
-# run the example script - list all lights
-python3.9 example.py --platform lights
-# run the example script - change a specific cover to open
-python3.9 example.py --platform covers --device 721 "up/down"=0
+cp credentials.cfg.dist credentials.cfg
+# Edit credentials.cfg with your VIMAR server details:
+#   host=<your-vimar-server-ip>
+#   username=<your-username>
+#   password=<your-password>
+#   certificate=  (leave empty to skip SSL verification for expired certs)
+
+# Set PYTHONPATH and run
+export PYTHONPATH=../custom_components/vimar
+
+# List all available platforms and device counts
+python example.py
+
+# List all devices for a specific platform
+# Valid platforms: light, cover, switch, climate, media_player, scene, sensor
+python example.py --platform light
+python example.py --platform cover
+python example.py --platform climate
+
+# Show help
+python example.py -h
+
+# Control a device (example: set cover position)
+python example.py --platform cover --device 721 "up/down=0"
+
+# Change a specific status on a device
+python example.py --platform light --device 123 --status on/off --value 1
 ```
 
 ## contribution

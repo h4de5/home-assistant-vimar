@@ -1,15 +1,16 @@
 """Platform for cover integration."""
 
 import logging
+
 from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
+    CoverEntity,
     CoverEntityFeature,
 )
 
-from .vimar_entity import VimarEntity, vimar_setup_entry
-from homeassistant.components.cover import CoverEntity
 from .const import DEVICE_TYPE_COVERS as CURR_PLATFORM
+from .vimar_entity import VimarEntity, vimar_setup_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -92,14 +93,10 @@ class VimarCover(VimarEntity, CoverEntity):
     @property
     def supported_features(self) -> CoverEntityFeature:
         """Flag supported features."""
-        flags = (
-            CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
-        )
+        flags = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
         if self.has_state("position"):
             flags |= CoverEntityFeature.SET_POSITION
-        if self.has_state("slat_position") and self.has_state(
-            "clockwise/counterclockwise"
-        ):
+        if self.has_state("slat_position") and self.has_state("clockwise/counterclockwise"):
             flags |= (
                 CoverEntityFeature.STOP_TILT
                 | CoverEntityFeature.OPEN_TILT
@@ -141,9 +138,7 @@ class VimarCover(VimarEntity, CoverEntity):
         """Move the cover tilt to a specific position. vimar 100 is down and 0 is up, hass: 100 is up and 0 is down."""
         if kwargs:
             if ATTR_TILT_POSITION in kwargs and self.has_state("slat_position"):
-                self.change_state(
-                    "slat_position", 100 - int(kwargs[ATTR_TILT_POSITION])
-                )
+                self.change_state("slat_position", 100 - int(kwargs[ATTR_TILT_POSITION]))
 
     async def async_stop_cover_tilt(self, **kwargs):
         """Stop the cover."""

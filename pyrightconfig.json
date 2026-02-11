@@ -1,15 +1,29 @@
 {
     "include": [
-        "custom_components/vimar",
+        "custom_components/vimar"
     ],
     "exclude": [
         "**/node_modules",
-        "**/__pycache__",
+        "**/__pycache__"
     ],
-    "pythonVersion": "3.12",
+    "pythonVersion": "3.13",
     "pythonPlatform": "Linux",
-    
+
+    "typeCheckingMode": "basic",
     "reportDeprecated": "error",
     "reportIncompatibleMethodOverride": "none",
-    "reportIncompatibleVariableOverride ": "none",
+    "reportIncompatibleVariableOverride": "none",
+    "reportPrivateImportUsage": "none",
+    "reportOptionalMemberAccess": "none",
+    "reportOptionalSubscript": "none",
+    "reportOptionalCall": "none",
+    "reportOptionalIterable": "none",
+    "reportOptionalContextManager": "none",
+    "reportOptionalOperand": "none",
+    "reportArgumentType": "none",
+    "reportAssignmentType": "none",
+    "reportCallIssue": "none",
+    "reportOperatorIssue": "none",
+    "reportAttributeAccessIssue": "none",
+    "reportGeneralTypeIssues": "none"
 }

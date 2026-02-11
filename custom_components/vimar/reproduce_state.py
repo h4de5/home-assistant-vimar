@@ -1,21 +1,11 @@
-from typing import Iterable, Optional
-from homeassistant.core import Context, State
-from homeassistant.core import HomeAssistant
+from collections.abc import Iterable
+
+from homeassistant.core import Context, HomeAssistant, State
 
 # https://developers.home-assistant.io/docs/reproduce_state_index/
 
 # see: https://git.edevau.net/Ede_Vau/home-assistant-core/src/branch/dev/script/scaffold/templates/reproduce_state/integration/reproduce_state.py
 
-
-from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    SERVICE_TURN_OFF,
-    SERVICE_TURN_ON,
-    STATE_OFF,
-    STATE_ON,
-)
-
-from . import DOMAIN
 
 # _LOGGER = logging.getLogger(__name__)
 
@@ -88,8 +78,9 @@ from . import DOMAIN
 #         DOMAIN, service, service_data, context=context, blocking=True
 #     )
 
+
 async def async_reproduce_states(
-    hass: HomeAssistant, states: Iterable[State], context: Optional[Context] = None
+    hass: HomeAssistant, states: Iterable[State], context: Context | None = None
 ) -> None:
     """Reproduce component states."""
     # TODO reproduce states

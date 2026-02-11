@@ -1,29 +1,46 @@
 """Connection to vimar web server."""
 
-from collections.abc import Callable
+from __future__ import annotations
+
 import logging
 import os
 import ssl
 import sys
-from typing import Dict, List, Tuple, TypedDict
+import xml.etree.ElementTree as xmlTree
+from collections.abc import Callable
+from typing import TypedDict
 from xml.etree import ElementTree
-import xml.etree.cElementTree as xmlTree
 
 import requests
+import urllib3
 from requests import adapters
 from requests.exceptions import HTTPError
-import urllib3
 
-from ..const import DEVICE_TYPE_CLIMATES
-from ..const import (
-    DEVICE_TYPE_COVERS,
-    DEVICE_TYPE_LIGHTS,
-    DEVICE_TYPE_MEDIA_PLAYERS,
-    DEVICE_TYPE_OTHERS,
-    DEVICE_TYPE_SCENES,
-    DEVICE_TYPE_SENSORS,
-    DEVICE_TYPE_SWITCHES,
-)
+# Suppress InsecureRequestWarning when using self-signed certificates
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Import device type constants - fallback to local definitions for standalone use
+try:
+    from ..const import (
+        DEVICE_TYPE_CLIMATES,
+        DEVICE_TYPE_COVERS,
+        DEVICE_TYPE_LIGHTS,
+        DEVICE_TYPE_MEDIA_PLAYERS,
+        DEVICE_TYPE_OTHERS,
+        DEVICE_TYPE_SCENES,
+        DEVICE_TYPE_SENSORS,
+        DEVICE_TYPE_SWITCHES,
+    )
+except ImportError:
+    # Standalone mode (e.g., examples/example.py) - define constants locally
+    DEVICE_TYPE_LIGHTS = "light"
+    DEVICE_TYPE_COVERS = "cover"
+    DEVICE_TYPE_SWITCHES = "switch"
+    DEVICE_TYPE_CLIMATES = "climate"
+    DEVICE_TYPE_MEDIA_PLAYERS = "media_player"
+    DEVICE_TYPE_SCENES = "scene"
+    DEVICE_TYPE_SENSORS = "sensor"
+    DEVICE_TYPE_OTHERS = "other"
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER_isDebug = _LOGGER.isEnabledFor(logging.DEBUG)
@@ -64,9 +81,7 @@ class HTTPAdapter(adapters.HTTPAdapter):
         ssl_context = ssl.create_default_context()
 
         # Sets up old and insecure TLSv1.
-        ssl_context.options &= (
-            ~ssl.OP_NO_TLSv1_3 & ~ssl.OP_NO_TLSv1_2 & ~ssl.OP_NO_TLSv1_1
-        )
+        ssl_context.options &= ~ssl.OP_NO_TLSv1_3 & ~ssl.OP_NO_TLSv1_2 & ~ssl.OP_NO_TLSv1_1
         ssl_context.minimum_version = ssl.TLSVersion.TLSv1
         ssl_context.check_hostname = False
 
@@ -123,12 +138,12 @@ class VimarDevice(TypedDict):
     """Single Vimar device for typing"""
 
     object_id: str
-    room_ids: List[int]
-    room_names: List[str]
+    room_ids: list[int]
+    room_names: list[str]
     room_name: str
     object_name: str
     object_type: str
-    status: Dict[str, Dict[str, str]]
+    status: dict[str, dict[str, str]]
 
     device_type: str
     device_class: str
@@ -191,13 +206,10 @@ class VimarLink:
             temp_certificate = self._certificate
             self._certificate = None
 
-            downloadPath = (
-                "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt"
-                % (
-                    self._schema,
-                    self._host,
-                    self._port,
-                )
+            downloadPath = "%s://%s:%s/vimarbyweb/modules/vimar-byme/script/rootCA.VIMAR.crt" % (
+                self._schema,
+                self._host,
+                self._port,
             )
 
             certificate_file = self._request(downloadPath)
@@ -212,10 +224,10 @@ class VimarLink:
             # compare current cert with downloaded cert, prevent saving if not changed
             old_cert = None
             try:
-                file = open(self._certificate, "r")
+                file = open(self._certificate)
                 old_cert = file.read()
                 file.close()
-            except IOError:
+            except OSError:
                 old_cert = None
 
             if old_cert != certificate_file:
@@ -224,12 +236,10 @@ class VimarLink:
                     file = open(self._certificate, "w")
                     file.write(certificate_file)
                     file.close()
-                except IOError as err:
+                except OSError as err:
                     raise VimarApiError("Saving certificate failed: %s" % str(err))
 
-                _LOGGER.debug(
-                    "Downloaded Vimar CA certificate to: %s", self._certificate
-                )
+                _LOGGER.debug("Downloaded Vimar CA certificate to: %s", self._certificate)
 
         return cert_changed
 
@@ -260,9 +270,7 @@ class VimarLink:
 
         result = self._request(loginurl)
 
-        if (
-            result is False and use_cert
-        ):  # if problem is of certificate, download it again
+        if result is False and use_cert:  # if problem is of certificate, download it again
             curr_ex = self.request_last_exception
             curr_ex_str = str(curr_ex)
             # if certified not valid:
@@ -293,9 +301,7 @@ class VimarLink:
                     logincode = xml.find("result")
                     loginmessage = xml.find("message")
                 else:
-                    raise Exception(
-                        "Login failed - check username, password and certificate path"
-                    )
+                    raise Exception("Login failed - check username, password and certificate path")
             except BaseException as err:
                 raise VimarConnectionError(
                     "Error parsing login response: %s - %s", err, str(result)
@@ -305,9 +311,7 @@ class VimarLink:
                 if loginmessage is not None:
                     raise VimarConfigError("Error during login: %s", loginmessage.text)
                 else:
-                    raise VimarConnectionError(
-                        "Error during login. Code: %s", logincode.text
-                    )
+                    raise VimarConnectionError("Error during login. Code: %s", logincode.text)
             else:
                 _LOGGER.info("Vimar login ok")
                 loginsession = xml.find("sessionid")
@@ -345,13 +349,9 @@ class VimarLink:
             "Expect": "",
         }
 
-        post = (
-            "sessionid=%s&" "op=getjScriptEnvironment&" "context=runtime"
-        ) % self._session_id
+        post = ("sessionid=%s&" "op=getjScriptEnvironment&" "context=runtime") % self._session_id
 
-        return self._request_vimar(
-            post, "vimarbyweb/modules/system/dpadaction.php", headers
-        )
+        return self._request_vimar(post, "vimarbyweb/modules/system/dpadaction.php", headers)
 
     def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
         """Set a given status for one device."""
@@ -481,19 +481,21 @@ ORDER BY o3.ID;""" % (
     def get_paged_results(
         self,
         method: Callable[
-            [Dict[str, VimarDevice], int | None, int | None],
-            Tuple[Dict[str, VimarDevice], int] | None,
+            [dict[str, VimarDevice], int | None, int | None],
+            tuple[dict[str, VimarDevice], int] | None,
         ],
-        objectlist: Dict[str, VimarDevice] = {},
-        start=0,
+        objectlist: dict[str, VimarDevice] | None = None,
+        start: int = 0,
     ):
         """Page results from a method automatically."""
+        if objectlist is None:
+            objectlist = {}
         # define a page size
         limit = MAX_ROWS_PER_REQUEST
 
         if callable(method):
             result = method(objectlist, start, limit)
-            if result != None:
+            if result is not None:
                 objectlist, state_count = result
                 # if method returns excatly page size results - we check for another page
                 if state_count == limit:
@@ -508,11 +510,13 @@ ORDER BY o3.ID;""" % (
 
     def get_room_devices(
         self,
-        devices: Dict[str, VimarDevice] = {},
+        devices: dict[str, VimarDevice] | None = None,
         start: int | None = None,
         limit: int | None = None,
     ):
         """Load all devices that belong to a room."""
+        if devices is None:
+            devices = {}
         if self._room_ids is None:
             return None
 
@@ -547,11 +551,13 @@ LIMIT %d, %d;""" % (
 
     def get_remote_devices(
         self,
-        devices: Dict[str, VimarDevice] = {},
+        devices: dict[str, VimarDevice] | None = None,
         start: int | None = None,
         limit: int | None = None,
     ):
         """Get all devices that can be triggered remotly (includes scenes)."""
+        if devices is None:
+            devices = {}
         if len(devices) == 0:
             _LOGGER.debug(
                 "get_remote_devices started - from %d to %d",
@@ -586,9 +592,11 @@ LIMIT %d, %d;""" % (
         return start, limit
 
     def _generate_device_list(
-        self, select, devices: Dict[str, VimarDevice] = {}, onlyUpdate=False
+        self, select, devices: dict[str, VimarDevice] | None = None, onlyUpdate: bool = False
     ):
         """Generate device list from given sql statements."""
+        if devices is None:
+            devices = {}
         payload = self._request_vimar_sql(select)
         if payload is not None:
             # there will be multible times the same device
@@ -622,9 +630,9 @@ LIMIT %d, %d;""" % (
                         "status_value": device["status_value"],
                     }
                     if "status_range" in device:
-                        deviceItem["status"][device["status_name"]]["status_range"] = (
-                            device["status_range"]
-                        )
+                        deviceItem["status"][device["status_name"]]["status_range"] = device[
+                            "status_range"
+                        ]
 
                 if device["room_ids"] is not None and device["room_ids"] != "":
                     room_ids = []
@@ -641,9 +649,7 @@ LIMIT %d, %d;""" % (
                             room_names.append(room["name"])
                     deviceItem["room_ids"] = room_ids
                     deviceItem["room_names"] = room_names
-                    deviceItem["room_name"] = (
-                        room_names[0] if len(room_names) > 0 else ""
-                    )
+                    deviceItem["room_name"] = room_names[0] if len(room_names) > 0 else ""
 
             return devices, len(payload)
 
@@ -675,9 +681,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 }
             self._rooms = rooms
             self._room_ids = ",".join(roomIds)
-            _LOGGER.info(
-                "get_room_ids ends - found %d rooms", len(self._room_ids.split(","))
-            )
+            _LOGGER.info("get_room_ids ends - found %d rooms", len(self._room_ids.split(",")))
 
             return self._room_ids
         else:
@@ -752,9 +756,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
             for line in lines:
                 if line:
                     if line.find(":") == -1:
-                        raise Exception(
-                            "Missing :-character in response line: %s" % line
-                        )
+                        raise Exception("Missing :-character in response line: %s" % line)
 
                     # split prefix from values
                     prefix, values = line.split(":", 1)
@@ -864,9 +866,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
                 # s.verify = False
 
                 if post is None:
-                    response = s.get(
-                        url, headers=headers, verify=check_ssl, timeout=timeouts
-                    )
+                    response = s.get(url, headers=headers, verify=check_ssl, timeout=timeouts)
                 else:
                     response = s.post(
                         url,
@@ -899,7 +899,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 class VimarProject:
     """Container that holds all vimar devices and its states."""
 
-    _devices: Dict[str, VimarDevice] = {}
+    _devices: dict[str, VimarDevice] = {}
     _link: VimarLink
     _platforms_exists = {}
     global_channel_id = None
@@ -928,9 +928,7 @@ class VimarProject:
         )
 
         # for now we run parse device types and set classes after every update
-        if devices_count != len(self._devices) or (
-            forced is not None and forced is True
-        ):
+        if devices_count != len(self._devices) or (forced is not None and forced is True):
             self._link.get_room_ids()
             self._link.get_paged_results(self._link.get_room_devices, self._devices)
             self.check_devices()
@@ -950,9 +948,7 @@ class VimarProject:
 
     def get_by_device_type(self, platform):
         """Do dictionary comprehension."""
-        return {
-            k: v for (k, v) in self._devices.items() if v["device_type"] == platform
-        }
+        return {k: v for (k, v) in self._devices.items() if v["device_type"] == platform}
 
     def platform_exists(self, platform):
         """Check if there are devices for a given platform."""
@@ -970,9 +966,7 @@ class VimarProject:
         if device["object_type"] == "CH_Main_Automation":
             # if device["object_name"].find("VENTILATOR") != -1 or device["object_name"].find("FANCOIL") != -1 or device["object_name"].find("VENTILATORE") != -1:
             # if "VENTILATOR" in device["object_name"] or "FANCOIL" in device["object_name"] or "VENTILATORE" in device["object_name"]:
-            if any(
-                x in device["object_name"].upper() for x in ["VENTILATOR", "FANCOIL"]
-            ):
+            if any(x in device["object_name"].upper() for x in ["VENTILATOR", "FANCOIL"]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:fan", "mdi:fan-off"]
@@ -984,17 +978,13 @@ class VimarProject:
                 icon = ["mdi:lightbulb-on", "mdi:lightbulb-off"]
             # elif device["object_name"].find("STECKDOSE") != -1 or device["object_name"].find("PULSANTE") != -1:
             # elif "STECKDOSE" in device["object_name"] or "PULSANTE" in device["object_name"]:
-            elif any(
-                x in device["object_name"].upper() for x in ["STECKDOSE", "PULSANTE"]
-            ):
+            elif any(x in device["object_name"].upper() for x in ["STECKDOSE", "PULSANTE"]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_OUTLET
                 icon = ["mdi:power-plug", "mdi:power-plug-off"]
             # elif device["object_name"].find("HEIZUNG") != -1:
             # elif "HEIZUNG" in device["object_name"].upper():
-            elif any(
-                x in device["object_name"].upper() for x in ["HEIZUNG", "HEIZKÖRPER"]
-            ):
+            elif any(x in device["object_name"].upper() for x in ["HEIZUNG", "HEIZKÖRPER"]):
                 device_type = DEVICE_TYPE_SWITCHES
                 device_class = DEVICE_CLASS_SWITCH
                 icon = ["mdi:radiator", "mdi:radiator-off"]

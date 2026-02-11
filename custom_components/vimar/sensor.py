@@ -6,12 +6,12 @@ import logging
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
+    UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
     UnitOfSpeed,
     UnitOfTemperature,
 )
-from homeassistant.const import UnitOfElectricPotential
 
 from .const import DEVICE_TYPE_SENSORS as CURR_PLATFORM
 from .vimar_entity import VimarEntity, vimar_setup_entry
@@ -89,7 +89,9 @@ class VimarSensor(VimarEntity, SensorEntity):
         class_and_unit = self.class_and_units()
         if class_and_unit[1] == SensorDeviceClass.ENERGY:
             return SensorStateClass.TOTAL_INCREASING
-        elif class_and_unit[1] == SensorDeviceClass.POWER and any(x in self._measurement_name for x in ["totale"]):
+        elif class_and_unit[1] == SensorDeviceClass.POWER and any(
+            x in self._measurement_name for x in ["totale"]
+        ):
             return SensorStateClass.MEASUREMENT
         return ""
 

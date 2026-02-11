@@ -3,13 +3,13 @@
 import logging
 from typing import Any
 
+import homeassistant.util.color as color_util
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_HS_COLOR,
     ColorMode,
     LightEntity,
 )
-import homeassistant.util.color as color_util
 
 from .const import DEVICE_TYPE_LIGHTS as CURR_PLATFORM
 from .vimar_entity import VimarEntity, vimar_setup_entry
@@ -56,9 +56,9 @@ class VimarLight(VimarEntity, LightEntity):
     def rgb_color(self) -> tuple[int, int, int] | None:
         """Return RGB colors."""
         return (
-            self.get_state("red") or 0,
-            self.get_state("green") or 0,
-            self.get_state("blue") or 0,
+            int(self.get_state("red") or 0),
+            int(self.get_state("green") or 0),
+            int(self.get_state("blue") or 0),
         )
 
     @property

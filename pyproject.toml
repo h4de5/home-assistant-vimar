@@ -1,0 +1,67 @@
+[project]
+name = "vimar"
+version = "2026.2.0"
+requires-python = ">=3.13"
+
+[tool.black]
+target-version = ["py312"]
+line-length = 100
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | __pycache__
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+]
+ignore = [
+    "E501",   # line too long (black handles this)
+    "UP031",  # Use format specifiers instead of percent format (legacy code)
+    "B904",   # raise exceptions with raise ... from err (legacy code)
+    "B007",   # Loop control variable not used (intentional in some cases)
+    "SIM102", # Use single if statement (readability preference)
+    "SIM103", # Return condition directly (readability preference)
+    "SIM109", # Use tuple for multiple comparisons (readability preference)
+    "SIM115", # Use context handler for opening files (legacy code)
+    "SIM118", # Use key in dict instead of key in dict.keys()
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests for vimarlink (NO Home Assistant required)",
+    "integration: Integration tests for HA components (Home Assistant required)",
+    "no_ha: Tests that don't need Home Assistant installed",
+]
+
+[tool.pyright]
+include = ["custom_components/vimar"]
+exclude = ["**/node_modules", "**/__pycache__"]
+pythonVersion = "3.13"
+pythonPlatform = "Linux"
+typeCheckingMode = "basic"
+reportDeprecated = "error"

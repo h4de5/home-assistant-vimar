@@ -2,10 +2,23 @@ import logging
 import re
 
 # import sys
-
 from homeassistant.helpers.typing import ConfigType
 
-from .const import *
+from .const import (
+    CONF_DEVICES_BINARY_SENSOR_RE,
+    CONF_DEVICES_LIGHTS_RE,
+    CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN,
+    CONF_USE_VIMAR_NAMING,
+    DEVICE_TYPE_CLIMATES,
+    DEVICE_TYPE_COVERS,
+    DEVICE_TYPE_FANS,
+    DEVICE_TYPE_LIGHTS,
+    DEVICE_TYPE_MEDIA_PLAYERS,
+    DEVICE_TYPE_OTHERS,
+    DEVICE_TYPE_SCENES,
+    DEVICE_TYPE_SENSORS,
+    DEVICE_TYPE_SWITCHES,
+)
 
 DEVICE_OVERRIDE_FILTER = "filter"
 DEVICE_OVERRIDE_FILTER_RE = "filter_re"
@@ -48,7 +61,9 @@ class VimarDeviceCustomizer:
                 self.device_override_check(device_override)
             except BaseException as err:
                 _LOGGER.error(
-                    "Error occurred parsing device_override. %s - device_override: %s", str(err), str(device_override)
+                    "Error occurred parsing device_override. %s - device_override: %s",
+                    str(err),
+                    str(device_override),
                 )
                 raise
 
@@ -72,10 +87,15 @@ class VimarDeviceCustomizer:
             action_all.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN: True})
         if self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE):
             # tutti i CH_Main_Automation li imposto inizialmente come switch
-            set_switch = {DEVICE_OVERRIDE_FILTER: {"object_type": "CH_Main_Automation"}, "device_type": "switch"}
+            set_switch = {
+                DEVICE_OVERRIDE_FILTER: {"object_type": "CH_Main_Automation"},
+                "device_type": "switch",
+            }
             set_light = {
                 DEVICE_OVERRIDE_FILTER: {"object_type": "CH_Main_Automation"},
-                DEVICE_OVERRIDE_FILTER_RE: {"friendly_name": self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE)},
+                DEVICE_OVERRIDE_FILTER_RE: {
+                    "friendly_name": self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE)
+                },
                 "device_type": "light",
             }
             actions.append(set_switch)
@@ -83,7 +103,9 @@ class VimarDeviceCustomizer:
         if self.vimarconfig.get(CONF_DEVICES_BINARY_SENSOR_RE):
             set_binary = {
                 DEVICE_OVERRIDE_FILTER: {"device_type": "switch"},
-                DEVICE_OVERRIDE_FILTER_RE: {"friendly_name": self.vimarconfig.get(CONF_DEVICES_BINARY_SENSOR_RE)},
+                DEVICE_OVERRIDE_FILTER_RE: {
+                    "friendly_name": self.vimarconfig.get(CONF_DEVICES_BINARY_SENSOR_RE)
+                },
                 "device_type": "binary_sensor",
             }
             actions.append(set_binary)
@@ -118,7 +140,9 @@ class VimarDeviceCustomizer:
                         self.device_override_action_execute(device, key, value, deviceold)
             except BaseException as err:
                 _LOGGER.error(
-                    "Error occurred for device_override. %s - device_override: %s", str(err), str(device_override)
+                    "Error occurred for device_override. %s - device_override: %s",
+                    str(err),
+                    str(device_override),
                 )
                 raise
 
@@ -130,7 +154,9 @@ class VimarDeviceCustomizer:
                     old_value = str(deviceold[key])
                 new_value = str(self.get_attr_str(device, key))
                 if old_value != new_value:
-                    fields_edit.append(str(key) + ": '" + str(old_value) + "' -> '" + str(new_value) + "'")
+                    fields_edit.append(
+                        str(key) + ": '" + str(old_value) + "' -> '" + str(new_value) + "'"
+                    )
             if len(fields_edit) > 0:
                 _LOGGER.debug(
                     "Overriding attributes per object_name: '"
@@ -159,7 +185,12 @@ class VimarDeviceCustomizer:
                     match = True
         except BaseException as err:
             _LOGGER.error(
-                "Error occurred in match_name. name: '" + name + "', searchRegex: '" + search_regex + "' - %s", str(err)
+                "Error occurred in match_name. name: '"
+                + name
+                + "', searchRegex: '"
+                + search_regex
+                + "' - %s",
+                str(err),
             )
 
         return match
@@ -191,7 +222,11 @@ class VimarDeviceCustomizer:
 
         # extend shorner version to list detailed version
         for key, value in device_override.copy().items():
-            if key == DEVICE_OVERRIDE_ACTIONS or key == DEVICE_OVERRIDE_FILTER or key == DEVICE_OVERRIDE_FILTER_RE:
+            if (
+                key == DEVICE_OVERRIDE_ACTIONS
+                or key == DEVICE_OVERRIDE_FILTER
+                or key == DEVICE_OVERRIDE_FILTER_RE
+            ):
                 continue
             if str(key).startswith("filter_"):
                 field = str(key)[7:100]
@@ -218,7 +253,9 @@ class VimarDeviceCustomizer:
                 repl = {
                     DEVICE_OVERRIDE_ACTION_REPLACE_RE_FIELD: field,
                     DEVICE_OVERRIDE_ACTION_REPLACE_RE_PATTERN: value,
-                    DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL: device_override.get(field + "_regexsub_repl"),
+                    DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL: device_override.get(
+                        field + "_regexsub_repl"
+                    ),
                 }
                 actions.append({DEVICE_OVERRIDE_ACTION_REPLACE_RE: repl})
             elif key == "object_name_as_vimar" or key == "friendly_name_as_vimar":
