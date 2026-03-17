@@ -1,173 +1,285 @@
 [![HACS Validate](https://github.com/h4de5/home-assistant-vimar/actions/workflows/validate.yml/badge.svg)](https://github.com/h4de5/home-assistant-vimar/actions/workflows/validate.yml)
 [![hassfest Validate](https://github.com/h4de5/home-assistant-vimar/actions/workflows/hassfest.yml/badge.svg)](https://github.com/h4de5/home-assistant-vimar/actions/workflows/hassfest.yml)
 [![Github Release](https://img.shields.io/github/release/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/releases)
-[![Github Commit since](https://img.shields.io/github/commits-since/h4de5/home-assistant-vimar/latest?sort=semver)](https://github.com/h4de5/home-assistant-vimar/releases)
+[![Github Commit since](https://img.shields.io/github/commits-since/h4de5/home-assistant-vimar/latest)](https://github.com/h4de5/home-assistant-vimar/releases)
 [![Github Open Issues](https://img.shields.io/github/issues/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/issues)
 [![Github Open Pull Requests](https://img.shields.io/github/issues-pr/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/pulls)
 
-# VIMAR By-Me / By-Web Hub
+# VIMAR By-Me / By-Web Integration for Home Assistant
 
-This is a home-assistant integration for the VIMAR By-me / By-web bus system.
+> **Current Version:** 2026.3.0 · **Requires:** Home Assistant 2026.1.0+ · **Python:** 3.13+
+
+A comprehensive Home Assistant custom integration for the VIMAR By-me / By-web bus system. Controls lights, covers, climate, switches, sensors, media players, scenes, and the **SAI2 alarm system** through the VIMAR web server.
 
 <img title="Lights, climates, covers" src="https://user-images.githubusercontent.com/6115324/84840393-b091e100-b03f-11ea-84b1-c77cbeb83fb8.png" width="900">
 <img title="Energy guards" src="https://user-images.githubusercontent.com/51525150/89122026-3a005400-d4c4-11ea-98cd-c4b340cfb4c2.jpg" width="600">
 <img title="Audio player" src="https://user-images.githubusercontent.com/51525150/89122129-36b99800-d4c5-11ea-8089-18c2dcab0938.jpg" width="300">
 
-## WARNING - BEFORE YOU UPGRADE
+## 💻 Hardware Requirements
 
-If you upgrade from a version earlier of May 2021 - please be aware:
-The integration name has changed from `vimar_platform` to `vimar` - this requires changes in your configuration and it may effect your current dashboards as well.
-In order to keep all dashboard layouts, automations and groups intact, you may want to follow this upgrade guide:
+- **[Vimar 01945 - Web server By-me](https://www.vimar.com/de/int/catalog/obsolete/index/code/R01945)** or
+- **[Vimar 01946 - Web server Light By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01946)**
 
-- DO NOT update the files in your `custom_components` directory right away
-- stop home-assistant
-- find and backup the file: `.storage/core.entity_registry` within your home-assistant config directory
-- open that file in a proper text-editor
-- replace all `vimar_platform` occurrences to `vimar` (only replace with that exact notation)
-- save that file in it's original place
-- open your configuration.yaml and replace `vimar_platform:` with `vimar:` as well
-- remove the directory `custom_components/vimar_platform/` and checkout the source under `custom_components/vimar/`
-- start up home-assistant again
+> **Note:** Tested with firmware versions v2.5 to v2.11. Always backup your Vimar database before firmware upgrades.
 
-## Vimar requirements
+## 📦 Installation
 
-Hardware:
+### HACS (Recommended)
 
-- [Vimar - 01945 - Web server By-me](https://www.vimar.com/de/int/catalog/obsolete/index/code/R01945)
-  or
-- [Vimar - 01946 - Web server Light By-me](https://www.vimar.com/en/int/catalog/product/index/code/R01946)
+1. Open HACS in Home Assistant
+2. Go to **Integrations** → **Custom Repositories**
+3. Add: `https://github.com/h4de5/home-assistant-vimar`
+4. Category: **Integration**
+5. Install and restart Home Assistant
 
-Software:
+### Manual Installation
 
-- [By-me Web Server Firmware](https://www.vimar.com/de/int/catalog/product/index/code/R01945)
+1. Download the [latest release](https://github.com/h4de5/home-assistant-vimar/releases)
+2. Extract and copy `custom_components/vimar` to your HA `custom_components` directory
+3. Restart Home Assistant
 
-  I have only tested it with the firmware version v2.5 to v2.8 - if you plan to update the firmware of your web server, please make sure you have a full backup of your vimar database (complete db and exported xml file) ready.
+## ⚙️ Configuration
 
-## home-assistant requirements
+Configuration is fully managed via the Home Assistant UI.
 
-See installation guides [Home-Assistant.io](http://home-assistant.io/)
+### Initial Setup
 
-### installation
+1. Go to **Settings** → **Devices & Services**
+2. Click **Add Integration**
+3. Search for **VIMAR By-Me Hub**
+4. Enter your web server credentials:
+   - **Host:** IP address or hostname
+   - **Port:** Usually `443` (HTTPS) or `80` (HTTP)
+   - **Username:** Web server admin username
+   - **Password:** Web server password
+   - **SSL Certificate:** (Optional) Path to custom CA certificate
 
-- Use [HACS](https://hacs.xyz/) !
-- ![image](https://user-images.githubusercontent.com/6115324/121959380-ff627b80-cd64-11eb-812f-252dcbddc530.png)
-- Otherwise, download the zip from the latest release and copy `vimar` folder into your custom_components folder within your home-assistant installation.
+### Options Flow
 
-You will end up with something like this:
+After initial setup, click **Configure** on the integration to adjust:
 
-- on docker/hassio: `/config/custom_components/vimar/`
+- **Cover Position Mode:** `auto` (default), `native`, `time_based`, or `legacy`
+- **SAI PIN:** 4-digit PIN for the SAI2 alarm system (required for alarm control)
+- **Ignored Platforms:** Exclude specific platforms from discovery
 
-- on hassbian/virtualenv: `/home/homeassistant/.homeassistant/custom_components/vimar/`
+## 🎯 Supported Devices
 
-### configuration
+| Platform | Device Types | Status |
+|----------|-------------|--------|
+| **Light** | On/Off lights, Dimmers, RGB, White, Hue | ✅ Full Support |
+| **Cover** | Shutters, Blinds — with native or time-based position tracking | ✅ Full Support |
+| **Switch** | Generic switches, Outlets, Fans | ✅ Full Support |
+| **Climate** | HVAC, Fancoils, Thermostats | ✅ Full Support |
+| **Sensor** | Power meters, Energy guards, Temperature | ✅ Full Support |
+| **Media Player** | Audio zones | ✅ Full Support |
+| **Scene** | Vimar scenes | ✅ Full Support |
+| **Alarm Control Panel** | SAI2 alarm areas — arm/disarm, multi-area, PIN protected | ✅ Full Support |
+| **Binary Sensor** | SAI2 alarm zone sensors (door contacts, motion, tamper) + connection status | ✅ Full Support |
 
-After you installed the custom component either via HACS or by extracting the release zip into your `custom_components` folder you should be able to select **Vimar By-Me Hub** from the list of integration in the Home-Assistant GUI.
+## 🚨 SAI2 Alarm System
 
-From there simply follow the instructions.
+Full integration with the VIMAR SAI2 domestic alarm system.
 
-Any previous setup made in your configuration.yaml will be taken over to the GUI and can be removed afterwards.
+### Alarm Control Panel
 
-#### credentials
+Each SAI2 area is exposed as an `alarm_control_panel` entity supporting:
 
-`username` and `password` are those from the local vimar webserver reachable under `host`. `schema`, `port`, and `certificate` is optional - if left out, the integration will use https calls on port 443 to the given host. The `certificate` can be a writeable filename. If there is no file found, the integration will download the current CA certificate from the local vimar webserver and save it under that given file name for sub sequent calls. (e.g. `certificate: rootCA.VIMAR.crt`). `timeout` will allow to tweak the timeout for connection and transmition of data to the webserver (default 6 seconds). if only some platforms should be added to home-assistant you list them in the `ignore` area.
+| Action | Description |
+|--------|-------------|
+| **Disarm** | Disarm the area |
+| **Arm Away** | Full arming (all sensors active) |
+| **Arm Home** | Internal arming (perimeter sensors only) |
+| **Arm Night** | Partial arming |
 
-The hostname or the IP has to match the settings screen on the vimar web server:
+**Features:**
+- Multi-area support — each SAI2 group is a separate entity
+- PIN protection via integration configuration
+- Automatic disarm-before-rearm when switching between armed modes
+- Live state from DPADD_OBJECT bitmask polling
+- All entities grouped under a single **SAI Alarm** device
 
-![image](https://user-images.githubusercontent.com/6115324/83895464-04a0e980-a753-11ea-8c6c-a55dffba5b83.png)
+### Zone Binary Sensors
 
-## limitations
+Each SAI2 zone is exposed as a `binary_sensor` with automatic device class detection:
 
-The integration can currently list and control all lights, rgb dimmers, audio devices, energie guards, covers/shades, fans, switches, climates and scenes. Other devices are not yet implemented. The python module behind the communication mimics the http calls to the webserver that are usually made through the By-me Webinterface. Generally speaking: **THIS IS A BETA VERSION** Use at your own risk. So far I could only test it on a single installation, which is my own. If you want to try it out, and need help, please create a "Request Support" ticket.
+| Zone Name Keywords | Device Class |
+|-----------|--------------|
+| porta, ingresso, basculante | `door` |
+| finestra | `window` |
+| volumetrico, PIR, motion | `motion` |
+| sirena, manomissione, tamper | `tamper` |
 
-## Command line usage
+**Extra attributes:** `raw_value`, `excluded`, `alarm`, `tampered`, `masked`, `memory`, `area`
 
-You can use the vimarlink library standalone (without Home Assistant) to test connectivity and control devices:
+### Setup
 
-```bash
-# Create and activate Python 3.13 virtual environment
-cd /path/to/home-assistant-vimar
-python3.13 -m venv .venv
-source .venv/bin/activate
+1. Configure the **SAI PIN** in integration options (the numeric code used on the Vimar web interface)
+2. Alarm entities appear automatically after integration reload
+3. Zone sensors update via slim poll (real-time parent bitmask)
 
-# Install minimal dependencies (NO Home Assistant required)
-pip install requests
+## 🏠 Cover Position Tracking
 
-# Setup credentials
-cd examples
-cp credentials.cfg.dist credentials.cfg
-# Edit credentials.cfg with your VIMAR server details:
-#   host=<your-vimar-server-ip>
-#   username=<your-username>
-#   password=<your-password>
-#   certificate=  (leave empty to skip SSL verification for expired certs)
+Advanced position tracking for covers lacking native positional feedback.
 
-# Set PYTHONPATH and run
-export PYTHONPATH=../custom_components/vimar
+### Operating Modes
 
-# List all available platforms and device counts
-python example.py
+| Mode | Description |
+|------|-------------|
+| **`auto`** (default) | Uses hardware sensor when available, falls back to time-based tracking |
+| **`native`** | Hardware position sensors only |
+| **`time_based`** | Always uses time-based calculation |
+| **`legacy`** | Original master branch behavior (no tracking) |
 
-# List all devices for a specific platform
-# Valid platforms: light, cover, switch, climate, media_player, scene, sensor
-python example.py --platform light
-python example.py --platform cover
-python example.py --platform climate
+### Travel Time Calibration
 
-# Show help
-python example.py -h
+For accurate position tracking without hardware sensors:
 
-# Control a device (example: set cover position)
-python example.py --platform cover --device 721 "up/down=0"
+1. Go to **Developer Tools** → **Services**
+2. Select `vimar.set_travel_times`
+3. Choose your cover entity
+4. Enter measured times:
+   - `travel_time_up`: Seconds from fully closed to fully open
+   - `travel_time_down`: Seconds from fully open to fully closed
 
-# Change a specific status on a device
-python example.py --platform light --device 123 --status on/off --value 1
+**Features:**
+- 200ms internal calculation interval, UI state updated every 1% position change
+- Position persistence across HA restarts
+- Physical button detection (wall switches auto-sync to 0%/100%)
+- Relay delay compensation for Vimar web server latency
+- Per-entity travel time configuration via entity options
+
+## 🛠️ Architecture
+
+### Modular Structure
+
+```
+custom_components/vimar/
+├── vimarlink/                    # Core library (HA-independent)
+│   ├── connection.py            # HTTP & authentication
+│   ├── device_queries.py        # SQL query builders
+│   ├── exceptions.py            # Error classes
+│   ├── http_adapter.py          # SSL/TLS legacy support
+│   ├── sql_parser.py            # Response parser
+│   ├── vimarlink.py             # Main API facade
+│   ├── vimarlink_auth.py        # Auth with legacy TLS
+│   └── vimarlink_protocol_async.py  # Async protocol
+├── alarm_control_panel.py       # SAI2 alarm platform
+├── binary_sensor.py             # Binary sensors + SAI2 zones
+├── climate.py                   # HVAC / thermostats
+├── config_flow.py               # UI configuration
+├── const.py                     # Constants
+├── cover.py                     # Covers with time-based tracking
+├── light.py                     # Lights / dimmers / RGB
+├── media_player.py              # Audio zones
+├── scene.py                     # Scenes
+├── sensor.py                    # Power / energy / temperature
+├── switch.py                    # Switches / outlets
+├── vimar_coordinator.py         # DataUpdateCoordinator
+├── vimar_device_customizer.py   # Device type overrides
+└── vimar_entity.py              # Base entity class
 ```
 
-## contribution
+### Key Design Decisions
 
-If you want to help see some examples of how to read out data for new devies in [contribution](CONTRIBUTING.md).
+- **Slim polling:** After initial discovery, updates query only status IDs — ~90% less DB workload
+- **Hash-based change detection:** Only devices with changed status hashes trigger HA state writes
+- **Modular `vimarlink`:** Core library has zero HA dependencies, usable standalone
+- **Re-authentication flow:** `ConfigEntryAuthFailed` triggers automatic reauth dialog
+- **Entity availability:** Reports `unavailable` when web server is offline, auth fails, or device is removed
 
-## troubleshooting
+## 🐛 Troubleshooting
 
-**When you install, update or uninstall the integration, you need to restart Home Assistant.**
+### Enable Debug Logging
 
-Enable more logging for vimar - add to your `configuration.yaml`:
+Add to your `configuration.yaml`:
 
-    logger:
-      default: warning
-      logs:
-        custom_components.vimar: debug
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.vimar: debug
+    custom_components.vimar.vimarlink: debug
+```
 
-have a look into your home-assistant log files - usually named `home-assistant.log` in the directory where your `configuration.yaml` is located.
+### Common Issues
 
-      WARNING (MainThread) [homeassistant.loader] You are using a custom integration for vimar which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant.
+#### SSL/Certificate Errors
 
-> the Vimar platform code and the configuration was found. The warning is been shown for all custom components. This is GOOD!
+**Problem:** `SSL: CERTIFICATE_VERIFY_FAILED`
 
-      ERROR (MainThread) [custom_components.vimar] Could not connect to Vimar Webserver home-assistant
+**Solutions:**
+1. Configure certificate path in integration settings
+2. Integration auto-downloads certificates on first connection
+3. Use HTTP instead of HTTPS (not recommended)
 
-> Vimar By-me Webserver was not found under the given address.
+#### Connection Timeout
 
-      ERROR (MainThread) [homeassistant.setup] Setup failed for vimar: Integration not found
+**Problem:** Web server doesn't respond
 
-> You have put the content of this repository into the wrong directory - see above for an example.
+**Solutions:**
+1. Check network connectivity and firewall rules
+2. Increase timeout in integration options
+3. Check web server load — create a dedicated HA user
 
-      ERROR (SyncWorker_4) [custom_components.vimar.vimarlink] Other error occurred: SSLError(MaxRetryError('HTTPSConnectionPool(host='***', port=443): Max retries exceeded with url: /vimarbyweb/modules/system/user_login.php?sessionid=&username=***&password=***&remember=0&op=login (Caused by SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_server_certificate', 'certificate verify failed')])")))'))
+#### Session Conflicts
 
-> There seems to a problem with the SSL connection. Try if it works with the config setting `certificate: ` (empty certificate option)
+**Problem:** Web GUI becomes unresponsive when HA is connected
 
-      ERROR (SyncWorker_5) [custom_components.vimar.vimarlink] Error parsing XML: TypeError("a bytes-like object is required, not 'bool'")
+**Solution:** Create a **dedicated user** on the Vimar web server for Home Assistant.
 
-> This message paired with a web server that needs manual restarting: You may have too many devices connected to the installation.
+#### Cover Position Drift
 
-      Some entities are listed as "not available" with a red exclamation mark in the entity list.
+**Problem:** Cover position becomes inaccurate over time
 
-> See the explanation and the fix in: https://github.com/h4de5/home-assistant-vimar/issues/15#issuecomment-665635305
+**Solutions:**
+1. Recalibrate travel times with precise measurements
+2. Perform full open/close cycle to auto-calibrate end-stops
+3. Switch to `native` mode if hardware sensors are available
 
-      When you enable the integration in home-assistant you can no longer use the vimar web server gui.
+#### SAI2 Alarm Not Responding
 
-> Please create a separate user on your VIMAR webserver for this integration. At some point the web server does not allow to be logged in with the same user from different locations and simple drops one connection. This may have strange side effects.
+**Problem:** Alarm entities appear but commands fail
 
-## thanks
+**Solutions:**
+1. Verify the **SAI PIN** is correct in integration options
+2. Check that the Vimar web server user has SAI access permissions
+3. Enable debug logging for `custom_components.vimar.alarm_control_panel`
 
-thanks to everybody who was helping me developing and testing this integration. special thanks to user @felisida for his endless patience ;)
+## 🌍 Internationalization
+
+Config flow, options flow, and reauth flow are fully translated in **7 languages**:
+
+🇬🇧 English · 🇮🇹 Italian · 🇩🇪 German · 🇫🇷 French · 🇪🇸 Spanish · 🇳🇱 Dutch · 🇵🇹 Portuguese
+
+## ⚠️ Disclaimer
+
+**THIS IS A COMMUNITY-DRIVEN PROJECT.**
+
+Use at your own risk. This integration mimics HTTP calls made through the official Vimar By-me web interface. While extensively tested, it is not officially supported by Vimar.
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+- 🐛 Report bugs via [Issues](https://github.com/h4de5/home-assistant-vimar/issues)
+- ✨ Request features
+- 🔧 Submit pull requests
+
+## 📜 License
+
+MIT License — see [LICENSE](LICENSE) file
+
+## 🙏 Credits
+
+**Maintainers:**
+- [@h4de5](https://github.com/h4de5)
+- [@robigan](https://github.com/robigan)
+- [@davideciarmiello](https://github.com/davideciarmiello)
+
+**Contributors:**
+- [@WhiteWolf84](https://github.com/WhiteWolf84) — Architecture refactoring, performance optimizations, SAI2 alarm integration (powered by [Claude Opus](https://claude.ai))
+- And all community members who reported issues and tested features!
+
+---
+
+**Star this repo if you find it useful! ⭐**
