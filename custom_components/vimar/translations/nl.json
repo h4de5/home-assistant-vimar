@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Vimar By-Me Hub Configuratie",
+        "description": "Configureer uw Vimar By-me webserver verbinding.",
+        "data": {
+          "title": "Naam voor deze integratie",
+          "host": "Host (IP of hostnaam)",
+          "port": "Poort",
+          "secure": "Gebruik HTTPS",
+          "verify_ssl": "Verifieer SSL-certificaat",
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord",
+          "certificate": "Aangepast certificaatpad (optioneel)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Vimar By-Me Hub Opnieuw Authenticeren",
+        "description": "De inloggegevens voor {host} zijn niet meer geldig. Voer uw bijgewerkte inloggegevens in.",
+        "data": {
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ongeldige gebruikersnaam of wachtwoord. Controleer uw inloggegevens.",
+      "cannot_connect": "Kan geen verbinding maken met de Vimar webserver. Controleer host, poort en netwerkverbinding.",
+      "invalid_cert": "SSL-certificaatvalidatie mislukt. Controleer certificaatconfiguratie of schakel SSL-verificatie uit.",
+      "save_cert_failed": "Kan SSL-certificaat niet opslaan. Controleer bestandsrechten.",
+      "unknown": "Er is een onverwachte fout opgetreden. Bekijk de logs voor meer details."
+    },
+    "abort": {
+      "already_configured": "Deze Vimar webserver is al geconfigureerd.",
+      "reauth_successful": "Herauthenticatie succesvol! Uw integratie is bijgewerkt.",
+      "reauth_failed": "Herauthenticatie mislukt. Probeer het opnieuw of configureer de integratie opnieuw.",
+      "single_instance_allowed": "Slechts één instantie van de Vimar integratie is toegestaan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Verbindingsinstellingen",
+        "description": "Configureer verbindingsparameters.",
+        "data": {
+          "host": "Host",
+          "port": "Poort",
+          "secure": "Gebruik HTTPS",
+          "verify_ssl": "Verifieer SSL",
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord",
+          "certificate": "Certificaatpad"
+        }
+      },
+      "two": {
+        "title": "Integratie-instellingen",
+        "description": "Configureer polling, filters en platformopties.",
+        "data": {
+          "timeout": "Verbindingstimeout (seconden)",
+          "scan_interval": "Polling-interval (seconden)",
+          "global_channel_id": "Globale kanaal-ID (optioneel)",
+          "ignore_platform": "Te negeren platforms",
+          "cover_position_mode": "Cover positiemodus",
+          "use_vimar_naming": "Gebruik Vimar apparaatnamen",
+          "friendly_name_room_name_at_begin": "Plaats kamernaam voor apparaatnamen",
+          "devices_lights_re": "Lichtapparaatfilter (regex)",
+          "devices_binary_sensor_re": "Binaire sensorfilter (regex)"
+        }
+      },
+      "three": {
+        "title": "Geavanceerde opties",
+        "description": "Geavanceerde configuratieopties.",
+        "data": {
+          "delete_and_reload_all_entities": "Forceer herladen van alle entiteiten (volgende herstart)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ongeldige inloggegevens",
+      "cannot_connect": "Verbinding mislukt",
+      "invalid_cert": "SSL-fout",
+      "regex_not_valid": "Ongeldige reguliere expressie",
+      "unknown": "Onbekende fout opgetreden"
+    }
+  }
+}

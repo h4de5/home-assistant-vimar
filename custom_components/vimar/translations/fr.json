@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuration Vimar By-Me Hub",
+        "description": "Configurez votre connexion au serveur web Vimar By-me.",
+        "data": {
+          "title": "Nom de cette intégration",
+          "host": "Hôte (IP ou nom d'hôte)",
+          "port": "Port",
+          "secure": "Utiliser HTTPS",
+          "verify_ssl": "Vérifier le certificat SSL",
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe",
+          "certificate": "Chemin du certificat personnalisé (optionnel)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Réauthentification Vimar By-Me Hub",
+        "description": "Les identifiants pour {host} ne sont plus valides. Veuillez entrer vos identifiants mis à jour.",
+        "data": {
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nom d'utilisateur ou mot de passe invalide. Veuillez vérifier vos identifiants.",
+      "cannot_connect": "Impossible de se connecter au serveur web Vimar. Vérifiez l'hôte, le port et la connectivité réseau.",
+      "invalid_cert": "La validation du certificat SSL a échoué. Vérifiez la configuration du certificat ou désactivez la vérification SSL.",
+      "save_cert_failed": "Échec de l'enregistrement du certificat SSL. Vérifiez les permissions du fichier.",
+      "unknown": "Une erreur inattendue s'est produite. Consultez les journaux pour plus de détails."
+    },
+    "abort": {
+      "already_configured": "Ce serveur web Vimar est déjà configuré.",
+      "reauth_successful": "Réauthentification réussie ! Votre intégration a été mise à jour.",
+      "reauth_failed": "La réauthentification a échoué. Veuillez réessayer ou reconfigurer l'intégration.",
+      "single_instance_allowed": "Une seule instance de l'intégration Vimar est autorisée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paramètres de connexion",
+        "description": "Configurer les paramètres de connexion.",
+        "data": {
+          "host": "Hôte",
+          "port": "Port",
+          "secure": "Utiliser HTTPS",
+          "verify_ssl": "Vérifier SSL",
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe",
+          "certificate": "Chemin du certificat"
+        }
+      },
+      "two": {
+        "title": "Paramètres d'intégration",
+        "description": "Configurer l'interrogation, les filtres et les options de plateforme.",
+        "data": {
+          "timeout": "Délai de connexion (secondes)",
+          "scan_interval": "Intervalle d'interrogation (secondes)",
+          "global_channel_id": "ID de canal global (optionnel)",
+          "ignore_platform": "Plateformes à ignorer",
+          "cover_position_mode": "Mode de position des volets",
+          "use_vimar_naming": "Utiliser les noms de dispositifs Vimar",
+          "friendly_name_room_name_at_begin": "Préfixer les noms de dispositifs avec le nom de la pièce",
+          "devices_lights_re": "Filtre de dispositifs lumineux (regex)",
+          "devices_binary_sensor_re": "Filtre de capteurs binaires (regex)"
+        }
+      },
+      "three": {
+        "title": "Options avancées",
+        "description": "Options de configuration avancées.",
+        "data": {
+          "delete_and_reload_all_entities": "Forcer le rechargement de toutes les entités (prochain redémarrage)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Identifiants invalides",
+      "cannot_connect": "Échec de la connexion",
+      "invalid_cert": "Erreur SSL",
+      "regex_not_valid": "Expression régulière invalide",
+      "unknown": "Une erreur inconnue s'est produite"
+    }
+  }
+}
