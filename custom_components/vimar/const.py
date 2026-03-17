@@ -15,6 +15,7 @@ CONF_SECURE = "secure"
 CONF_CERTIFICATE = "certificate"
 CONF_GLOBAL_CHANNEL_ID = "global_channel_id"
 CONF_IGNORE_PLATFORM = "ignore"
+CONF_SAI_PIN = "sai_pin"
 
 DEFAULT_USERNAME = "admin"
 DEFAULT_SCHEMA = "https"
@@ -37,6 +38,21 @@ CONF_DEVICES_LIGHTS_RE = "devices_as_lights_re"
 CONF_DEVICES_BINARY_SENSOR_RE = "devices_as_binary_sensor_re"
 CONF_DELETE_AND_RELOAD_ALL_ENTITIES = "delete_and_reload_all_entities"
 
+# Cover position mode
+CONF_COVER_POSITION_MODE = "cover_position_mode"
+COVER_POSITION_MODE_AUTO = "auto"
+COVER_POSITION_MODE_NATIVE = "native"
+COVER_POSITION_MODE_TIME_BASED = "time_based"
+COVER_POSITION_MODE_LEGACY = "legacy"  # Original master branch behavior
+DEFAULT_COVER_POSITION_MODE = COVER_POSITION_MODE_AUTO
+
+COVER_POSITION_MODES = [
+    COVER_POSITION_MODE_AUTO,
+    COVER_POSITION_MODE_NATIVE,
+    COVER_POSITION_MODE_TIME_BASED,
+    COVER_POSITION_MODE_LEGACY,
+]
+
 # vimar integration specific const
 
 DEVICE_TYPE_LIGHTS = "light"
@@ -48,6 +64,7 @@ DEVICE_TYPE_SCENES = "scene"
 DEVICE_TYPE_FANS = "fan"
 DEVICE_TYPE_SENSORS = "sensor"
 DEVICE_TYPE_OTHERS = "other"
+DEVICE_TYPE_ALARM = "alarm_control_panel"
 
 
 VIMAR_CLIMATE_OFF = "VIMAR_CLIMATE_OFF"
@@ -85,6 +102,7 @@ AVAILABLE_PLATFORMS = {
 }
 DEVICE_TYPE_BINARY_SENSOR = "binary_sensor"
 PLATFORMS = [
+    DEVICE_TYPE_ALARM,
     DEVICE_TYPE_BINARY_SENSOR,
     DEVICE_TYPE_LIGHTS,
     DEVICE_TYPE_COVERS,
