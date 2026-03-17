@@ -13,6 +13,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
+from .const import DEVICE_TYPE_CLIMATES
 from .const import DEVICE_TYPE_SENSORS as CURR_PLATFORM
 from .vimar_entity import VimarEntity, vimar_setup_entry
 
@@ -27,7 +28,33 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the Vimar Sensor platform."""
     vimar_setup_entry(VimarSensorContainer, CURR_PLATFORM, hass, entry, async_add_devices)
-    # https://github.com/custom-components/remote_homeassistant/blob/aac178b737357492cf3beb60ec3494dcf0513c3a/custom_components/remote_homeassistant/sensor.py#L4
+
+    # Create companion temperature sensors from climate devices so that
+    # the measured temperature appears in HA area views (which require a
+    # dedicated sensor entity with device_class=temperature).
+    from .vimar_coordinator import VimarDataUpdateCoordinator
+    from .const import DOMAIN
+    coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    vimarproject = coordinator.vimarproject
+    climate_devices = vimarproject.get_by_device_type(DEVICE_TYPE_CLIMATES)
+    temp_sensors = []
+    for device_id, device in climate_devices.items():
+        if device.get("ignored", False):
+            continue
+        status = device.get("status", {})
+        if "temperatura_misurata" in status:
+            temp_sensors.append(VimarClimateTempSensor(coordinator, int(device_id), "temperatura_misurata"))
+        elif "temperatura" in status:
+            temp_sensors.append(VimarClimateTempSensor(coordinator, int(device_id), "temperatura"))
+    if temp_sensors:
+        _LOGGER.info("Adding %d companion temperature sensors from climate devices", len(temp_sensors))
+        async_add_devices(temp_sensors)
+        # Register companion sensors so async_remove_old_devices does not
+        # purge them (it only keeps entities listed in devices_for_platform).
+        if CURR_PLATFORM in coordinator.devices_for_platform:
+            coordinator.devices_for_platform[CURR_PLATFORM].extend(temp_sensors)
+        else:
+            coordinator.devices_for_platform[CURR_PLATFORM] = list(temp_sensors)
 
 
 class VimarSensor(VimarEntity, SensorEntity):
@@ -234,15 +261,63 @@ class VimarSensorContainer(VimarEntity):
 
         return sensor_list
 
+class VimarClimateTempSensor(VimarEntity, SensorEntity):
+    """Companion temperature sensor for a Vimar climate device.
 
-# The row is Row000005: '321','consumo_totale','-1','0.310'
-#  (the device is set to consider also your potential production - zero in my case - with row n.6 and the net demand row n.8
-# Row000004: '319','scambio_totale','-1','0.310'
-# Row000005: '321','consumo_totale','-1','0.310'
-# Row000006: '323','produzione_totale','-1','0'
-# Row000007: '325','immissione_totale','-1','-0.000'
-# Row000008: '327','prelievo_totale','-1','0.310'
-# Row000009: '329', 'autoconsumo_totale', '-1', '0.000'
-#
-# CH_KNX_GENERIC_POWER_KW
-# Unknown object has states: {'value': {'status_id': '58240', 'status_value': '0.00', 'status_range': 'min=-670760|max=670760'}}
+    Exposes the thermostat's measured temperature as a dedicated sensor
+    entity with device_class=temperature so that HA area views can display
+    the room temperature.
+    """
+
+    _status_key: str
+
+    def __init__(self, coordinator, device_id: int, status_key: str):
+        """Initialize the companion temperature sensor."""
+        self._status_key = status_key
+        VimarEntity.__init__(self, coordinator, device_id)
+
+    @property
+    def entity_platform(self):
+        """Return the platform of this entity."""
+        return CURR_PLATFORM
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return super().name + " Temperatura"
+
+    @property
+    def unique_id(self):
+        """Return a unique ID distinct from the climate entity."""
+        return super().unique_id + "-temp"
+
+    @property
+    def device_class(self):
+        """Return temperature device class."""
+        return SensorDeviceClass.TEMPERATURE
+
+    @property
+    def state_class(self) -> str:
+        """Return measurement state class."""
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def native_unit_of_measurement(self):
+        """Return Celsius."""
+        return UnitOfTemperature.CELSIUS
+
+    @property
+    def native_value(self):
+        """Return the measured temperature."""
+        val = self.get_state(self._status_key)
+        if val is not None:
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return None
+        return None
+
+    @property
+    def state(self):
+        """Return the measured temperature."""
+        return self.native_value
