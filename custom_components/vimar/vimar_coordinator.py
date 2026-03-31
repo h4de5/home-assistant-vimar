@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import hashlib
 import json
@@ -10,7 +11,6 @@ import time
 from datetime import timedelta
 
 import aiohttp
-import async_timeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
@@ -114,10 +114,10 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
                 raise PlatformNotReady
 
             if self.vimarconnection is None or not self.vimarconnection.is_logged():
-                async with async_timeout.timeout(self._timeout):
+                async with asyncio.timeout(self._timeout):
                     await self.validate_vimar_credentials()
 
-            async with async_timeout.timeout(self._timeout):
+            async with asyncio.timeout(self._timeout):
                 forced = not self._first_update_data_executed or not self._platforms_registered
 
                 if forced or not self._slim_poll_active:
@@ -511,7 +511,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
             "status": device.get("status", {}),
         }
         state_json = json.dumps(state_data, sort_keys=True)
-        return hashlib.md5(state_json.encode()).hexdigest()
+        return hashlib.md5(state_json.encode(), usedforsecurity=False).hexdigest()
 
     def _detect_state_changes(self, devices: dict[str, dict]) -> set[str]:
         """Detect which devices have changed states.
