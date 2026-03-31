@@ -7,3 +7,7 @@ examples/credentials.cfg
 .vs
 .venv
 venv
+
+# Database dumps (sensitive data)
+BYWEB-*.sql
+*.sql

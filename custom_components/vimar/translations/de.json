@@ -1,73 +1,87 @@
 {
-    "title": "VIMAR By-Me Hub",
-    "config": {
-      "step": {
-        "user": {
-          "title": "Set up VIMAR By-Me Hub",
-          "data": {
-            "title": "Instance Title",
-            "host": "Host",
-            "username": "User Name",
-            "password": "Password",
-            "port": "Port",
-            "certificate": "Certificate file name",
-            "secure": "Secure (Https)",
-            "verify_ssl": "Verify SSL"
-          }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Vimar By-Me Hub Einrichtung",
+        "description": "Konfigurieren Sie Ihre Vimar By-me Webserver-Verbindung.",
+        "data": {
+          "title": "Name für diese Integration",
+          "host": "Host (IP oder Hostname)",
+          "port": "Port",
+          "secure": "HTTPS verwenden",
+          "verify_ssl": "SSL-Zertifikat überprüfen",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "certificate": "Benutzerdefinierter Zertifikatspfad (optional)"
         }
       },
-      "error": {
-        "cannot_connect": "Failed to connect, please try again",
-        "invalid_auth": "Invalid authentication",
-        "invalid_cert": "Invalid certificate, try change or remove",
-        "save_cert_failed": "Saving certificate failed. Check path and retry",
-        "unknown": "Unexpected error"
-      },
-      "abort": {
-        "already_configured": "Device is already configured"
+      "reauth_confirm": {
+        "title": "Vimar By-Me Hub neu authentifizieren",
+        "description": "Die Anmeldedaten für {host} sind nicht mehr gültig. Bitte geben Sie Ihre aktualisierten Anmeldedaten ein.",
+        "data": {
+          "username": "Benutzername",
+          "password": "Passwort"
+        }
       }
     },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Set up VIMAR By-Me Hub (Auth)",
-          "data": {
-            "host": "Host",
-            "username": "User Name",
-            "password": "Password",
-            "port": "Port",
-            "certificate": "Certificate file name",
-            "secure": "Secure (Https)",
-            "verify_ssl": "Verify SSL"
-          }
-        },
-        "two": {
-          "title": "Set up VIMAR By-Me Hub (2)",
-          "data": {
-            "timeout": "Request Timeout (seconds)",
-            "scan_interval": "Scan Interval (seconds)",
-            "global_channel_id": "MediaPlayer Global Channel Id",
-            "ignore": "Ignored platforms",
-            "use_vimar_naming": "Use naming as Vimar",
-            "friendly_name_room_name_at_begin": "Set Room Name at begin of name",
-            "devices_as_lights_re": "RegEx for set entities as lights (CH_Main_Automation), others setted as switch",
-            "devices_as_binary_sensor_re": "RegEx for set entities swich as binary_sensor"
-          }
-        },
-        "three": {
-          "title": "Set up VIMAR By-Me Hub (3)",
-          "data": {
-            "delete_and_reload_all_entities" : "Delete and reload all entities (if naming changed)"
-          }
+    "error": {
+      "invalid_auth": "Ungültiger Benutzername oder Passwort. Bitte überprüfen Sie Ihre Anmeldedaten.",
+      "cannot_connect": "Verbindung zum Vimar-Webserver nicht möglich. Überprüfen Sie Host, Port und Netzwerkverbindung.",
+      "invalid_cert": "SSL-Zertifikatsvalidierung fehlgeschlagen. Überprüfen Sie die Zertifikatskonfiguration oder deaktivieren Sie die SSL-Überprüfung.",
+      "save_cert_failed": "SSL-Zertifikat konnte nicht gespeichert werden. Überprüfen Sie die Dateiberechtigungen.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Weitere Details finden Sie in den Protokollen."
+    },
+    "abort": {
+      "already_configured": "Dieser Vimar-Webserver ist bereits konfiguriert.",
+      "reauth_successful": "Neuauthentifizierung erfolgreich! Ihre Integration wurde aktualisiert.",
+      "reauth_failed": "Neuauthentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut oder konfigurieren Sie die Integration neu.",
+      "single_instance_allowed": "Nur eine Vimar-Integrationsinstanz ist zulässig."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Verbindungseinstellungen",
+        "description": "Verbindungsparameter konfigurieren.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "secure": "HTTPS verwenden",
+          "verify_ssl": "SSL überprüfen",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "certificate": "Zertifikatspfad"
         }
       },
-      "error": {
-        "cannot_connect": "Failed to connect, please try again",
-        "invalid_auth": "Invalid authentication",
-        "invalid_cert": "Invalid certificate, try change or remove",
-        "save_cert_failed": "Saving certificate failed. Check path and retry",
-        "unknown": "Unexpected error",
-        "regex_not_valid": "RegEx not valid"
+      "two": {
+        "title": "Integrationseinstellungen",
+        "description": "Polling, Filter und Plattformoptionen konfigurieren.",
+        "data": {
+          "timeout": "Verbindungstimeout (Sekunden)",
+          "scan_interval": "Polling-Intervall (Sekunden)",
+          "global_channel_id": "Globale Kanal-ID (optional)",
+          "ignore_platform": "Zu ignorierende Plattformen",
+          "cover_position_mode": "Rollladenpositionsmodus",
+          "use_vimar_naming": "Vimar-Gerätenamen verwenden",
+          "friendly_name_room_name_at_begin": "Raumname vor Gerätenamen stellen",
+          "devices_lights_re": "Lichtgerätefilter (Regex)",
+          "devices_binary_sensor_re": "Binärsensorfilter (Regex)"
+        }
+      },
+      "three": {
+        "title": "Erweiterte Optionen",
+        "description": "Erweiterte Konfigurationsoptionen.",
+        "data": {
+          "delete_and_reload_all_entities": "Alle Entitäten neu laden erzwingen (nächster Neustart)"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Ungültige Anmeldedaten",
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_cert": "SSL-Fehler",
+      "regex_not_valid": "Ungültiger regulärer Ausdruck",
+      "unknown": "Unbekannter Fehler aufgetreten"
     }
   }
+}
