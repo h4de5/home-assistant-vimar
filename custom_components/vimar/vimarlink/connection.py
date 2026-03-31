@@ -125,7 +125,7 @@ class VimarConnection:
 
         try:
             xml = self._parse_xml(result)
-            if not xml:
+            if xml is None:
                 raise Exception("Login failed - check username, password and certificate path")
             logincode = xml.find("result")
             loginmessage = xml.find("message")
@@ -145,7 +145,7 @@ class VimarConnection:
         else:
             _LOGGER.warning("Missing Session id in login response: %s", result)
 
-        return result
+        return result if isinstance(result, str) else None
 
     def is_logged(self) -> bool:
         """Check if session is available."""

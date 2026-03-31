@@ -98,8 +98,10 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         - Login fails with invalid credentials
         - Session expires and cannot be renewed
         - Certificate validation fails
-        """
-        self.reauth_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        entry_id = self.context.get("entry_id")
+        if not entry_id:
+            return self.async_abort(reason="reauth_failed")
+        self.reauth_entry = self.hass.config_entries.async_get_entry(entry_id)
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(self, user_input=None) -> FlowResult:
