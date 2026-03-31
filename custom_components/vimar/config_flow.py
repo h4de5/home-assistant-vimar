@@ -98,6 +98,7 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         - Login fails with invalid credentials
         - Session expires and cannot be renewed
         - Certificate validation fails
+        """
         entry_id = self.context.get("entry_id")
         if not entry_id:
             return self.async_abort(reason="reauth_failed")
