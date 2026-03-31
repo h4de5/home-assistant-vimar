@@ -138,11 +138,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_remove_old_devices()
         hass.config_entries.async_update_entry(entry, data=options)
 
-    async def setup_then_listen() -> None:
-        await coordinator.async_register_devices_platforms()
-        entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
-    hass.async_create_task(setup_then_listen())
+    await coordinator.async_register_devices_platforms()
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     return True
 
