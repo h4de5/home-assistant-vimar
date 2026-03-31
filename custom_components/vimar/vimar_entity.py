@@ -189,8 +189,7 @@ class VimarEntity(CoordinatorEntity[VimarDataUpdateCoordinator]):
         """Change state on bus system and the local device state."""
         if self._device is None or "status" not in self._device:
             self._logger.warning(
-                "Cannot change state for device %s - device data not available",
-                self._device_id
+                "Cannot change state for device %s - device data not available", self._device_id
             )
             return
 
@@ -316,12 +315,7 @@ class VimarStatusSensor(BinarySensorEntity):
         self._coordinator = coordinator
         vimarconfig = coordinator.vimarconfig
         conn = coordinator.vimarconnection._connection
-        self._attr_name = (
-            "Vimar Connection to "
-            + str(conn._host)
-            + ":"
-            + str(conn._port)
-        )
+        self._attr_name = "Vimar Connection to " + str(conn._host) + ":" + str(conn._port)
         self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
         self._attr_extra_state_attributes = {
             "Host": conn._host,

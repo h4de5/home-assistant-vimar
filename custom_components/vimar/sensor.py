@@ -32,8 +32,9 @@ async def async_setup_entry(hass, entry, async_add_devices):
     # Create companion temperature sensors from climate devices so that
     # the measured temperature appears in HA area views (which require a
     # dedicated sensor entity with device_class=temperature).
-    from .vimar_coordinator import VimarDataUpdateCoordinator
     from .const import DOMAIN
+    from .vimar_coordinator import VimarDataUpdateCoordinator
+
     coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     vimarproject = coordinator.vimarproject
     climate_devices = vimarproject.get_by_device_type(DEVICE_TYPE_CLIMATES)
@@ -43,11 +44,15 @@ async def async_setup_entry(hass, entry, async_add_devices):
             continue
         status = device.get("status", {})
         if "temperatura_misurata" in status:
-            temp_sensors.append(VimarClimateTempSensor(coordinator, int(device_id), "temperatura_misurata"))
+            temp_sensors.append(
+                VimarClimateTempSensor(coordinator, int(device_id), "temperatura_misurata")
+            )
         elif "temperatura" in status:
             temp_sensors.append(VimarClimateTempSensor(coordinator, int(device_id), "temperatura"))
     if temp_sensors:
-        _LOGGER.info("Adding %d companion temperature sensors from climate devices", len(temp_sensors))
+        _LOGGER.info(
+            "Adding %d companion temperature sensors from climate devices", len(temp_sensors)
+        )
         async_add_devices(temp_sensors)
         # Register companion sensors so async_remove_old_devices does not
         # purge them (it only keeps entities listed in devices_for_platform).
@@ -260,6 +265,7 @@ class VimarSensorContainer(VimarEntity):
                 sensor_list.append(VimarSensor(self._coordinator, self._device_id, status))
 
         return sensor_list
+
 
 class VimarClimateTempSensor(VimarEntity, SensorEntity):
     """Companion temperature sensor for a Vimar climate device.

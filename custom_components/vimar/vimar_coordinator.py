@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -10,7 +11,7 @@ from datetime import timedelta
 
 import aiohttp
 import async_timeout
-from homeassistant.config_entries import ConfigEntry, SOURCE_REAUTH
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -87,7 +88,11 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         if uptade_interval < 1:
             uptade_interval = DEFAULT_SCAN_INTERVAL
         super().__init__(
-            hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=uptade_interval), config_entry=entry
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=timedelta(seconds=uptade_interval),
+            config_entry=entry,
         )
 
     async def _async_update_data(self):
@@ -136,9 +141,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
                             len(self._known_status_ids),
                         )
                 else:
-                    _LOGGER.debug(
-                        "Vimar: slim poll (%d status IDs)", len(self._known_status_ids)
-                    )
+                    _LOGGER.debug("Vimar: slim poll (%d status IDs)", len(self._known_status_ids))
                     slim_results = await self.hass.async_add_executor_job(
                         self.vimarconnection.get_status_only, self._known_status_ids
                     )
@@ -303,7 +306,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         if not self._reauth_triggered and self._consecutive_auth_failures >= 2:
             _LOGGER.warning(
                 "Authentication failed %d times, triggering re-authentication flow",
-                self._consecutive_auth_failures
+                self._consecutive_auth_failures,
             )
             self._reauth_triggered = True
 
@@ -321,10 +324,8 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
             for status in device.get("status", {}).values():
                 sid = status.get("status_id")
                 if sid is not None:
-                    try:
+                    with contextlib.suppress(ValueError, TypeError):
                         ids.add(int(sid))
-                    except (ValueError, TypeError):
-                        pass
         return list(ids)
 
     def _apply_slim_results(self, devices: dict, slim_results: list) -> None:

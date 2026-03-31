@@ -88,6 +88,7 @@ WHERE o0.NAME = "_DPAD_DBCONSTANT_GROUP_MAIN";"""
 # SAI2 alarm diagnostic queries (temporary – remove after integration)
 # ---------------------------------------------------------------------------
 
+
 def get_sai2_groups_query() -> str:
     """Fetch all SAI2 alarm areas (groups) with their child states.
 

@@ -6,6 +6,7 @@ Configurazione travel times tramite UI di ogni singola cover!
 import logging
 from datetime import datetime, timedelta
 
+import voluptuous as vol
 from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
@@ -16,15 +17,15 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.restore_state import RestoreEntity
-import voluptuous as vol
 
 from .const import (
     CONF_COVER_POSITION_MODE,
-    COVER_POSITION_MODE_AUTO,
+    COVER_POSITION_MODE_LEGACY,
     COVER_POSITION_MODE_NATIVE,
     COVER_POSITION_MODE_TIME_BASED,
-    COVER_POSITION_MODE_LEGACY,
     DEFAULT_COVER_POSITION_MODE,
+)
+from .const import (
     DEVICE_TYPE_COVERS as CURR_PLATFORM,
 )
 from .vimar_entity import VimarEntity, vimar_setup_entry
@@ -35,12 +36,12 @@ DEFAULT_TRAVEL_TIME_UP = 28
 DEFAULT_TRAVEL_TIME_DOWN = 26
 POSITION_UPDATE_INTERVAL = 0.2
 UI_UPDATE_THRESHOLD = 1  # Aggiorna UI ogni 1% di variazione
-RELAY_DELAY = 0.5        # Compensazione ritardo relè Vimar in secondi
-GRACE_SECONDS = 6        # Finestra di immunità post-STOP da HA:
-                         # il webserver Vimar non espone metadati sulla sorgente
-                         # del comando (DPADD_OBJECT ha solo CURRENT_VALUE),
-                         # quindi sopprimiamo le detection di pulsante fisico
-                         # per GRACE_SECONDS dopo ogni stop inviato da HA.
+RELAY_DELAY = 0.5  # Compensazione ritardo relè Vimar in secondi
+GRACE_SECONDS = 6  # Finestra di immunità post-STOP da HA:
+# il webserver Vimar non espone metadati sulla sorgente
+# del comando (DPADD_OBJECT ha solo CURRENT_VALUE),
+# quindi sopprimiamo le detection di pulsante fisico
+# per GRACE_SECONDS dopo ogni stop inviato da HA.
 
 # Chiavi per storage entity options
 CONF_TRAVEL_TIME_UP = "travel_time_up"
@@ -108,7 +109,7 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
         self._tb_last_updown = None
         self._tb_last_reported_position = None  # Per threshold UI
         self._tb_ha_command_active = False  # Flag per distinguere comandi HA da pulsanti fisici
-        self._tb_ha_stop_time = None        # Timestamp ultimo STOP inviato da HA (grace period)
+        self._tb_ha_stop_time = None  # Timestamp ultimo STOP inviato da HA (grace period)
 
         # Travel times (saranno caricati in async_added_to_hass)
         self._travel_time_up = DEFAULT_TRAVEL_TIME_UP
@@ -155,12 +156,14 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
                 {
                     CONF_TRAVEL_TIME_UP: travel_time_up,
                     CONF_TRAVEL_TIME_DOWN: travel_time_down,
-                }
+                },
             )
 
         _LOGGER.info(
             "%s: Travel times updated - up: %ds, down: %ds",
-            self.name, travel_time_up, travel_time_down
+            self.name,
+            travel_time_up,
+            travel_time_down,
         )
 
     async def async_added_to_hass(self):
@@ -189,7 +192,9 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
             ):
                 _LOGGER.info(
                     "%s: Custom travel times loaded - up: %ds, down: %ds",
-                    self.name, self._travel_time_up, self._travel_time_down
+                    self.name,
+                    self._travel_time_up,
+                    self._travel_time_down,
                 )
 
         # Ripristina posizione solo se usiamo time-based tracking
@@ -244,7 +249,9 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
             if current_updown != expected_updown:
                 _LOGGER.info(
                     "%s: Physical STOP detected during HA tracking! up/down=%s (was %s)",
-                    self.name, current_updown, self._tb_operation
+                    self.name,
+                    current_updown,
+                    self._tb_operation,
                 )
                 # Reset del flag comando HA perché è stato interrotto fisicamente
                 self._tb_ha_command_active = False
@@ -319,7 +326,10 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
 
         _LOGGER.debug(
             "%s: Tracking %s from %s%% to %s%%",
-            self.name, operation, self._tb_position, self._tb_target
+            self.name,
+            operation,
+            self._tb_position,
+            self._tb_target,
         )
         self.async_write_ha_state()
 
@@ -366,35 +376,35 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
             send_stop_command = False
 
         elif self._tb_target is not None:
-            if self._tb_operation == "opening" and self._tb_position >= self._tb_target:
+            if (
+                self._tb_operation == "opening"
+                and self._tb_position >= self._tb_target
+                or self._tb_operation == "closing"
+                and self._tb_position <= self._tb_target
+            ):
                 self._tb_position = self._tb_target
                 should_stop = True
-                send_stop_command = (self._tb_target not in [0, 100])
-
-            elif self._tb_operation == "closing" and self._tb_position <= self._tb_target:
-                self._tb_position = self._tb_target
-                should_stop = True
-                send_stop_command = (self._tb_target not in [0, 100])
+                send_stop_command = self._tb_target not in [0, 100]
 
         if should_stop:
             if send_stop_command:
-                _LOGGER.info(
-                    "%s: Reached target %s%%, sending STOP",
-                    self.name, self._tb_position
-                )
+                _LOGGER.info("%s: Reached target %s%%, sending STOP", self.name, self._tb_position)
                 # FIX: async_stop_cover chiama già _tb_stop_tracking internamente,
                 # non schedulare un task separato per evitare doppia esecuzione
                 self.hass.async_create_task(self.async_stop_cover())
             else:
                 _LOGGER.info(
                     "%s: Reached end-stop %s%%, mechanical stop (no STOP command)",
-                    self.name, self._tb_position
+                    self.name,
+                    self._tb_position,
                 )
                 self.hass.async_create_task(self._tb_stop_tracking())
         else:
             # Aggiorna UI ogni 1% di variazione (o più frequente se UI_UPDATE_THRESHOLD < 1)
-            if self._tb_last_reported_position is None or \
-               abs(self._tb_position - self._tb_last_reported_position) >= UI_UPDATE_THRESHOLD:
+            if (
+                self._tb_last_reported_position is None
+                or abs(self._tb_position - self._tb_last_reported_position) >= UI_UPDATE_THRESHOLD
+            ):
                 self._tb_last_reported_position = self._tb_position
                 self.async_write_ha_state()
 
@@ -408,9 +418,7 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
         elapsed_effective = max(0.0, elapsed_total - RELAY_DELAY)
 
         travel_time = (
-            self._travel_time_up
-            if self._tb_operation == "opening"
-            else self._travel_time_down
+            self._travel_time_up if self._tb_operation == "opening" else self._travel_time_down
         )
         percentage = (elapsed_effective / travel_time) * 100
 
@@ -509,11 +517,7 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
         """
         mode = self._get_position_mode()
 
-        flags = (
-            CoverEntityFeature.OPEN
-            | CoverEntityFeature.CLOSE
-            | CoverEntityFeature.STOP
-        )
+        flags = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
 
         # SET_POSITION logic based on mode
         if mode == COVER_POSITION_MODE_LEGACY:
@@ -524,9 +528,7 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
             # All other modes: always include SET_POSITION
             flags |= CoverEntityFeature.SET_POSITION
 
-        if self.has_state("slat_position") and self.has_state(
-            "clockwise/counterclockwise"
-        ):
+        if self.has_state("slat_position") and self.has_state("clockwise/counterclockwise"):
             flags |= (
                 CoverEntityFeature.STOP_TILT
                 | CoverEntityFeature.OPEN_TILT
@@ -599,9 +601,7 @@ class VimarCover(VimarEntity, CoverEntity, RestoreEntity):
     async def async_set_cover_tilt_position(self, **kwargs):
         if kwargs:
             if ATTR_TILT_POSITION in kwargs and self.has_state("slat_position"):
-                self.change_state(
-                    "slat_position", 100 - int(kwargs[ATTR_TILT_POSITION])
-                )
+                self.change_state("slat_position", 100 - int(kwargs[ATTR_TILT_POSITION]))
 
     async def async_stop_cover_tilt(self, **kwargs):
         self.change_state("stop up/stop down", "1")

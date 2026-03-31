@@ -15,7 +15,8 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DEVICE_TYPE_BINARY_SENSOR as CURR_PLATFORM, DOMAIN
+from .const import DEVICE_TYPE_BINARY_SENSOR as CURR_PLATFORM
+from .const import DOMAIN
 from .vimar_coordinator import VimarDataUpdateCoordinator
 from .vimar_entity import VimarEntity, vimar_setup_entry
 
@@ -92,16 +93,10 @@ async def async_setup_entry(
     zone_entities: list[VimarSAI2ZoneSensor] = []
     for zone_id, zone_data in vimarproject.sai2_zones.items():
         parent_group_id = zone_to_group.get(zone_id)
-        zone_entities.append(
-            VimarSAI2ZoneSensor(
-                coordinator, zone_id, zone_data, parent_group_id
-            )
-        )
+        zone_entities.append(VimarSAI2ZoneSensor(coordinator, zone_id, zone_data, parent_group_id))
 
     if zone_entities:
-        _LOGGER.info(
-            "Adding %d SAI2 zone binary_sensor entities", len(zone_entities)
-        )
+        _LOGGER.info("Adding %d SAI2 zone binary_sensor entities", len(zone_entities))
         async_add_entities(zone_entities)
 
     # Merge into devices_for_platform for cleanup tracking
@@ -131,9 +126,7 @@ class VimarBinarySensor(VimarEntity, BinarySensorEntity):
         return None
 
 
-class VimarSAI2ZoneSensor(
-    CoordinatorEntity[VimarDataUpdateCoordinator], BinarySensorEntity
-):
+class VimarSAI2ZoneSensor(CoordinatorEntity[VimarDataUpdateCoordinator], BinarySensorEntity):
     """Representation of a Vimar SAI2 alarm zone as a binary sensor.
 
     Each zone corresponds to a physical sensor (door contact, motion
@@ -214,7 +207,8 @@ class VimarSAI2ZoneSensor(
                     "SAI2 ZONE %s (%s): raw='%s' bits=%d",
                     self._zone_id,
                     self._zone_data.get("name", "?"),
-                    raw, bits,
+                    raw,
+                    bits,
                 )
                 self._last_logged_bits = bits
             # Bit 0 = Aperta (zone physically open)
@@ -258,4 +252,3 @@ class VimarSAI2ZoneSensor(
         return DeviceInfo(
             identifiers={(DOMAIN, "sai2_alarm")},
         )
-

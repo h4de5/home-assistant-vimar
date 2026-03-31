@@ -8,10 +8,10 @@ import xml.etree.ElementTree as xmlTree
 
 import requests
 import urllib3
+from requests.exceptions import HTTPError
 
 from .exceptions import VimarApiError, VimarConfigError, VimarConnectionError
 from .http_adapter import HTTPAdapter
-from requests.exceptions import HTTPError
 
 _LOGGER = logging.getLogger(__name__)
 # FIX #19: rimosso SSL_IGNORED module-level global. Come globale non veniva
@@ -76,7 +76,7 @@ class VimarConnection:
 
         old_cert = None
         try:
-            with open(self._certificate, 'r') as f:
+            with open(self._certificate) as f:
                 old_cert = f.read()
         except OSError:
             old_cert = None
@@ -84,7 +84,7 @@ class VimarConnection:
         if old_cert != certificate_file:
             cert_changed = True
             try:
-                with open(self._certificate, 'w') as f:
+                with open(self._certificate, "w") as f:
                     f.write(certificate_file)
                 _LOGGER.debug("Downloaded Vimar CA certificate to: %s", self._certificate)
             except OSError as err:

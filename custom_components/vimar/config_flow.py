@@ -5,6 +5,7 @@ import re
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult as FlowResult
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -14,7 +15,6 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.config_entries import ConfigFlowResult as FlowResult
 from homeassistant.core import callback
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 from homeassistant.util import slugify
@@ -93,7 +93,7 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reauth(self, entry_data: dict) -> FlowResult:
         """Handle re-authentication when credentials become invalid.
-        
+
         This flow is triggered automatically when:
         - Login fails with invalid credentials
         - Session expires and cannot be renewed
@@ -105,14 +105,14 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(self, user_input=None) -> FlowResult:
         """Confirm re-authentication and update credentials."""
         errors: dict[str, str] = {}
-        
+
         if self.reauth_entry is None:
             return self.async_abort(reason="reauth_failed")
 
         if user_input is not None:
             # Merge existing config with new credentials
             new_config = {**self.reauth_entry.data, **user_input}
-            
+
             try:
                 coordinator = VimarDataUpdateCoordinator(
                     self.hass, entry=None, vimarconfig=new_config
@@ -120,7 +120,7 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 await coordinator.validate_vimar_credentials()
             except Exception as ex:
                 set_errors_from_ex(ex, errors)
-            
+
             if not errors:
                 self.hass.config_entries.async_update_entry(
                     self.reauth_entry,
@@ -130,13 +130,12 @@ class VimarFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="reauth_successful")
 
         # Show form with only credentials that might have changed
-        schema = vol.Schema({
-            vol.Required(
-                CONF_USERNAME,
-                default=self.reauth_entry.data.get(CONF_USERNAME)
-            ): str,
-            vol.Required(CONF_PASSWORD): str,
-        })
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_USERNAME, default=self.reauth_entry.data.get(CONF_USERNAME)): str,
+                vol.Required(CONF_PASSWORD): str,
+            }
+        )
 
         return self.async_show_form(
             step_id="reauth_confirm",
@@ -386,7 +385,9 @@ def get_schema_options_two(config: dict | None = None) -> dict:
         ): cv.multi_select(domains),
         vol.Optional(
             CONF_COVER_POSITION_MODE,
-            description=get_vol_descr(config, CONF_COVER_POSITION_MODE, DEFAULT_COVER_POSITION_MODE),
+            description=get_vol_descr(
+                config, CONF_COVER_POSITION_MODE, DEFAULT_COVER_POSITION_MODE
+            ),
         ): vol.In(COVER_POSITION_MODES),
         vol.Optional(
             CONF_USE_VIMAR_NAMING, description=get_vol_descr(config, CONF_USE_VIMAR_NAMING)

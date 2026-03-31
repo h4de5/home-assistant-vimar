@@ -27,6 +27,8 @@ except ImportError:
     DEVICE_TYPE_SENSORS = "sensor"
     DEVICE_TYPE_OTHERS = "other"
 
+import contextlib
+
 from .connection import VimarConnection
 from .device_queries import (
     VimarDevice,
@@ -40,7 +42,7 @@ from .device_queries import (
     get_sai2_zones_query,
     get_status_only_query,
 )
-from .exceptions import VimarApiError, VimarConnectionError
+from .exceptions import VimarApiError
 from .sql_parser import parse_sql_payload
 
 _LOGGER = logging.getLogger(__name__)
@@ -116,10 +118,7 @@ class VimarLink:
             "Content-Type": "application/x-www-form-urlencoded",
             "Expect": "",
         }
-        post = (
-            f"sessionid={self._session_id}"
-            "&op=getjScriptEnvironment&context=runtime"
-        )
+        post = f"sessionid={self._session_id}" "&op=getjScriptEnvironment&context=runtime"
         return self._request_vimar(post, "vimarbyweb/modules/system/dpadaction.php", headers)
 
     def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
@@ -149,9 +148,7 @@ class VimarLink:
                 return parse_sql_payload(payload.text)
         return None
 
-    def set_sai2_status(
-        self, command: int, area_index: int, pin: str
-    ) -> bool:
+    def set_sai2_status(self, command: int, area_index: int, pin: str) -> bool:
         """Send SAI2 alarm command via dedicated SOAP service.
 
         Uses service-vimarsai2allgroupsset which includes the PIN
@@ -183,7 +180,9 @@ class VimarLink:
 
         _LOGGER.debug(
             "SAI2 SOAP: command=%d groups=%s (area %d)",
-            command, groups_str, area_index,
+            command,
+            groups_str,
+            area_index,
         )
 
         response = self._request_vimar_soap(post)
@@ -194,6 +193,7 @@ class VimarLink:
         # Log full response for debugging
         try:
             from xml.etree import ElementTree
+
             resp_str = ElementTree.tostring(response, encoding="unicode")
             _LOGGER.debug("SAI2 SOAP response: %s", resp_str)
         except Exception:
@@ -367,9 +367,9 @@ class VimarLink:
                     "status_value": device["status_value"],
                 }
                 if "status_range" in device:
-                    deviceItem["status"][device["status_name"]]["status_range"] = (
-                        device["status_range"]
-                    )
+                    deviceItem["status"][device["status_name"]]["status_range"] = device[
+                        "status_range"
+                    ]
 
             if device["room_ids"] is not None and device["room_ids"] != "":
                 room_ids = []
@@ -518,10 +518,8 @@ class VimarLink:
             if source:
                 for item in source.values():
                     for child in item.get("children", {}).values():
-                        try:
+                        with contextlib.suppress(ValueError, KeyError):
                             ids.append(int(child["cid"]))
-                        except (ValueError, KeyError):
-                            pass
         return ids
 
     def get_sai2_area_values(self, group_ids: list[str]) -> dict[str, str] | None:
@@ -540,10 +538,7 @@ class VimarLink:
         payload = self._request_vimar_sql(select)
         if payload is None:
             return None
-        return {
-            str(row["gid"]): str(row.get("current_value") or "00000000")
-            for row in payload
-        }
+        return {str(row["gid"]): str(row.get("current_value") or "00000000") for row in payload}
 
     def update_sai2_from_slim(
         self, sai2_groups: dict | None, sai2_zones: dict | None, slim_results: list[dict]
@@ -840,7 +835,12 @@ class VimarProject:
             _LOGGER.debug("Audio: %s / %s", obj_type, device["object_name"])
 
         elif obj_type in ["CH_SAI", "CH_Event", "CH_KNX_GENERIC_TIMEPERIODMIN"]:
-            _LOGGER.debug("SAI_DEBUG: %s / %s / states: %s", obj_type, device["object_name"], device.get("status", {}))
+            _LOGGER.debug(
+                "SAI_DEBUG: %s / %s / states: %s",
+                obj_type,
+                device["object_name"],
+                device.get("status", {}),
+            )
         else:
             _LOGGER.debug("Unknown: %s / %s", obj_type, device["object_name"])
 

@@ -19,7 +19,8 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_SAI_PIN, DEVICE_TYPE_ALARM as CURR_PLATFORM, DOMAIN
+from .const import CONF_SAI_PIN, DOMAIN
+from .const import DEVICE_TYPE_ALARM as CURR_PLATFORM
 from .vimar_coordinator import VimarDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,10 +36,10 @@ SAI2_STATE_MAP = {
 }
 
 # SAI2 SOAP command codes for service-vimarsai2allgroupsset
-SAI2_CMD_OFF = 0   # Disarm
-SAI2_CMD_ON = 1    # Arm away (all sensors)
-SAI2_CMD_INT = 2   # Arm home (internal sensors only)
-SAI2_CMD_PAR = 3   # Arm night (partial)
+SAI2_CMD_OFF = 0  # Disarm
+SAI2_CMD_ON = 1  # Arm away (all sensors)
+SAI2_CMD_INT = 2  # Arm home (internal sensors only)
+SAI2_CMD_PAR = 3  # Arm night (partial)
 
 
 def _parse_sai2_area_value(value: str) -> str:
@@ -110,13 +111,9 @@ async def async_setup_entry(
         )
 
     entities: list[VimarAlarmControlPanel] = []
-    for area_index, (group_id, group_data) in enumerate(
-        vimarproject.sai2_groups.items(), start=1
-    ):
+    for area_index, (group_id, group_data) in enumerate(vimarproject.sai2_groups.items(), start=1):
         entities.append(
-            VimarAlarmControlPanel(
-                coordinator, group_id, group_data, area_index, sai_pin
-            )
+            VimarAlarmControlPanel(coordinator, group_id, group_data, area_index, sai_pin)
         )
 
     if entities:
@@ -288,9 +285,7 @@ class VimarAlarmControlPanel(
             return
 
         # Capture current state BEFORE optimistic update.
-        was_armed = self.alarm_state not in (
-            AlarmControlPanelState.DISARMED, None
-        )
+        was_armed = self.alarm_state not in (AlarmControlPanelState.DISARMED, None)
 
         # --- Optimistic update FIRST ---
         # Patch sai2_area_values and children immediately so the UI shows
@@ -298,9 +293,9 @@ class VimarAlarmControlPanel(
         # disarm (if needed) completely invisible to the user.
         optimistic_bitmask = {
             "Disinserito": "00000000",
-            "Inserito INT": "00000101",   # bit2 + bit0
-            "Inserito ON": "00000011",    # bit1 + bit0
-            "Inserito PAR": "00001001",   # bit3 + bit0
+            "Inserito INT": "00000101",  # bit2 + bit0
+            "Inserito ON": "00000011",  # bit1 + bit0
+            "Inserito PAR": "00001001",  # bit3 + bit0
         }
         expected = optimistic_bitmask.get(state_label, "00000000")
         if project.sai2_area_values is not None:
@@ -322,7 +317,8 @@ class VimarAlarmControlPanel(
         if command != SAI2_CMD_OFF and was_armed:
             _LOGGER.info(
                 "SAI2: area %d (%s) is armed, disarming first",
-                self._area_index, group["name"],
+                self._area_index,
+                group["name"],
             )
             await self.hass.async_add_executor_job(
                 vimarconnection.set_sai2_status,
@@ -335,7 +331,9 @@ class VimarAlarmControlPanel(
         # --- Send target command ---
         _LOGGER.info(
             "SAI2: sending command %d to area %d (%s)",
-            command, self._area_index, group["name"],
+            command,
+            self._area_index,
+            group["name"],
         )
 
         success = await self.hass.async_add_executor_job(

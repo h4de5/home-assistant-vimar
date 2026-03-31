@@ -1,9 +1,7 @@
 """Vimar Platform integration."""
 
-
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (

@@ -248,7 +248,9 @@ class VimarClimate(VimarEntity, ClimateEntity):
             if fan_mode in (FAN_ON, FAN_OFF):
                 self.change_state("modalita_fancoil", ("0", "1")[fan_mode == FAN_ON])
             else:
-                fancoil_speed = {FAN_LOW: "33", FAN_MEDIUM: "66", FAN_HIGH: "100"}.get(fan_mode, "0")
+                fancoil_speed = {FAN_LOW: "33", FAN_MEDIUM: "66", FAN_HIGH: "100"}.get(
+                    fan_mode, "0"
+                )
                 self.change_state("modalita_fancoil", "1", "velocita_fancoil", fancoil_speed)
 
     async def async_set_hvac_mode(self, hvac_mode):
@@ -286,15 +288,21 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if set_hvac_mode is not None:
             if self.climate_type == "heat_cool":
                 self.change_state(
-                    "funzionamento", set_function_mode,
-                    "stagione", set_hvac_mode,
-                    "setpoint", self.target_temperature,
+                    "funzionamento",
+                    set_function_mode,
+                    "stagione",
+                    set_hvac_mode,
+                    "setpoint",
+                    self.target_temperature,
                 )
             elif self.climate_type == "heat_cool_fancoil":
                 self.change_state(
-                    "funzionamento", set_function_mode,
-                    "regolazione", set_hvac_mode,
-                    "setpoint", self.target_temperature,
+                    "funzionamento",
+                    set_function_mode,
+                    "regolazione",
+                    set_hvac_mode,
+                    "setpoint",
+                    self.target_temperature,
                 )
 
     async def async_set_temperature(self, **kwargs) -> None:
@@ -315,18 +323,27 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
         if self.climate_type == "heat_cool":
             self.change_state(
-                "setpoint", str(set_temperature),
-                "unita", self.get_state("unita"),
-                "stagione", set_hvac_mode,
-                "centralizzato", "1",
-                "funzionamento", set_function_mode,
+                "setpoint",
+                str(set_temperature),
+                "unita",
+                self.get_state("unita"),
+                "stagione",
+                set_hvac_mode,
+                "centralizzato",
+                "1",
+                "funzionamento",
+                set_function_mode,
             )
         elif self.climate_type == "heat_cool_fancoil":
             self.change_state(
-                "setpoint", str(set_temperature),
-                "unita", self.get_state("unita"),
-                "regolazione", set_hvac_mode,
-                "funzionamento", set_function_mode,
+                "setpoint",
+                str(set_temperature),
+                "unita",
+                self.get_state("unita"),
+                "regolazione",
+                set_hvac_mode,
+                "funzionamento",
+                set_function_mode,
             )
 
     # helper
