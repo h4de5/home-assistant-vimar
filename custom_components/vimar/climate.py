@@ -12,6 +12,9 @@ from homeassistant.components.climate.const import (
     ClimateEntityFeature,
     HVACAction,
     HVACMode,
+    PRESET_ECO,
+    PRESET_AWAY,
+    PRESET_NONE,
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
@@ -32,6 +35,14 @@ from .const import (
     VIMAR_CLIMATE_OFF,
     VIMAR_CLIMATE_OFF_I,
     VIMAR_CLIMATE_OFF_II,
+    VIMAR_CLIMATE_RIDUZIONE,
+    VIMAR_CLIMATE_ASSENZA,
+    VIMAR_CLIMATE_PROTEZIONE,
+    VIMAR_CLIMATE_RIDUZIONE_I,
+    VIMAR_CLIMATE_PROTEZIONE_I,
+    VIMAR_CLIMATE_RIDUZIONE_II,
+    VIMAR_CLIMATE_ASSENZA_II,
+    VIMAR_CLIMATE_PROTEZIONE_II,
 )
 from .vimar_entity import VimarEntity, vimar_setup_entry
 
@@ -122,6 +133,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
             ClimateEntityFeature.TARGET_TEMPERATURE
             | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.PRESET_MODE
         )
         if self._has_fancoil:
             flags |= ClimateEntityFeature.FAN_MODE
@@ -211,6 +223,36 @@ class VimarClimate(VimarEntity, ClimateEntity):
             return HVACAction.IDLE
 
     @property
+    def preset_modes(self):
+        """Return a list of available preset modes."""
+        return [PRESET_NONE, PRESET_ECO, PRESET_AWAY]
+
+    @property
+    def preset_mode(self):
+        """Return the current preset mode, e.g., eco, away."""
+        current_function = self.get_state("funzionamento")
+        if current_function == self.get_const_value(VIMAR_CLIMATE_RIDUZIONE):
+            return PRESET_ECO
+        elif current_function in (self.get_const_value(VIMAR_CLIMATE_ASSENZA), self.get_const_value(VIMAR_CLIMATE_PROTEZIONE)):
+            return PRESET_AWAY
+        return PRESET_NONE
+
+    async def async_set_preset_mode(self, preset_mode):
+        """Set new target preset mode."""
+        if preset_mode == PRESET_ECO:
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_RIDUZIONE)
+        elif preset_mode == PRESET_AWAY:
+            if self.climate_type == "heat_cool_fancoil":
+                set_function_mode = self.get_const_value(VIMAR_CLIMATE_ASSENZA)
+            else:
+                set_function_mode = self.get_const_value(VIMAR_CLIMATE_PROTEZIONE)
+        else:
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
+
+        _LOGGER.info("Vimar Climate setting preset_mode: %s", preset_mode)
+        self.change_state("funzionamento", set_function_mode)
+
+    @property
     def fan_modes(self) -> list[str] | None:
         """Return the list of available fan modes. Requires ClimateEntityFeature.FAN_MODE."""
         if not self._has_fancoil:
@@ -259,7 +301,11 @@ class VimarClimate(VimarEntity, ClimateEntity):
         set_hvac_mode = None
 
         if hvac_mode in [HVACMode.COOL, HVACMode.HEAT]:
-            set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
+            if not self.is_on:
+                set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
+            else:
+                set_function_mode = self.get_state("funzionamento")
+                
             set_hvac_mode = (
                 self.get_const_value(VIMAR_CLIMATE_HEAT),
                 self.get_const_value(VIMAR_CLIMATE_COOL),
@@ -400,6 +446,12 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return VIMAR_CLIMATE_COOL_I
             elif const == VIMAR_CLIMATE_HEAT:
                 return VIMAR_CLIMATE_HEAT_I
+            elif const == VIMAR_CLIMATE_RIDUZIONE:
+                return VIMAR_CLIMATE_RIDUZIONE_I
+            elif const == VIMAR_CLIMATE_PROTEZIONE:
+                return VIMAR_CLIMATE_PROTEZIONE_I
+            elif const == VIMAR_CLIMATE_ASSENZA:
+                return VIMAR_CLIMATE_PROTEZIONE_I
             return None
         else:
             if const == VIMAR_CLIMATE_OFF:
@@ -412,6 +464,12 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return VIMAR_CLIMATE_COOL_II
             elif const == VIMAR_CLIMATE_HEAT:
                 return VIMAR_CLIMATE_HEAT_II
+            elif const == VIMAR_CLIMATE_RIDUZIONE:
+                return VIMAR_CLIMATE_RIDUZIONE_II
+            elif const == VIMAR_CLIMATE_PROTEZIONE:
+                return VIMAR_CLIMATE_PROTEZIONE_II
+            elif const == VIMAR_CLIMATE_ASSENZA:
+                return VIMAR_CLIMATE_ASSENZA_II
             return None
 
 
