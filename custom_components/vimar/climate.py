@@ -20,6 +20,8 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
 from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
 from .const import (
+    PRESET_CLIMATE_AUTO,
+    PRESET_CLIMATE_PROTECTION,
     VIMAR_CLIMATE_ASSENZA,
     VIMAR_CLIMATE_ASSENZA_II,
     VIMAR_CLIMATE_AUTO,
@@ -174,27 +176,47 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
     @property
     def hvac_mode(self):
-        """Return target operation (e.g.heat, cool, auto, off)."""
+        """Return current heat/cool direction, or OFF.
+
+        Auto/Manual/ECO/Away/Protection are expressed as preset_mode.
+        The heat/cool direction persists across preset changes.
+        """
         if not self.is_on:
             return HVACMode.OFF
-
         if self.climate_type == "heat_cool":
-            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
-                return HVACMode.AUTO
             return (HVACMode.HEAT, HVACMode.COOL)[
                 self.get_state("stagione") == self.get_const_value(VIMAR_CLIMATE_COOL)
             ]
-        else:
-            if self.get_const_value(VIMAR_CLIMATE_AUTO) == self.get_state("funzionamento"):
-                return HVACMode.AUTO
-            return (HVACMode.HEAT, HVACMode.COOL)[
-                self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)
-            ]
+        return (HVACMode.HEAT, HVACMode.COOL)[
+            self.get_state("regolazione") == self.get_const_value(VIMAR_CLIMATE_COOL)
+        ]
 
     @property
     def hvac_modes(self):
         """List of available operation modes."""
-        return [HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF, HVACMode.AUTO]
+        return [HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF]
+
+    @property
+    def preset_modes(self) -> list[str]:
+        """Return available preset modes."""
+        presets = [PRESET_NONE, PRESET_CLIMATE_AUTO, PRESET_ECO, PRESET_CLIMATE_PROTECTION]
+        if self.climate_type == "heat_cool_fancoil":
+            presets.append(PRESET_AWAY)
+        return presets
+
+    @property
+    def preset_mode(self) -> str:
+        """Return current preset (operating mode), independent of heat/cool direction."""
+        funz = self.get_state("funzionamento")
+        if funz == self.get_const_value(VIMAR_CLIMATE_AUTO):
+            return PRESET_CLIMATE_AUTO
+        if funz == self.get_const_value(VIMAR_CLIMATE_RIDUZIONE):
+            return PRESET_ECO
+        if funz == self.get_const_value(VIMAR_CLIMATE_ASSENZA):
+            return PRESET_AWAY
+        if funz == self.get_const_value(VIMAR_CLIMATE_PROTEZIONE):
+            return PRESET_CLIMATE_PROTECTION
+        return PRESET_NONE
 
     @property
     def hvac_action(self):
@@ -222,32 +244,18 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return HVACAction.HEATING
             return HVACAction.IDLE
 
-    @property
-    def preset_modes(self):
-        """Return a list of available preset modes."""
-        return [PRESET_NONE, PRESET_ECO, PRESET_AWAY]
-
-    @property
-    def preset_mode(self):
-        """Return the current preset mode, e.g., eco, away."""
-        current_function = self.get_state("funzionamento")
-        if current_function == self.get_const_value(VIMAR_CLIMATE_RIDUZIONE):
-            return PRESET_ECO
-        elif current_function in (self.get_const_value(VIMAR_CLIMATE_ASSENZA), self.get_const_value(VIMAR_CLIMATE_PROTEZIONE)):
-            return PRESET_AWAY
-        return PRESET_NONE
-
     async def async_set_preset_mode(self, preset_mode):
-        """Set new target preset mode."""
-        if preset_mode == PRESET_ECO:
+        """Set operating mode (funzionamento), keeping heat/cool direction unchanged."""
+        if preset_mode == PRESET_CLIMATE_AUTO:
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
+        elif preset_mode == PRESET_ECO:
             set_function_mode = self.get_const_value(VIMAR_CLIMATE_RIDUZIONE)
         elif preset_mode == PRESET_AWAY:
-            if self.climate_type == "heat_cool_fancoil":
-                set_function_mode = self.get_const_value(VIMAR_CLIMATE_ASSENZA)
-            else:
-                set_function_mode = self.get_const_value(VIMAR_CLIMATE_PROTEZIONE)
-        else:
-            set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_ASSENZA)
+        elif preset_mode == PRESET_CLIMATE_PROTECTION:
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_PROTEZIONE)
+        else:  # PRESET_NONE → manual
+            set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
 
         _LOGGER.info("Vimar Climate setting preset_mode: %s", preset_mode)
         self.change_state("funzionamento", set_function_mode)
@@ -296,60 +304,43 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 self.change_state("modalita_fancoil", "1", "velocita_fancoil", fancoil_speed)
 
     async def async_set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
-        set_function_mode = None
-        set_hvac_mode = None
+        """Set heat/cool direction, or turn off.
 
-        if hvac_mode in [HVACMode.COOL, HVACMode.HEAT]:
-            if not self.is_on:
-                set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
-            else:
-                set_function_mode = self.get_state("funzionamento")
+        HEAT/COOL change only the season direction (stagione/regolazione).
+        If currently OFF, also switch funzionamento to MANUAL to activate.
+        The current preset (auto/eco/away/protection) is preserved when ON.
+        """
+        if hvac_mode == HVACMode.OFF:
+            _LOGGER.info("Vimar Climate setting hvac_mode to off")
+            self.change_state("funzionamento", self.get_const_value(VIMAR_CLIMATE_OFF))
+            return
 
-            set_hvac_mode = (
-                self.get_const_value(VIMAR_CLIMATE_HEAT),
-                self.get_const_value(VIMAR_CLIMATE_COOL),
-            )[hvac_mode == HVACMode.COOL]
-            _LOGGER.info("Vimar Climate setting setup mode to heat/cool: %s", set_function_mode)
+        if hvac_mode not in (HVACMode.HEAT, HVACMode.COOL):
+            return
 
-        elif hvac_mode in [HVACMode.AUTO]:
-            set_function_mode = self.get_const_value(VIMAR_CLIMATE_AUTO)
-            set_hvac_mode = (
-                self.get_const_value(VIMAR_CLIMATE_HEAT),
-                self.get_const_value(VIMAR_CLIMATE_COOL),
-            )[self.hvac_mode == HVACMode.COOL]
-            _LOGGER.info("Vimar Climate setting setup mode to auto: %s", set_function_mode)
+        direction = self.get_const_value(
+            VIMAR_CLIMATE_COOL if hvac_mode == HVACMode.COOL else VIMAR_CLIMATE_HEAT
+        )
+        _LOGGER.info("Vimar Climate setting direction to %s", hvac_mode)
 
-        elif hvac_mode in [HVACMode.OFF]:
-            set_function_mode = self.get_const_value(VIMAR_CLIMATE_OFF)
-            set_hvac_mode = (
-                self.get_const_value(VIMAR_CLIMATE_HEAT),
-                self.get_const_value(VIMAR_CLIMATE_COOL),
-            )[self.hvac_mode == HVACMode.COOL]
-            _LOGGER.info("Vimar Climate setting setup mode to off: %s", set_function_mode)
-
-        _LOGGER.info("Vimar Climate setting hvac_mode: %s", set_hvac_mode)
-        _LOGGER.info("Vimar Climate resetting target temperature: %s", self.target_temperature)
-
-        if set_hvac_mode is not None:
+        if not self.is_on:
+            # Device is OFF: activate in manual mode with the chosen direction
             if self.climate_type == "heat_cool":
                 self.change_state(
-                    "funzionamento",
-                    set_function_mode,
-                    "stagione",
-                    set_hvac_mode,
-                    "setpoint",
-                    self.target_temperature,
+                    "funzionamento", self.get_const_value(VIMAR_CLIMATE_MANUAL),
+                    "stagione", direction,
+                    "setpoint", self.target_temperature,
                 )
-            elif self.climate_type == "heat_cool_fancoil":
+            else:
                 self.change_state(
-                    "funzionamento",
-                    set_function_mode,
-                    "regolazione",
-                    set_hvac_mode,
-                    "setpoint",
-                    self.target_temperature,
+                    "funzionamento", self.get_const_value(VIMAR_CLIMATE_MANUAL),
+                    "regolazione", direction,
+                    "setpoint", self.target_temperature,
                 )
+        else:
+            # Device is ON: change direction only, preserve operating mode (preset)
+            season_key = "stagione" if self.climate_type == "heat_cool" else "regolazione"
+            self.change_state(season_key, direction)
 
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
