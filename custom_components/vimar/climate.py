@@ -9,17 +9,19 @@ from homeassistant.components.climate.const import (
     FAN_MEDIUM,
     FAN_OFF,
     FAN_ON,
+    PRESET_AWAY,
+    PRESET_ECO,
+    PRESET_NONE,
     ClimateEntityFeature,
     HVACAction,
     HVACMode,
-    PRESET_ECO,
-    PRESET_AWAY,
-    PRESET_NONE,
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
 from .const import DEVICE_TYPE_CLIMATES as CURR_PLATFORM
 from .const import (
+    VIMAR_CLIMATE_ASSENZA,
+    VIMAR_CLIMATE_ASSENZA_II,
     VIMAR_CLIMATE_AUTO,
     VIMAR_CLIMATE_AUTO_I,
     VIMAR_CLIMATE_AUTO_II,
@@ -35,14 +37,12 @@ from .const import (
     VIMAR_CLIMATE_OFF,
     VIMAR_CLIMATE_OFF_I,
     VIMAR_CLIMATE_OFF_II,
-    VIMAR_CLIMATE_RIDUZIONE,
-    VIMAR_CLIMATE_ASSENZA,
     VIMAR_CLIMATE_PROTEZIONE,
-    VIMAR_CLIMATE_RIDUZIONE_I,
     VIMAR_CLIMATE_PROTEZIONE_I,
-    VIMAR_CLIMATE_RIDUZIONE_II,
-    VIMAR_CLIMATE_ASSENZA_II,
     VIMAR_CLIMATE_PROTEZIONE_II,
+    VIMAR_CLIMATE_RIDUZIONE,
+    VIMAR_CLIMATE_RIDUZIONE_I,
+    VIMAR_CLIMATE_RIDUZIONE_II,
 )
 from .vimar_entity import VimarEntity, vimar_setup_entry
 
@@ -305,7 +305,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
             else:
                 set_function_mode = self.get_state("funzionamento")
-                
+
             set_hvac_mode = (
                 self.get_const_value(VIMAR_CLIMATE_HEAT),
                 self.get_const_value(VIMAR_CLIMATE_COOL),
@@ -448,9 +448,7 @@ class VimarClimate(VimarEntity, ClimateEntity):
                 return VIMAR_CLIMATE_HEAT_I
             elif const == VIMAR_CLIMATE_RIDUZIONE:
                 return VIMAR_CLIMATE_RIDUZIONE_I
-            elif const == VIMAR_CLIMATE_PROTEZIONE:
-                return VIMAR_CLIMATE_PROTEZIONE_I
-            elif const == VIMAR_CLIMATE_ASSENZA:
+            elif const == VIMAR_CLIMATE_PROTEZIONE or const == VIMAR_CLIMATE_ASSENZA:
                 return VIMAR_CLIMATE_PROTEZIONE_I
             return None
         else:

@@ -42,7 +42,7 @@ SAI2_CMD_INT = 2  # Arm home (internal sensors only)
 SAI2_CMD_PAR = 3  # Arm night (partial)
 
 
-def _parse_sai2_area_value(value: str) -> str:
+def _parse_sai2_area_value(value: str) -> tuple[str, bool]:
     """Map SAI2 group CURRENT_VALUE bitmask from DPADD_OBJECT to state label.
 
     The SAI2 group object in DPADD_OBJECT stores its live state as an
