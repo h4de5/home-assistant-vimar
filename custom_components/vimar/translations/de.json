@@ -1,4 +1,22 @@
 {
+  "entity": {
+    "climate": {
+      "vimar_climate": {
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Modus",
+            "state": {
+              "none":       "Manuell",
+              "auto":       "Zeitplan",
+              "eco":        "Eco",
+              "protezione": "Schutz",
+              "away":       "Abwesenheit"
+            }
+          }
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

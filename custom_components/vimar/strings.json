@@ -39,6 +39,24 @@
       "single_instance_allowed": "Only one Vimar integration instance is allowed."
     }
   },
+  "entity": {
+    "climate": {
+      "vimar_climate": {
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Mode",
+            "state": {
+              "none":       "Manual",
+              "auto":       "Schedule",
+              "eco":        "Eco",
+              "protezione": "Protection",
+              "away":       "Away"
+            }
+          }
+        }
+      }
+    }
+  },
   "options": {
     "step": {
       "init": {

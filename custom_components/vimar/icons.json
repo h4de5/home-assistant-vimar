@@ -1,0 +1,19 @@
+{
+  "entity": {
+    "climate": {
+      "vimar_climate": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "none":       "mdi:hand-back-right",
+              "auto":       "mdi:calendar-clock",
+              "eco":        "mdi:leaf",
+              "protezione": "mdi:home-thermometer",
+              "away":       "mdi:home-export-outline"
+            }
+          }
+        }
+      }
+    }
+  }
+}

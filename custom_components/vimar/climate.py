@@ -117,6 +117,11 @@ class VimarClimate(VimarEntity, ClimateEntity):
 
     # climate properties
     @property
+    def translation_key(self) -> str:
+        """Return translation key for entity strings and icons."""
+        return "vimar_climate"
+
+    @property
     def entity_platform(self):
         """Return the platform of the entity."""
         return CURR_PLATFORM
