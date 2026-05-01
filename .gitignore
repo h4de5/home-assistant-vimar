@@ -11,3 +11,7 @@ venv
 # Database dumps (sensitive data)
 BYWEB-*.sql
 *.sql
+
+# Claude Code working directories
+.claude/
+.playwright-mcp/
