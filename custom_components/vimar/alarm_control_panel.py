@@ -42,39 +42,49 @@ SAI2_CMD_INT = 2  # Arm home (internal sensors only)
 SAI2_CMD_PAR = 3  # Arm night (partial)
 
 
-def _parse_sai2_area_value(value: str) -> str:
+def _parse_sai2_area_value(value: str) -> tuple[str, bool]:
     """Map SAI2 group CURRENT_VALUE bitmask from DPADD_OBJECT to state label.
 
     The SAI2 group object in DPADD_OBJECT stores its live state as an
     8-character binary bitmask (e.g. '00001001'). Confirmed bit mapping
     from browser inspection + live testing:
 
-        Bit 5 (0b00100000): Allarme
+        Bit 5 (0b00100000): Allarme (active alarm in progress)
+        Bit 4 (0b00010000): Alarm memory (alarm tripped in the past, not active)
         Bit 3 (0b00001000): Inserito PAR  <- confirmed '00001001'
         Bit 2 (0b00000100): Inserito INT  <- confirmed by user test
         Bit 1 (0b00000010): Inserito ON   <- confirmed by user test
         Bit 0 (0b00000001): armed-active flag (set whenever any mode is active)
         All zeros           Disinserito
+
+    Returns:
+        Tuple of (state_label, alarm_memory) where alarm_memory is True
+        when bit 4 is set (alarm tripped previously but not active now).
     """
     if not value or all(c == "0" for c in value):
-        return "Disinserito"
+        return "Disinserito", False
     try:
         bits = int(value, 2)
     except ValueError:
         _LOGGER.warning("SAI2: unrecognised CURRENT_VALUE format: '%s'", value)
-        return "Disinserito"
+        return "Disinserito", False
+
+    alarm_memory = bool(bits & (1 << 4))
 
     if bits & (1 << 5):
-        return "Allarme"
+        return "Allarme", alarm_memory
     if bits & (1 << 3):
-        return "Inserito PAR"
+        return "Inserito PAR", alarm_memory
     if bits & (1 << 2):
-        return "Inserito INT"
+        return "Inserito INT", alarm_memory
     if bits & (1 << 1):
-        return "Inserito ON"
+        return "Inserito ON", alarm_memory
+    if alarm_memory and not (bits & ~((1 << 4) | 1)):
+        # Only bit 4 (and possibly bit 0) set — alarm memory with no active mode
+        return "Disinserito", True
     # Bit 0 alone = armed but mode not decoded
     _LOGGER.warning("SAI2: armed state with unhandled bitmask '%s', assuming ARMED_AWAY", value)
-    return "Inserito ON"
+    return "Inserito ON", alarm_memory
 
 
 async def async_setup_entry(
@@ -185,13 +195,15 @@ class VimarAlarmControlPanel(
         area_values = project.sai2_area_values
         if area_values is not None and self._group_id in area_values:
             raw = area_values[self._group_id]
-            label = _parse_sai2_area_value(raw)
+            label, alarm_memory = _parse_sai2_area_value(raw)
+            self._alarm_memory = alarm_memory
             _LOGGER.debug(
-                "SAI2 group %s (%s): raw='%s' -> %s",
+                "SAI2 group %s (%s): raw='%s' -> %s (memory=%s)",
                 self._group_id,
                 self._group_data.get("name", "?"),
                 raw,
                 label,
+                alarm_memory,
             )
             return SAI2_STATE_MAP.get(label, AlarmControlPanelState.DISARMED)
 
@@ -220,6 +232,7 @@ class VimarAlarmControlPanel(
         attrs: dict[str, Any] = {
             "area_index": self._area_index,
             "area_name": self._group_data.get("name", "?"),
+            "alarm_memory": getattr(self, "_alarm_memory", False),
         }
         if project and project.sai2_groups:
             group = project.sai2_groups.get(self._group_id, {})

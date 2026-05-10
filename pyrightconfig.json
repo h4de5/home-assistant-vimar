@@ -6,7 +6,12 @@
         "**/node_modules",
         "**/__pycache__"
     ],
-    "pythonVersion": "3.13",
+    "extraPaths": [
+        "custom_components/vimar"
+    ],
+    "venvPath": ".",
+    "venv": ".venv",
+    "pythonVersion": "3.14",
     "pythonPlatform": "Linux",
 
     "typeCheckingMode": "basic",

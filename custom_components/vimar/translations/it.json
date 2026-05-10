@@ -38,6 +38,24 @@
       "single_instance_allowed": "È consentita una sola istanza dell'integrazione Vimar."
     }
   },
+  "entity": {
+    "climate": {
+      "vimar_climate": {
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Modalità",
+            "state": {
+              "none":       "Manuale",
+              "auto":       "Automatico",
+              "eco":        "Eco",
+              "protezione": "Protezione",
+              "away":       "Assenza"
+            }
+          }
+        }
+      }
+    }
+  },
   "options": {
     "step": {
       "init": {

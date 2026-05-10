@@ -10,6 +10,49 @@ and this project adheres to [Calendar Versioning](https://calver.org/) (`YYYY.M.
 
 ---
 
+## [2026.5.0] - 2026-05-01
+
+### Added
+
+- **Climate preset modes Eco / Away / Schedule / Protection / Manual**: full preset coverage for both Type I and Type II thermostats, mapped to the corresponding VIMAR `funzionamento` values (Auto schedule, Manuale, Riduzione/Eco, Assenza, Antigielo/Protezione).
+- **`translation_key = "vimar_climate"`** on the climate entity: the `preset_mode` attribute label is now rendered as **"Modalità"** in Italian (and "Mode" in English), with localized state names for each preset. Translations updated for English, Italian, German, French, Spanish, Dutch, Portuguese.
+- **`icons.json`**: per-state MDI icons for every preset (`hand-back-right` for Manual, `calendar-clock` for Schedule, `leaf` for Eco, `home-thermometer` for Protection, `home-export-outline` for Away).
+- **Scene last-activation timestamp**: scenes now report their last activation time as state, persisted across HA restarts via `RestoreEntity`.
+
+### Changed
+
+- **`hvac_mode` semantics aligned with VIMAR thermostats**: `hvac_mode` now represents only the heating/cooling direction (HEAT / COOL / OFF). The operating mode (auto schedule / manual / eco / away / protection) is exposed exclusively as `preset_mode`. Selecting HEAT/COOL only changes the direction; the current preset is preserved when the device is ON and MANUAL is activated only when transitioning from OFF.
+- **Dev toolchain**: pyright targets Python 3.14, Black 26.x, Ruff 0.11+, with aligned development requirements.
+
+### Fixed
+
+- **Cannot exit AUTO mode from Home Assistant**: in Type II thermostats the device stayed in AUTO when switching to HEAT/COOL because the previous `funzionamento` value was being preserved. The integration now forces MANUAL when explicitly setting a direction on an active device.
+- **`Could not find state unita` log spam**: `async_set_temperature` no longer sends the `unita` (temperature unit) key when the device does not expose it.
+- **Scene transient "unknown" state**: `_last_activated` is now set before `change_state`, so the state attribute is never written as `None`.
+- **SAI2 alarm bit 4 misclassification**: bit 4 is correctly treated as alarm memory, not as an active alarm.
+- **Python 3.13 compliance**: `async_timeout.timeout` replaced with `asyncio.timeout`; `hashlib.md5(..., usedforsecurity=False)` for FIPS environments; `target-version` set to `py313`.
+
+### Internal
+
+- `pyrightconfig.json` resolves the project venv for type checking.
+- VSCode project settings (`.vscode/settings.json`) with Ruff format-on-save.
+- `.claude/`, `.playwright-mcp/` added to `.gitignore`.
+- `manifest.json` documentation and issue_tracker URLs updated to the WhiteWolf84 fork; @WhiteWolf84 added to codeowners.
+
+---
+
+## [2026.4.0] - 2026-04-01
+
+### Fixed
+
+- **`async_setup_entry` deadlock**: `async_forward_entry_setups` is now awaited directly instead of being scheduled as a task, preventing partial setup races.
+
+### Changed
+
+- Version bump for Home Assistant 2026.1 compatibility line.
+
+---
+
 ## [2026.3.0] - 2026-03-17
 
 ### Added
