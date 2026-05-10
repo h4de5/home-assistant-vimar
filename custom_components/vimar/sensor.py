@@ -6,6 +6,7 @@ import logging
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
+    UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
@@ -116,16 +117,14 @@ class VimarSensor(VimarEntity, SensorEntity):
         return class_and_unit[1]
 
     @property
-    def state_class(self) -> str:
+    def state_class(self) -> SensorStateClass | None:
         """Return the state class of this entity."""
         class_and_unit = self.class_and_units()
         if class_and_unit[1] == SensorDeviceClass.ENERGY:
             return SensorStateClass.TOTAL_INCREASING
-        elif class_and_unit[1] == SensorDeviceClass.POWER and any(
-            x in self._measurement_name for x in ["totale"]
-        ):
+        elif class_and_unit[1] in (SensorDeviceClass.POWER, SensorDeviceClass.CURRENT):
             return SensorStateClass.MEASUREMENT
-        return ""
+        return None
 
     def class_and_units(self):
         """Return the class and unit of measurement."""
@@ -139,12 +138,12 @@ class VimarSensor(VimarEntity, SensorEntity):
             "CH_Carichi_3F",
             "CH_KNX_GENERIC_POWER_KW",
         ]:
-            if any(x in self._measurement_name for x in ["energia", "potenza_attiva"]):
+            if any(x in self._measurement_name for x in ["energia"]):
                 return [UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY]
+            elif any(x in self._measurement_name for x in ["potenza_attiva"]):
+                return [UnitOfPower.KILO_WATT, SensorDeviceClass.POWER]
             elif any(x in self._measurement_name for x in ["fase"]):
-                return [UnitOfElectricPotential.VOLT, SensorDeviceClass.CURRENT]
-            # elif any(x in self._measurement_name for x in ["fase"]):
-            #     return [UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE]
+                return [UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT]
             elif any(x in self._measurement_name for x in ["_date", "_time", "_datetime"]):
                 return ["", SensorDeviceClass.TIMESTAMP]
             else:
