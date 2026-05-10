@@ -364,28 +364,21 @@ class VimarClimate(VimarEntity, ClimateEntity):
         _LOGGER.info("Vimar Climate setting setup mode to manual: %s", set_function_mode)
 
         if self.climate_type == "heat_cool":
+            extra = ("unita", self.get_state("unita")) if self.has_state("unita") else ()
             self.change_state(
-                "setpoint",
-                str(set_temperature),
-                "unita",
-                self.get_state("unita"),
-                "stagione",
-                set_hvac_mode,
-                "centralizzato",
-                "1",
-                "funzionamento",
-                set_function_mode,
+                "setpoint", str(set_temperature),
+                *extra,
+                "stagione", set_hvac_mode,
+                "centralizzato", "1",
+                "funzionamento", set_function_mode,
             )
         elif self.climate_type == "heat_cool_fancoil":
+            extra = ("unita", self.get_state("unita")) if self.has_state("unita") else ()
             self.change_state(
-                "setpoint",
-                str(set_temperature),
-                "unita",
-                self.get_state("unita"),
-                "regolazione",
-                set_hvac_mode,
-                "funzionamento",
-                set_function_mode,
+                "setpoint", str(set_temperature),
+                *extra,
+                "regolazione", set_hvac_mode,
+                "funzionamento", set_function_mode,
             )
 
     # helper
