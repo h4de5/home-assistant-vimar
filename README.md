@@ -1,13 +1,13 @@
-[![HACS Validate](https://github.com/h4de5/home-assistant-vimar/actions/workflows/validate.yml/badge.svg)](https://github.com/h4de5/home-assistant-vimar/actions/workflows/validate.yml)
-[![hassfest Validate](https://github.com/h4de5/home-assistant-vimar/actions/workflows/hassfest.yml/badge.svg)](https://github.com/h4de5/home-assistant-vimar/actions/workflows/hassfest.yml)
-[![Github Release](https://img.shields.io/github/release/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/releases)
-[![Github Commit since](https://img.shields.io/github/commits-since/h4de5/home-assistant-vimar/latest)](https://github.com/h4de5/home-assistant-vimar/releases)
-[![Github Open Issues](https://img.shields.io/github/issues/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/issues)
-[![Github Open Pull Requests](https://img.shields.io/github/issues-pr/h4de5/home-assistant-vimar.svg)](https://github.com/h4de5/home-assistant-vimar/pulls)
+[![HACS Validate](https://github.com/WhiteWolf84/home-assistant-vimar/actions/workflows/validate.yml/badge.svg)](https://github.com/WhiteWolf84/home-assistant-vimar/actions/workflows/validate.yml)
+[![hassfest Validate](https://github.com/WhiteWolf84/home-assistant-vimar/actions/workflows/hassfest.yml/badge.svg)](https://github.com/WhiteWolf84/home-assistant-vimar/actions/workflows/hassfest.yml)
+[![Github Release](https://img.shields.io/github/release/WhiteWolf84/home-assistant-vimar.svg)](https://github.com/WhiteWolf84/home-assistant-vimar/releases)
+[![Github Commit since](https://img.shields.io/github/commits-since/WhiteWolf84/home-assistant-vimar/latest)](https://github.com/WhiteWolf84/home-assistant-vimar/releases)
+[![Github Open Issues](https://img.shields.io/github/issues/WhiteWolf84/home-assistant-vimar.svg)](https://github.com/WhiteWolf84/home-assistant-vimar/issues)
+[![Github Open Pull Requests](https://img.shields.io/github/issues-pr/WhiteWolf84/home-assistant-vimar.svg)](https://github.com/WhiteWolf84/home-assistant-vimar/pulls)
 
 # VIMAR By-Me / By-Web Integration for Home Assistant
 
-> **Current Version:** 2026.3.0 · **Requires:** Home Assistant 2026.1.0+ · **Python:** 3.13+
+> **Current Version:** 2026.5.0 · **Requires:** Home Assistant 2026.1.0+ · **Python:** 3.13+
 
 A comprehensive Home Assistant custom integration for the VIMAR By-me / By-web bus system. Controls lights, covers, climate, switches, sensors, media players, scenes, and the **SAI2 alarm system** through the VIMAR web server.
 
@@ -28,13 +28,13 @@ A comprehensive Home Assistant custom integration for the VIMAR By-me / By-web b
 
 1. Open HACS in Home Assistant
 2. Go to **Integrations** → **Custom Repositories**
-3. Add: `https://github.com/h4de5/home-assistant-vimar`
+3. Add: `https://github.com/WhiteWolf84/home-assistant-vimar`
 4. Category: **Integration**
 5. Install and restart Home Assistant
 
 ### Manual Installation
 
-1. Download the [latest release](https://github.com/h4de5/home-assistant-vimar/releases)
+1. Download the [latest release](https://github.com/WhiteWolf84/home-assistant-vimar/releases)
 2. Extract and copy `custom_components/vimar` to your HA `custom_components` directory
 3. Restart Home Assistant
 
@@ -261,7 +261,7 @@ Use at your own risk. This integration mimics HTTP calls made through the offici
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- 🐛 Report bugs via [Issues](https://github.com/h4de5/home-assistant-vimar/issues)
+- 🐛 Report bugs via [Issues](https://github.com/WhiteWolf84/home-assistant-vimar/issues)
 - ✨ Request features
 - 🔧 Submit pull requests
 
