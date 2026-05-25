@@ -26,6 +26,7 @@ from .const import (
     CONF_DELETE_AND_RELOAD_ALL_ENTITIES,
     CONF_DEVICES_BINARY_SENSOR_RE,
     CONF_DEVICES_LIGHTS_RE,
+    CONF_ENERGY_REFRESH_INTERVAL,
     CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN,
     CONF_GLOBAL_CHANNEL_ID,
     CONF_IGNORE_PLATFORM,
@@ -38,6 +39,7 @@ from .const import (
     COVER_POSITION_MODES,
     DEFAULT_CERTIFICATE,
     DEFAULT_COVER_POSITION_MODE,
+    DEFAULT_ENERGY_REFRESH_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SECURE,
@@ -379,6 +381,12 @@ def get_schema_options_two(config: dict | None = None) -> dict:
         vol.Required(
             CONF_SCAN_INTERVAL,
             description=get_vol_descr(config, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+        ): int,
+        vol.Required(
+            CONF_ENERGY_REFRESH_INTERVAL,
+            description=get_vol_descr(
+                config, CONF_ENERGY_REFRESH_INTERVAL, DEFAULT_ENERGY_REFRESH_INTERVAL
+            ),
         ): int,
         vol.Optional(
             CONF_GLOBAL_CHANNEL_ID, description=get_vol_descr(config, CONF_GLOBAL_CHANNEL_ID)

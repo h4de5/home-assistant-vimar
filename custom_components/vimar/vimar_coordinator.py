@@ -31,15 +31,19 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import (
     _LOGGER,
     CONF_CERTIFICATE,
+    CONF_ENERGY_REFRESH_INTERVAL,
     CONF_GLOBAL_CHANNEL_ID,
     CONF_IGNORE_PLATFORM,
     CONF_OVERRIDE,
     CONF_SECURE,
     DEFAULT_CERTIFICATE,
+    DEFAULT_ENERGY_REFRESH_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
     DEVICE_TYPE_BINARY_SENSOR,
     DOMAIN,
+    ENERGY_METER_OBJECT_TYPES,
+    ENERGY_REFRESH_STATUS_NAMES,
     PLATFORMS,
 )
 from .vimar_device_customizer import VimarDeviceCustomizer
@@ -80,6 +84,15 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         self._device_state_hashes: dict[str, str] = {}
         self._changed_device_ids: set[str] = set()
         self._known_status_ids: list[int] = []
+        self._energy_refresh_ids: list[int] = []
+        self._last_energy_refresh: float = 0.0
+
+        refresh = vimarconfig.get(CONF_ENERGY_REFRESH_INTERVAL)
+        self._energy_refresh_interval: float = (
+            float(refresh) if refresh is not None else float(DEFAULT_ENERGY_REFRESH_INTERVAL)
+        )
+        if self._energy_refresh_interval < 0:
+            self._energy_refresh_interval = 0.0
 
         timeout = vimarconfig.get(CONF_TIMEOUT) or DEFAULT_TIMEOUT
         if timeout > 0:
@@ -126,6 +139,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
 
                     if devices and len(devices) > 0:
                         self._known_status_ids = self._collect_status_ids(devices)
+                        self._energy_refresh_ids = self._collect_energy_refresh_ids(devices)
                         # Include SAI2 alarm CIDs in slim poll
                         if self.vimarproject.sai2_groups or self.vimarproject.sai2_zones:
                             sai2_ids = self.vimarconnection.get_sai2_status_ids(
@@ -142,6 +156,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
                         )
                 else:
                     _LOGGER.debug("Vimar: slim poll (%d status IDs)", len(self._known_status_ids))
+                    await self._maybe_refresh_energy_meters()
                     slim_results = await self.hass.async_add_executor_job(
                         self.vimarconnection.get_status_only, self._known_status_ids
                     )
@@ -328,6 +343,50 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
                         ids.add(int(sid))
         return list(ids)
 
+    def _collect_energy_refresh_ids(self, devices: dict) -> list[int]:
+        """Collect status object IDs that need an explicit GETVALUE trigger.
+
+        VIMAR firmware updates DPADD_OBJECT.CURRENT_VALUE for energy meter
+        statuses (energia_*, potenza_*) only when a client issues a
+        runonelement GETVALUE on the status object id. Without it, the
+        slim-poll SELECT keeps reading stale values.
+        """
+        ids: list[int] = []
+        for device in devices.values():
+            if device.get("object_type") not in ENERGY_METER_OBJECT_TYPES:
+                continue
+            for status_name, status in device.get("status", {}).items():
+                if status_name not in ENERGY_REFRESH_STATUS_NAMES:
+                    continue
+                sid = status.get("status_id")
+                if sid is None:
+                    continue
+                with contextlib.suppress(ValueError, TypeError):
+                    ids.append(int(sid))
+        return ids
+
+    async def _maybe_refresh_energy_meters(self) -> None:
+        """Send GETVALUE to energy meter statuses if the throttle elapsed."""
+        if self._energy_refresh_interval <= 0 or not self._energy_refresh_ids:
+            return
+        now = time.monotonic()
+        if now - self._last_energy_refresh < self._energy_refresh_interval:
+            return
+        if self.vimarconnection is None:
+            return
+        self._last_energy_refresh = now
+        _LOGGER.debug(
+            "Vimar: refreshing %d energy meter statuses via GETVALUE",
+            len(self._energy_refresh_ids),
+        )
+        try:
+            await self.hass.async_add_executor_job(
+                self.vimarconnection.request_value_refresh,
+                self._energy_refresh_ids,
+            )
+        except Exception as err:  # noqa: BLE001 - best-effort refresh
+            _LOGGER.debug("Vimar: energy meter refresh failed: %s", err)
+
     def _apply_slim_results(self, devices: dict, slim_results: list) -> None:
         """Patch CURRENT_VALUE from slim poll into existing device tree."""
         index: dict[str, tuple[str, str]] = {}
@@ -355,6 +414,8 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
         self._platforms_registered = False
         self._slim_poll_active = False
         self._known_status_ids = []
+        self._energy_refresh_ids = []
+        self._last_energy_refresh = 0.0
         self._last_device_count = -1
         self._consecutive_auth_failures = 0
         self._reauth_triggered = False

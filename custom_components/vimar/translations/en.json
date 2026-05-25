@@ -79,6 +79,7 @@
         "data": {
           "timeout": "Connection timeout (seconds)",
           "scan_interval": "Polling interval (seconds)",
+          "energy_refresh_interval": "Energy meters refresh interval (seconds, 0 = disabled)",
           "global_channel_id": "Global channel ID (optional)",
           "ignore_platform": "Platforms to ignore",
           "cover_position_mode": "Cover position mode",

@@ -26,6 +26,34 @@ DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT = 6
 DEFAULT_SCAN_INTERVAL = 8
 
+# Energy meters refresh: the VIMAR firmware updates DPADD_OBJECT.CURRENT_VALUE
+# for energy meter statuses only when someone explicitly calls runonelement
+# GETVALUE on the status object id (the VIMAR UI does this from the energy
+# management screen). Without that call, SELECT polling returns stale values.
+CONF_ENERGY_REFRESH_INTERVAL = "energy_refresh_interval"
+DEFAULT_ENERGY_REFRESH_INTERVAL = 30  # seconds; 0 disables the refresh
+
+# Status names that need explicit GETVALUE on energy meter devices.
+ENERGY_REFRESH_STATUS_NAMES = frozenset(
+    {
+        "energia_assoluta",
+        "energia_parziale",
+        "potenza_attiva",
+        "potenza_reattiva",
+    }
+)
+
+# Object types of energy meter devices (kept in sync with vimarlink.parse_device_type).
+ENERGY_METER_OBJECT_TYPES = frozenset(
+    {
+        "CH_Misuratore",
+        "CH_Carichi",
+        "CH_Carichi_Custom",
+        "CH_Carichi_3F",
+        "CH_KNX_GENERIC_POWER_KW",
+    }
+)
+
 
 # Device overrides
 CONF_OVERRIDE = "device_override"
