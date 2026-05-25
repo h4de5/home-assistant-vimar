@@ -332,15 +332,21 @@ class VimarClimate(VimarEntity, ClimateEntity):
             # Device is OFF: activate in manual mode with the chosen direction
             if self.climate_type == "heat_cool":
                 self.change_state(
-                    "funzionamento", self.get_const_value(VIMAR_CLIMATE_MANUAL),
-                    "stagione", direction,
-                    "setpoint", self.target_temperature,
+                    "funzionamento",
+                    self.get_const_value(VIMAR_CLIMATE_MANUAL),
+                    "stagione",
+                    direction,
+                    "setpoint",
+                    self.target_temperature,
                 )
             else:
                 self.change_state(
-                    "funzionamento", self.get_const_value(VIMAR_CLIMATE_MANUAL),
-                    "regolazione", direction,
-                    "setpoint", self.target_temperature,
+                    "funzionamento",
+                    self.get_const_value(VIMAR_CLIMATE_MANUAL),
+                    "regolazione",
+                    direction,
+                    "setpoint",
+                    self.target_temperature,
                 )
         else:
             # Device is ON: change direction only, preserve operating mode (preset)
@@ -366,19 +372,26 @@ class VimarClimate(VimarEntity, ClimateEntity):
         if self.climate_type == "heat_cool":
             extra = ("unita", self.get_state("unita")) if self.has_state("unita") else ()
             self.change_state(
-                "setpoint", str(set_temperature),
+                "setpoint",
+                str(set_temperature),
                 *extra,
-                "stagione", set_hvac_mode,
-                "centralizzato", "1",
-                "funzionamento", set_function_mode,
+                "stagione",
+                set_hvac_mode,
+                "centralizzato",
+                "1",
+                "funzionamento",
+                set_function_mode,
             )
         elif self.climate_type == "heat_cool_fancoil":
             extra = ("unita", self.get_state("unita")) if self.has_state("unita") else ()
             self.change_state(
-                "setpoint", str(set_temperature),
+                "setpoint",
+                str(set_temperature),
                 *extra,
-                "regolazione", set_hvac_mode,
-                "funzionamento", set_function_mode,
+                "regolazione",
+                set_hvac_mode,
+                "funzionamento",
+                set_function_mode,
             )
 
     # helper
