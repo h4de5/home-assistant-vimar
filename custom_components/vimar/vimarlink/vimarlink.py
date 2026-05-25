@@ -201,6 +201,46 @@ class VimarLink:
 
         return True
 
+    def request_value_refresh(self, object_ids):
+        """Trigger a GETVALUE on each status object id.
+
+        The VIMAR firmware updates DPADD_OBJECT.CURRENT_VALUE for energy
+        meter statuses (e.g. potenza_attiva, energia_*) only when a client
+        issues a service-runonelement GETVALUE on the status object id.
+        The response carries no value (DPCM-0000 = OK); the refreshed
+        CURRENT_VALUE lands in the DB within ~1-2 seconds and is then
+        picked up by the next slim poll SELECT.
+
+        Returns the number of object ids that returned DPCM-0000.
+        """
+        ok = 0
+        for object_id in object_ids:
+            post = (
+                '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">'
+                '<soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws">'
+                "<payload>NO-PAYLOAD</payload>"
+                "<hashcode>NO-HASHCODE</hashcode>"
+                "<optionals>NO-OPTIONALS</optionals>"
+                "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
+                f"<sessionid>{self._session_id}</sessionid><waittime>10</waittime>"
+                f"<idobject>{object_id}</idobject>"
+                "<operation>GETVALUE</operation>"
+                "</service-runonelement></soapenv:Body></soapenv:Envelope>"
+            )
+            response = self._request_vimar_soap(post)
+            if response is None or response is False:
+                continue
+            result = response.find(".//result")
+            if result is not None and (result.text or "").strip() == "DPCM-0000":
+                ok += 1
+            else:
+                _LOGGER.debug(
+                    "request_value_refresh: GETVALUE on %s returned %s",
+                    object_id,
+                    None if result is None else result.text,
+                )
+        return ok
+
     def get_optionals_param(self, state):
         """Return SYNCDB for climate states."""
         if state in [
