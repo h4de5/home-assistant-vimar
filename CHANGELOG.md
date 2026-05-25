@@ -10,6 +10,24 @@ and this project adheres to [Calendar Versioning](https://calver.org/) (`YYYY.M.
 
 ---
 
+## [2026.5.1] - 2026-05-26
+
+### Fixed
+
+- **Stale energy meter values**: VIMAR firmware updates `DPADD_OBJECT.CURRENT_VALUE` for energy meter statuses (`energia_assoluta`, `energia_parziale`, `potenza_attiva`, `potenza_reattiva`) only when a client explicitly issues a `service-runonelement` `GETVALUE` on the status object id (this is what the VIMAR web UI does on the energy management screen). Without that trigger the slim-poll `SELECT` kept returning stale values, freezing energy sensors unless the heat pump page was open in a browser.
+- **`CH_Carichi*` sensor unit/class mapping**: corrected unit-of-measure and device-class assignment for `CH_Carichi`, `CH_Carichi_Custom` and `CH_Carichi_3F` measurements (energy / power / current / timestamp).
+
+### Added
+
+- **`energy_refresh_interval` option**: new options-flow setting (default `30` s, `0` disables) that controls how often the integration sends the `GETVALUE` refresh on energy meter statuses. Throttled independently from the regular scan interval.
+
+### Internal
+
+- `hacs.json` `homeassistant` minimum aligned to `2026.1.0` to match `manifest.json` (was lagging at `2025.10.2`).
+- `.mcp.json` added to `.gitignore` (local MCP server config).
+
+---
+
 ## [2026.5.0] - 2026-05-01
 
 ### Added
