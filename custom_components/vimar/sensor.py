@@ -7,7 +7,6 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     UnitOfElectricCurrent,
-    UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
     UnitOfSpeed,
