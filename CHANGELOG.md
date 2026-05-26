@@ -10,6 +10,22 @@ and this project adheres to [Calendar Versioning](https://calver.org/) (`YYYY.M.
 
 ---
 
+## [2026.5.2] - 2026-05-26
+
+### Fixed
+
+- **`manifest.json`**: removed invalid top-level `homeassistant` key (key is not recognized by Home Assistant 2026.x manifest schema and caused hassfest validation warnings).
+
+### Internal
+
+- **`VimarStatusSensor` relocated** from `vimar_entity.py` to `binary_sensor.py` where it belongs (it extends `BinarySensorEntity` and is only instantiated for the binary_sensor platform). `vimar_setup_entry()` is now purely generic.
+- **`_refresh_sai2_live_state()` helper** extracted from `VimarDataUpdateCoordinator._async_update_data()`: ~25 lines of SAI2-specific group/zone live-value refresh (with optimistic-update guard) moved out of the polling loop. No behavior change.
+- **CI**: `actions/checkout` bumped to v5 (Node 24).
+- **Code hygiene**: removed unused `UnitOfElectricPotential` import in `sensor.py`; formatted `climate.py` with Black.
+- **`.gitignore`**: added `graphify-out/` (local knowledge-graph artifacts) and `CLAUDE.local.md` (per-contributor AI instructions).
+
+---
+
 ## [2026.5.1] - 2026-05-26
 
 ### Fixed
