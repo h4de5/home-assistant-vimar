@@ -19,3 +19,6 @@ BYWEB-*.sql
 
 # graphify knowledge graph outputs (local-only artifacts)
 graphify-out/
+
+# Per-contributor Claude Code instructions (not project conventions)
+CLAUDE.local.md
