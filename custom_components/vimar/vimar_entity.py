@@ -2,8 +2,6 @@
 
 import logging
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
-from homeassistant.const import CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -11,7 +9,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     _LOGGER,
     CONF_IGNORE_PLATFORM,
-    DEVICE_TYPE_BINARY_SENSOR,
     DOMAIN,
     PACKAGE_NAME,
 )
@@ -304,59 +301,6 @@ class VimarEntity(CoordinatorEntity[VimarDataUpdateCoordinator]):
         return [self]
 
 
-class VimarStatusSensor(BinarySensorEntity):
-    """Representation of Vimar connection status sensor."""
-
-    _coordinator: VimarDataUpdateCoordinator
-    _attr_should_poll = True
-
-    def __init__(self, coordinator: VimarDataUpdateCoordinator):
-        """Initialize the sensor."""
-        self._coordinator = coordinator
-        vimarconfig = coordinator.vimarconfig
-        conn = coordinator.vimarconnection._connection
-        self._attr_name = "Vimar Connection to " + str(conn._host) + ":" + str(conn._port)
-        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
-        self._attr_extra_state_attributes = {
-            "Host": conn._host,
-            "Port": conn._port,
-            "Secure": conn._schema == "https",
-            "Verify SSL": conn._schema == "https" and vimarconfig.get(CONF_VERIFY_SSL),
-            "Vimar Url": f"{conn._schema}://{conn._host}:{conn._port}",
-            "Certificate": conn._certificate,
-            "Username": conn._username,
-            "SessionID": coordinator.vimarconnection._session_id,
-        }
-        self._attr_is_on = False
-
-    @property
-    def unique_id(self):
-        """Return the ID of this device."""
-        prefix = self._coordinator.entity_unique_id_prefix or ""
-        if len(prefix) > 0:
-            prefix += "_"
-        return DOMAIN + "_" + prefix + "status"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._coordinator.entity_unique_id_prefix or "", "status")},  # type: ignore[arg-type]
-            name="Vimar WebServer",
-            model="Vimar WebServer",
-            manufacturer="Vimar",
-        )
-
-    def update(self):
-        """Fetch new state data for the sensor.
-
-        FIX #10: this method is called by HA on the executor thread
-        (because _attr_should_poll = True and update() is synchronous),
-        so the blocking is_logged() network call is safe here.
-        """
-        self._attr_is_on = self._coordinator.vimarconnection.is_logged()
-
-
 def vimar_setup_entry(
     vimar_entity_class: type[VimarEntity],
     platform: str,
@@ -373,11 +317,6 @@ def vimar_setup_entry(
 
     entities = []
     entities_to_add = []
-
-    if platform == DEVICE_TYPE_BINARY_SENSOR:
-        status_sensor = VimarStatusSensor(coordinator)
-        async_add_devices([status_sensor], True)
-        entities += [status_sensor]
 
     if not platform_ignored:
         logger.debug("Vimar %s started!", platform)
