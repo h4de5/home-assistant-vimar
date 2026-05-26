@@ -82,10 +82,15 @@ async def async_setup_entry(
     coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     # Connection status sensor (always present, not in device tree)
-    async_add_entities([VimarStatusSensor(coordinator)], True)
+    status_sensor = VimarStatusSensor(coordinator)
+    async_add_entities([status_sensor], True)
 
-    # Standard Vimar binary sensors (monostable switches)
+    # Standard Vimar binary sensors (monostable switches).
+    # NB: vimar_setup_entry() overwrites devices_for_platform[CURR_PLATFORM],
+    # so the status sensor must be re-merged afterwards or async_remove_old_devices()
+    # will treat the "Vimar WebServer" device as orphaned and delete it.
     vimar_setup_entry(VimarBinarySensor, CURR_PLATFORM, hass, entry, async_add_entities)
+    coordinator.devices_for_platform.setdefault(CURR_PLATFORM, []).append(status_sensor)
 
     # SAI2 zone sensors (alarm physical sensors)
     vimarproject = coordinator.vimarproject

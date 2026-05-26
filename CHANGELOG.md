@@ -10,6 +10,14 @@ and this project adheres to [Calendar Versioning](https://calver.org/) (`YYYY.M.
 
 ---
 
+## [2026.5.3] - 2026-05-26
+
+### Fixed
+
+- **"Vimar WebServer" device missing after restart**: after the `VimarStatusSensor` relocation in 2026.5.2, the status sensor was no longer tracked in `coordinator.devices_for_platform`. This caused `async_remove_old_devices()` to treat the "Vimar WebServer" device as orphaned and delete it from the device registry on every reload, making the connection status entity disappear from the UI. Fixed by re-appending the status sensor to `devices_for_platform[binary_sensor]` after `vimar_setup_entry()` overwrites the list.
+
+---
+
 ## [2026.5.2] - 2026-05-26
 
 ### Fixed
