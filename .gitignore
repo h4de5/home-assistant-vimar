@@ -16,3 +16,6 @@ BYWEB-*.sql
 .claude/
 .playwright-mcp/
 .mcp.json
+
+# graphify knowledge graph outputs (local-only artifacts)
+graphify-out/
