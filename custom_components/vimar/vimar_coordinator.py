@@ -175,33 +175,7 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
                             self.vimarproject.sai2_zones,
                             slim_results,
                         )
-                    # Refresh SAI2 live area values — DPADD_OBJECT.CURRENT_VALUE
-                    # for SAI2 group IDs updates immediately after commands,
-                    # unlike the DPAD_SAI2GATEWAY_SAI2GROUPCHILDREN view.
-                    if self.vimarproject.sai2_groups:
-                        group_ids = list(self.vimarproject.sai2_groups.keys())
-                        fresh_values = await self.hass.async_add_executor_job(
-                            self.vimarconnection.get_sai2_area_values, group_ids
-                        )
-                        if fresh_values is not None:
-                            # Merge fresh values but skip group_ids that have
-                            # a pending optimistic update (command in flight).
-                            now = time.monotonic()
-                            guard = self.vimarproject.sai2_optimistic_until
-                            if self.vimarproject.sai2_area_values is None:
-                                self.vimarproject.sai2_area_values = {}
-                            for gid, val in fresh_values.items():
-                                if guard.get(gid, 0) > now:
-                                    continue  # optimistic value still protected
-                                self.vimarproject.sai2_area_values[gid] = val
-                    # Refresh SAI2 zone values (physical sensor states)
-                    if self.vimarproject.sai2_zones:
-                        zone_ids = list(self.vimarproject.sai2_zones.keys())
-                        fresh_zone_values = await self.hass.async_add_executor_job(
-                            self.vimarconnection.get_sai2_area_values, zone_ids
-                        )
-                        if fresh_zone_values is not None:
-                            self.vimarproject.sai2_zone_values = fresh_zone_values
+                    await self._refresh_sai2_live_state()
                     devices = self.vimarproject.devices
 
                     current_count = len(devices)
@@ -386,6 +360,40 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
             )
         except Exception as err:  # noqa: BLE001 - best-effort refresh
             _LOGGER.debug("Vimar: energy meter refresh failed: %s", err)
+
+    async def _refresh_sai2_live_state(self) -> None:
+        """Refresh SAI2 group/zone live values from DPADD_OBJECT.
+
+        DPADD_OBJECT.CURRENT_VALUE for SAI2 group IDs updates immediately
+        after commands, unlike the DPAD_SAI2GATEWAY_SAI2GROUPCHILDREN view.
+        Group values respect the per-group optimistic-update guard so
+        in-flight commands aren't overwritten by stale reads.
+        """
+        if self.vimarproject is None or self.vimarconnection is None:
+            return
+
+        if self.vimarproject.sai2_groups:
+            group_ids = list(self.vimarproject.sai2_groups.keys())
+            fresh_values = await self.hass.async_add_executor_job(
+                self.vimarconnection.get_sai2_area_values, group_ids
+            )
+            if fresh_values is not None:
+                now = time.monotonic()
+                guard = self.vimarproject.sai2_optimistic_until
+                if self.vimarproject.sai2_area_values is None:
+                    self.vimarproject.sai2_area_values = {}
+                for gid, val in fresh_values.items():
+                    if guard.get(gid, 0) > now:
+                        continue  # optimistic value still protected
+                    self.vimarproject.sai2_area_values[gid] = val
+
+        if self.vimarproject.sai2_zones:
+            zone_ids = list(self.vimarproject.sai2_zones.keys())
+            fresh_zone_values = await self.hass.async_add_executor_job(
+                self.vimarconnection.get_sai2_area_values, zone_ids
+            )
+            if fresh_zone_values is not None:
+                self.vimarproject.sai2_zone_values = fresh_zone_values
 
     def _apply_slim_results(self, devices: dict, slim_results: list) -> None:
         """Patch CURRENT_VALUE from slim poll into existing device tree."""
