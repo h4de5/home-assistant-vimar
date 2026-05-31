@@ -1,0 +1,12 @@
+# Code Owners for home-assistant-vimar
+#
+# Original maintainers and contributors
+
+# Default owners
+* @h4de5 @robigan @davideciarmiello
+
+# Integration core components
+/custom_components/vimar/ @h4de5 @robigan @davideciarmiello
+
+# Contributors
+/custom_components/vimar/vimarlink/ @h4de5 @robigan @davideciarmiello @WhiteWolf84

@@ -1,13 +1,14 @@
+# Vimar Integration Services
+
 update_entities:
   name: Update all entities
   description: >
     Carrying out loading of the entities.
   fields:
     forced:
-      # description: Se forzare il caricamento di tutte le informazioni, come le info delle stanze
       name: Force loading
       description: Whether to force loading of all information, such as room info
-      example: True
+      example: true
 
 exec_vimar_sql:
   name: Execute Vimar SQL
@@ -27,3 +28,42 @@ reload_default:
 reload:
   name: Reload
   description: Reload Vimar integration.
+
+# ================================================
+# COVER SERVICES
+# ================================================
+
+set_travel_times:
+  name: Configura Tempi Apertura/Chiusura
+  description: >
+    Imposta i tempi di apertura e chiusura per una tapparella.
+    I valori vengono salvati permanentemente e utilizzati per il tracking della posizione.
+  target:
+    entity:
+      domain: cover
+      integration: vimar
+  fields:
+    travel_time_up:
+      name: Tempo Apertura (secondi)
+      description: Tempo in secondi necessario per aprire completamente la tapparella
+      required: true
+      example: 28
+      selector:
+        number:
+          min: 1
+          max: 300
+          step: 1
+          unit_of_measurement: "s"
+          mode: box
+    travel_time_down:
+      name: Tempo Chiusura (secondi)
+      description: Tempo in secondi necessario per chiudere completamente la tapparella
+      required: true
+      example: 26
+      selector:
+        number:
+          min: 1
+          max: 300
+          step: 1
+          unit_of_measurement: "s"
+          mode: box

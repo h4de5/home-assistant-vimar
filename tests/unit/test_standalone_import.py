@@ -42,6 +42,6 @@ def test_vimarlink_can_be_instantiated():
     link = VimarLink("https", "192.168.1.1", 443, "user", "pass")
 
     assert link is not None
-    assert link._schema == "https"
-    assert link._host == "192.168.1.1"
-    assert link._port == 443
+    assert link._connection._schema == "https"
+    assert link._connection._host == "192.168.1.1"
+    assert link._connection._port == 443

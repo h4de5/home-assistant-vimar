@@ -1,10 +1,10 @@
 [project]
 name = "vimar"
-version = "2026.2.0"
+version = "2026.4.0"
 requires-python = ">=3.13"
 
 [tool.black]
-target-version = ["py312"]
+target-version = ["py313"]
 line-length = 100
 include = '\.pyi?$'
 exclude = '''
@@ -61,6 +61,7 @@ markers = [
 [tool.pyright]
 include = ["custom_components/vimar"]
 exclude = ["**/node_modules", "**/__pycache__"]
+extraPaths = ["custom_components/vimar"]
 pythonVersion = "3.13"
 pythonPlatform = "Linux"
 typeCheckingMode = "basic"

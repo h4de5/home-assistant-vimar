@@ -7,3 +7,18 @@ examples/credentials.cfg
 .vs
 .venv
 venv
+
+# Database dumps (sensitive data)
+BYWEB-*.sql
+*.sql
+
+# Claude Code working directories
+.claude/
+.playwright-mcp/
+.mcp.json
+
+# graphify knowledge graph outputs (local-only artifacts)
+graphify-out/
+
+# Per-contributor Claude Code instructions (not project conventions)
+CLAUDE.local.md

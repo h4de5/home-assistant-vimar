@@ -37,14 +37,15 @@ The integration uses local polling to communicate with the VIMAR web server via 
 
 **Platform implementations** - Individual entity types
 
-- `climate.py` (488 lines) - HVAC/thermostat control
-- `light.py` (126 lines) - Light and RGB dimmer control
-- `cover.py` (155 lines) - Covers/shutters/blinds
-- `switch.py` (65 lines) - Switches and outlets
-- `sensor.py` (246 lines) - Sensors including energy monitors
-- `media_player.py` (236 lines) - Audio device control
-- `binary_sensor.py` - Binary sensors for device customization
+- `alarm_control_panel.py` - SAI2 alarm area control (arm/disarm, multi-area, PIN)
+- `binary_sensor.py` - Connection status + SAI2 zone sensors (door, motion, tamper)
+- `climate.py` - HVAC/thermostat control
+- `cover.py` - Covers/shutters/blinds with time-based position tracking
+- `light.py` - Light and RGB dimmer control
+- `media_player.py` - Audio device control
 - `scene.py` - Scene activation
+- `sensor.py` - Sensors including energy monitors
+- `switch.py` - Switches and outlets
 
 **Configuration**
 
@@ -319,9 +320,9 @@ examples/
 
 ## Compatibility
 
-- **Home Assistant**: Requires 2025.10.2+ (see manifest.json)
-- **Python**: 3.13 (see pyrightconfig.json)
-- **VIMAR Firmware**: Tested with v2.5 to v2.8
+- **Home Assistant**: Requires 2026.1.0+ (see manifest.json)
+- **Python**: 3.13+ (see pyrightconfig.json)
+- **VIMAR Firmware**: Tested with v2.5 to v2.11
 - **Hardware**: VIMAR 01945 or 01946 web server required
 
 ## Migration Notes

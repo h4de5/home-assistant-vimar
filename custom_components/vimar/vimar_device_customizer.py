@@ -1,7 +1,6 @@
 import logging
 import re
 
-# import sys
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -31,20 +30,24 @@ DEVICE_OVERRIDE_ACTION_REPLACE_RE_PATTERN = "pattern"
 DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL = "repl"
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER_isDebug = _LOGGER.isEnabledFor(logging.DEBUG)
+# FIX #14: rimosso _LOGGER_isDebug module-level; sostituito con
+# _LOGGER.isEnabledFor(logging.DEBUG) runtime (stesso approccio fix #11).
 
 
 class VimarDeviceCustomizer:
-    """"""
-
-    _device_overrides = []
-    vimarconfig: ConfigType = None
+    """Applies user-defined overrides and naming rules to Vimar devices."""
 
     def __init__(self, vimarconfig: ConfigType, device_overrides):
         """Create new container to hold all states."""
+        # FIX #15 + #16: _device_overrides e vimarconfig erano class-level
+        # (mutable list e None) condivisi tra TUTTE le istanze. Con due
+        # config-entry Vimar la seconda istanza avrebbe inquinato la prima.
+        # Inizializzati qui per-istanza.
+        self._device_overrides: list = []
+        self.vimarconfig: ConfigType = vimarconfig
+
         if device_overrides:
             self._device_overrides += device_overrides
-        self.vimarconfig = vimarconfig
         self.init_overrides()
 
     def init_overrides(self):
@@ -59,7 +62,7 @@ class VimarDeviceCustomizer:
         for device_override in self._device_overrides:
             try:
                 self.device_override_check(device_override)
-            except BaseException as err:
+            except Exception as err:
                 _LOGGER.error(
                     "Error occurred parsing device_override. %s - device_override: %s",
                     str(err),
@@ -86,7 +89,6 @@ class VimarDeviceCustomizer:
         if self.vimarconfig.get(CONF_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN):
             action_all.append({DEVICE_OVERRIDE_ACTION_FRIENDLY_NAME_ROOM_NAME_AT_BEGIN: True})
         if self.vimarconfig.get(CONF_DEVICES_LIGHTS_RE):
-            # tutti i CH_Main_Automation li imposto inizialmente come switch
             set_switch = {
                 DEVICE_OVERRIDE_FILTER: {"object_type": "CH_Main_Automation"},
                 "device_type": "switch",
@@ -126,7 +128,8 @@ class VimarDeviceCustomizer:
                 match = self.device_override_match(device, device_override)
                 if not match:
                     continue
-                if deviceold is None and _LOGGER_isDebug:
+                # FIX #14: runtime isEnabledFor() invece di bool module-level
+                if deviceold is None and _LOGGER.isEnabledFor(logging.DEBUG):
                     deviceold = {}
                     for key, value in device.items():
                         deviceold[key] = self.get_attr_str(device, key)
@@ -138,7 +141,7 @@ class VimarDeviceCustomizer:
                 else:
                     for key, value in actions.items():
                         self.device_override_action_execute(device, key, value, deviceold)
-            except BaseException as err:
+            except Exception as err:
                 _LOGGER.error(
                     "Error occurred for device_override. %s - device_override: %s",
                     str(err),
@@ -176,14 +179,12 @@ class VimarDeviceCustomizer:
         if search is not None:
             match = search == "*" or name.upper() == search.upper()
 
-        # gestione filtro con regex, come su https://gist.github.com/elbarsal/65f413b60d1c4976a8351fba4b4d94d5 (whitelist_re)
         try:
             if search_regex is not None:
                 name_match = re.search(search_regex, name, re.IGNORECASE) is not None
                 if name_match:
-                    # _LOGGER.debug("Whitelist regex matches entity or domain: %s", state.entity_id)
                     match = True
-        except BaseException as err:
+        except Exception as err:
             _LOGGER.error(
                 "Error occurred in match_name. name: '"
                 + name
@@ -199,7 +200,7 @@ class VimarDeviceCustomizer:
         try:
             if pattern is not None and repl is not None:
                 name = re.sub(pattern, repl, name, flags=re.I)
-        except BaseException as err:
+        except Exception as err:
             _LOGGER.error(
                 "Error occurred in replace_name. name: '"
                 + name
@@ -220,7 +221,6 @@ class VimarDeviceCustomizer:
             actions = [actions]
             device_override[DEVICE_OVERRIDE_ACTIONS] = actions
 
-        # extend shorner version to list detailed version
         for key, value in device_override.copy().items():
             if (
                 key == DEVICE_OVERRIDE_ACTIONS
@@ -268,7 +268,6 @@ class VimarDeviceCustomizer:
     def get_attr_key(self, key):
         if key == "type" or key == "class" or key == "friendly_name":
             return "device_" + key
-
         if key == "vimar_object_type":
             return "object_type"
         if key == "vimar_object_name" or key == "vimar_name":
@@ -336,7 +335,7 @@ class VimarDeviceCustomizer:
                 value.get(DEVICE_OVERRIDE_ACTION_REPLACE_RE_REPL),
             )
             device[field] = new_value
-        else:  # on default, set specified value in dictionary :)
+        else:
             field = self.get_attr_key(action)
             device[field] = value
 

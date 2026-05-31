@@ -1,16 +1,7 @@
 """Vimar Platform integration."""
 
-import asyncio
-
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-
-# from datetime import timedelta
-# import logging
-# import os
-# from platform import platform
-# from typing import Tuple
-# import async_timeout
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -19,11 +10,8 @@ from homeassistant.const import (
     CONF_PORT,
     CONF_TIMEOUT,
     CONF_USERNAME,
-    # CONF_VERIFY_SSL,
     SERVICE_RELOAD,
 )
-
-# from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.typing import ConfigType
@@ -74,7 +62,6 @@ SERVICE_RELOAD_DEFAULT = "reload_default"
 SERVICE_RELOAD_DEFAULT_SCHEMA = vol.Schema({})
 
 
-# @ asyncio.coroutine
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     """Set up from config."""
     hass.data.setdefault(DOMAIN, {})
@@ -83,22 +70,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
 
     # if there are no configuration.yaml settings then terminate
     if config.get(DOMAIN) is None:
-        # We get her if the integration is set up using config flow
+        # We get here if the integration is set up using config flow
         return True
 
     conf = config.get(DOMAIN, {})
     hass.data.setdefault(DOMAIN_CONFIG_YAML, conf)
 
     if CONF_USERNAME in conf:
-        # https://www.programcreek.com/python/?code=davesmeghead%2Fvisonic%2Fvisonic-master%2Fcustom_components%2Fvisonic%2F__init__.py
-        # has there been a flow configured panel connection before
         configured = set(entry for entry in hass.config_entries.async_entries(DOMAIN))
 
-        # if there is not a flow configured connection previously
-        #   then create a flow connection from the configuration.yaml data
         if len(configured) == 0:
-            # get the configuration.yaml settings and make a 'flow' task :)
-            #   this will run 'async_step_import' in config_flow.py
             log.info("Importing configuration from yaml...after you can remove from yaml")
             hass.async_create_task(
                 hass.config_entries.flow.async_init(
@@ -114,7 +95,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """async_setup_entry"""
+    """Set up Vimar from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
     if entry.unique_id is None:
@@ -126,14 +107,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if CONF_HOST not in vimarconfig:
         vimarconfig.update(entry.data or {})
 
-    # Set default values on conf from yaml, that not can specified with flow
+    # Copy CONF_OVERRIDE from YAML only when present and not None.
+    # FIX #5: using `yamlconf.get(cfg) or []` instead of `yamlconf.get(cfg)`
+    # avoids storing None in vimarconfig when the key is absent from YAML.
+    # dict.get() returns None both when the key is missing AND when its value
+    # is explicitly None, so the old fallback default=[] had no effect in
+    # the second case, causing VimarDeviceCustomizer to receive None and crash.
     yamlconf = hass.data.get(DOMAIN_CONFIG_YAML, {})
     for cfg in [CONF_OVERRIDE]:
-        vimarconfig[cfg] = yamlconf.get(cfg)
+        vimarconfig[cfg] = yamlconf.get(cfg) or []
 
     coordinator = VimarDataUpdateCoordinator(hass, entry=entry, vimarconfig=vimarconfig)
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await coordinator.init_vimarproject()
+
+    # FIX #6: always use async_config_entry_first_refresh() unconditionally.
+    # async_setup_entry is only ever called by HA when the entry is in state
+    # SETUP_IN_PROGRESS, so the old if/else branch was redundant.
+    # More importantly, the string comparison `entry.state.name == "SETUP_IN_PROGRESS"`
+    # used a non-public API (enum .name) that could silently break on any HA rename.
+    # async_config_entry_first_refresh() is the HA-recommended call here: it
+    # propagates ConfigEntryNotReady correctly on first-run failures.
     await coordinator.async_config_entry_first_refresh()
 
     if (entry.data or {}).get(CONF_DELETE_AND_RELOAD_ALL_ENTITIES):
@@ -142,11 +136,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_remove_old_devices()
         hass.config_entries.async_update_entry(entry, data=options)
 
-    async def setup_then_listen() -> None:
-        await coordinator.async_register_devices_platforms()
-        entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
-    hass.async_create_task(setup_then_listen())
+    await coordinator.async_register_devices_platforms()
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     return True
 
@@ -209,14 +200,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
     coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     platforms = list(coordinator.devices_for_platform.keys())
-    unloaded = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in platforms
-            ]
-        )
-    )
+    unloaded = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unloaded and entry.entry_id in hass.data[DOMAIN]:
         hass.data[DOMAIN].pop(entry.entry_id)
 
@@ -225,5 +209,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    await hass.config_entries.async_reload(entry.entry_id)

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Community Discussion
+    url: https://github.com/WhiteWolf84/home-assistant-vimar/discussions
+    about: Ask questions and discuss with the community
+  - name: 📚 Home Assistant Community
+    url: https://community.home-assistant.io/
+    about: Get help from the broader Home Assistant community
+  - name: 📖 Documentation
+    url: https://github.com/WhiteWolf84/home-assistant-vimar/blob/main/README.md
+    about: Read the integration documentation
