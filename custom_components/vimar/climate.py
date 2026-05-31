@@ -354,45 +354,43 @@ class VimarClimate(VimarEntity, ClimateEntity):
             self.change_state(season_key, direction)
 
     async def async_set_temperature(self, **kwargs) -> None:
-        """Set new target temperature."""
+        """Set new target temperature.
+
+        When the thermostat is already running in manual mode, write ONLY the
+        setpoint, exactly like the native VIMAR web UI (a single SETVALUE).
+        Re-sending funzionamento=MANUAL or the season alongside the setpoint
+        makes the firmware reload its stored manual setpoint and discard the
+        value we just wrote.
+
+        When the thermostat is off or in another preset (auto/eco/away/...),
+        activate manual mode first and apply the setpoint last. change_state()
+        sends the writes sequentially in this order, so the setpoint wins. The
+        heat/cool direction is left untouched: the user only chose a
+        temperature, not a season.
+        """
         set_temperature = kwargs.get(ATTR_TEMPERATURE)
         if set_temperature is None:
             return
         set_temperature = max(0, min(50, set_temperature))
 
-        set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
-        set_hvac_mode = (
-            self.get_const_value(VIMAR_CLIMATE_HEAT),
-            self.get_const_value(VIMAR_CLIMATE_COOL),
-        )[self.hvac_mode == HVACMode.COOL]
-
         _LOGGER.info("Vimar Climate setting target temperature: %s", str(set_temperature))
-        _LOGGER.info("Vimar Climate setting setup mode to manual: %s", set_function_mode)
 
-        if self.climate_type == "heat_cool":
-            extra = ("unita", self.get_state("unita")) if self.has_state("unita") else ()
-            self.change_state(
-                "setpoint",
-                str(set_temperature),
-                *extra,
-                "stagione",
-                set_hvac_mode,
-                "centralizzato",
-                "1",
-                "funzionamento",
-                set_function_mode,
-            )
-        elif self.climate_type == "heat_cool_fancoil":
-            extra = ("unita", self.get_state("unita")) if self.has_state("unita") else ()
-            self.change_state(
-                "setpoint",
-                str(set_temperature),
-                *extra,
-                "regolazione",
-                set_hvac_mode,
-                "funzionamento",
-                set_function_mode,
-            )
+        # Already in manual mode: a plain setpoint write, like the web UI.
+        if self.is_on and self.preset_mode == PRESET_NONE:
+            self.change_state("setpoint", str(set_temperature))
+            return
+
+        # Off or another preset: enter manual mode, then override the setpoint.
+        set_function_mode = self.get_const_value(VIMAR_CLIMATE_MANUAL)
+        extra = ("unita", self.get_state("unita")) if self.has_state("unita") else ()
+        _LOGGER.info("Vimar Climate activating manual mode: %s", set_function_mode)
+        self.change_state(
+            "funzionamento",
+            set_function_mode,
+            *extra,
+            "setpoint",
+            str(set_temperature),
+        )
 
     # helper
 

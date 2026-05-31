@@ -10,6 +10,18 @@ and this project adheres to [Calendar Versioning](https://calver.org/) (`YYYY.M.
 
 ---
 
+## [2026.5.4] - 2026-05-31
+
+### Fixed
+
+- **Thermostat setpoint lost or reset to a different value**: setting the target temperature (or switching from off to heat/cool) could fail to take effect, with the thermostat snapping back to a previously stored setpoint. `change_state()` dispatched each value as a separate fire-and-forget executor job, so concurrent `SETVALUE` requests reached the web server in non-deterministic order; when `funzionamento=MANUAL` arrived after the setpoint, the firmware reloaded its stored manual setpoint and discarded the value just written. Writes are now batched into a single executor job and sent sequentially, preserving the caller's order (setpoint last wins). In addition, `async_set_temperature()` now writes **only** the setpoint when the thermostat is already in manual mode — matching the native VIMAR web UI, which sends a single `SETVALUE` — and applies `funzionamento=MANUAL` before the setpoint when activating from off or another preset, without overwriting the heat/cool direction.
+
+### Internal
+
+- Added regression tests (`tests/integration/test_climate_state_writes.py`) covering the single ordered executor job, sequential `SETVALUE` delivery, and the manual setpoint-only / off-activation write paths.
+
+---
+
 ## [2026.5.3] - 2026-05-26
 
 ### Fixed

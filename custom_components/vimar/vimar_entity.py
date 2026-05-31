@@ -156,11 +156,14 @@ class VimarEntity(CoordinatorEntity[VimarDataUpdateCoordinator]):
             self._coordinator._device_state_hashes.pop(self._device_id, None)
         self.async_write_ha_state()
 
-    def _apply_state_change(self, state: str, value) -> bool:
-        """Apply a single state change to the device and schedule a bus write.
+    def _apply_state_change(self, state: str, value) -> tuple[str, str, str] | None:
+        """Validate a single state change and update the local device state.
 
         FIX #9: extracted from change_state() to remove duplicate logic.
-        Returns True if the state was found and the write was scheduled.
+        Returns the (status_id, value, optionals) tuple to be written to the
+        bus, or None if the state is unknown. The actual SETVALUE request is
+        NOT sent here: change_state() schedules all writes as a single ordered
+        executor job (see change_state docstring).
         """
         if state not in self._device["status"]:
             self._logger.warning(
@@ -170,40 +173,59 @@ class VimarEntity(CoordinatorEntity[VimarDataUpdateCoordinator]):
                 self._device_id,
                 value,
             )
-            return False
+            return None
 
         optionals = self._vimarconnection.get_optionals_param(state)
-        self.hass.async_add_executor_job(
-            self._vimarconnection.set_device_status,
-            self._device["status"][state]["status_id"],
-            str(value),
-            optionals,
-        )
+        status_id = self._device["status"][state]["status_id"]
         self._device["status"][state]["status_value"] = str(value)
-        return True
+        return (status_id, str(value), optionals)
+
+    def _write_states_sequentially(self, writes: list[tuple[str, str, str]]) -> None:
+        """Send SETVALUE requests one at a time, in order, on one thread.
+
+        FIX: previously each value was dispatched via a separate
+        async_add_executor_job() call (fire-and-forget). With multiple
+        executor worker threads the SETVALUE requests reached the webserver
+        in non-deterministic order. For thermostats this corrupted writes:
+        e.g. applying funzionamento=MANUAL after the setpoint made the
+        firmware reload its stored manual setpoint, discarding the value just
+        written. Running the writes sequentially on a single executor thread
+        guarantees the caller's order (setpoint last wins).
+        """
+        for status_id, value, optionals in writes:
+            self._vimarconnection.set_device_status(status_id, value, optionals)
 
     def change_state(self, *args, **kwargs):
-        """Change state on bus system and the local device state."""
+        """Change state on bus system and the local device state.
+
+        All values are written to the bus by a single executor job that sends
+        the SETVALUE requests sequentially, preserving the order in which they
+        are passed here. Order matters for thermostats: the activating mode
+        (funzionamento) must be sent before the setpoint so the setpoint wins.
+        """
         if self._device is None or "status" not in self._device:
             self._logger.warning(
                 "Cannot change state for device %s - device data not available", self._device_id
             )
             return
 
-        state_changed = False
+        writes: list[tuple[str, str, str]] = []
 
         if self._device["status"]:
             if args:
                 iter_args = iter(args)
                 for state, value in zip(iter_args, iter_args, strict=False):
-                    if self._apply_state_change(state, value):
-                        state_changed = True
+                    write = self._apply_state_change(state, value)
+                    if write is not None:
+                        writes.append(write)
 
             for state, value in kwargs.items():
-                if self._apply_state_change(state, value):
-                    state_changed = True
+                write = self._apply_state_change(state, value)
+                if write is not None:
+                    writes.append(write)
 
-        if state_changed:
+        if writes:
+            self.hass.async_add_executor_job(self._write_states_sequentially, writes)
             self.request_statemachine_update()
 
     def get_state(self, state):
