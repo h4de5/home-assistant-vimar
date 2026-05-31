@@ -10,6 +10,18 @@ and this project adheres to [Calendar Versioning](https://calver.org/) (`YYYY.M.
 
 ---
 
+## [2026.5.5] - 2026-05-31
+
+### Fixed
+
+- **Thermostat commands from Home Assistant never reached the physical device**: setting a thermostat setpoint (or any climate state) from HA updated only the web server's database, not the physical By-me thermostat — HA displayed the new value while the room kept being regulated to the old setpoint, and a manual sync from the VIMAR interface appeared to "revert" the change. Root cause: a By-me thermostat only applies a `SETVALUE` to the physical device once a live device session is open; the native VIMAR web UI opens it by issuing a `GETVALUE` on the object right before saving, while the integration sent a bare `SETVALUE`. `set_device_status()` now primes the session with a `GETVALUE` on the same object before the `SETVALUE` for states that require device synchronisation (`optionals == "SYNCDB"`, i.e. climate states such as setpoint/season/mode). Covers, lights and switches use `NO-OPTIONALS` and are unaffected. Verified on hardware (01945).
+
+### Changed
+
+- Added diagnostic debug logging to `set_device_status()`: logs the `idobject`/value/optionals sent and the web server's `result`/`payload`, plus a warning when a write receives no response. Makes future write-path issues diagnosable from the logs.
+
+---
+
 ## [2026.5.4] - 2026-05-31
 
 ### Fixed

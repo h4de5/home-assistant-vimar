@@ -121,31 +121,71 @@ class VimarLink:
         post = f"sessionid={self._session_id}" "&op=getjScriptEnvironment&context=runtime"
         return self._request_vimar(post, "vimarbyweb/modules/system/dpadaction.php", headers)
 
-    def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
-        """Set status for one device."""
-        post = (
+    def _build_runonelement(self, object_id, payload, optionals, operation):
+        """Build a service-runonelement SOAP envelope (SETVALUE/GETVALUE)."""
+        return (
             '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">'
             '<soapenv:Body><service-runonelement xmlns="urn:xmethods-dpadws">'
-            f"<payload>{status}</payload>"
+            f"<payload>{payload}</payload>"
             "<hashcode>NO-HASHCODE</hashcode>"
             f"<optionals>{optionals}</optionals>"
             "<callsource>WEB-DOMUSPAD_SOAP</callsource>"
             f"<sessionid>{self._session_id}</sessionid><waittime>10</waittime>"
             f"<idobject>{object_id}</idobject>"
-            "<operation>SETVALUE</operation>"
+            f"<operation>{operation}</operation>"
             "</service-runonelement></soapenv:Body></soapenv:Envelope>"
         )
 
+    def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
+        """Set status for one device."""
+        _LOGGER.debug(
+            "set_device_status: sending SETVALUE idobject=%s value=%s optionals=%s",
+            object_id,
+            status,
+            optionals,
+        )
+
+        # By-me thermostats (states flagged SYNCDB by get_optionals_param) only
+        # propagate a SETVALUE to the PHYSICAL device if a live device session
+        # is open. The native web UI opens it by issuing a GETVALUE on the
+        # object right before the save; without it, the SETVALUE updates only
+        # the webserver database and never reaches the device (HA shows the new
+        # value but the thermostat keeps regulating to the old one). Priming the
+        # session with a GETVALUE first makes the SETVALUE reach the device.
+        # Confirmed on hardware (01945) 2026-05-31. Covers/lights use
+        # NO-OPTIONALS and are unaffected.
+        if optionals == "SYNCDB":
+            _LOGGER.debug(
+                "set_device_status: priming device session with GETVALUE idobject=%s",
+                object_id,
+            )
+            self._request_vimar_soap(
+                self._build_runonelement(object_id, "0", "NO-OPTIONALS", "GETVALUE")
+            )
+
+        post = self._build_runonelement(object_id, status, optionals, "SETVALUE")
+
         response = self._request_vimar_soap(post)
-        if response is not None and response is not False:
-            payload = response.find(".//payload")
-            if payload is not None:
-                _LOGGER.debug(
-                    "set_device_status returned payload: %s from request: %s",
-                    payload.text or "unknown error",
-                    post,
-                )
-                return parse_sql_payload(payload.text)
+        if response is None or response is False:
+            _LOGGER.warning(
+                "set_device_status: no/failed response for idobject=%s value=%s optionals=%s",
+                object_id,
+                status,
+                optionals,
+            )
+            return None
+
+        result = response.find(".//result")
+        payload = response.find(".//payload")
+        _LOGGER.debug(
+            "set_device_status: idobject=%s value=%s -> result=%s payload=%s",
+            object_id,
+            status,
+            result.text if result is not None else "n/a",
+            payload.text if payload is not None else "n/a",
+        )
+        if payload is not None:
+            return parse_sql_payload(payload.text)
         return None
 
     def set_sai2_status(self, command: int, area_index: int, pin: str) -> bool:
