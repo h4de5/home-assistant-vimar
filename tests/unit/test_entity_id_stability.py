@@ -56,6 +56,17 @@ def test_object_id_never_modified(sample_light_device):
     ("CH_Dimmer_Automation", "light", {'on/off': {'status_value': '1'}, 'livello': {'status_value': '50'}}),
     ("CH_Shutter_Automation", "cover", {'up/down': {'status_value': '0'}}),
     ("CH_HVAC", "climate", {'setpoint': {'status_value': '20'}}),
+    (
+        "CH_Clima_ControlloOnOffMisuraUmidita",
+        "sensor",
+        {
+            'on/off': {'status_value': '0'},
+            'enable': {'status_value': '1'},
+            'setpoint': {'status_value': '60.00'},
+            'dynamic_mode': {'status_value': '1'},
+            'value': {'status_value': '55.00'},
+        },
+    ),
     # These are recognized by object_type prefix matching
     ("CH_Dimmer_RGB", "light", {'on/off': {'status_value': '1'}}),
     ("CH_ShutterWithoutPosition_Automation", "cover", {'up/down': {'status_value': '0'}}),
@@ -98,3 +109,27 @@ def test_object_id_preserved_for_unknown_type():
     assert device['object_id'] == original_id, "object_id changed for unknown type!"
     # Unknown types go to 'other' bucket
     assert device['device_type'] == 'other'
+
+
+def test_humidity_control_object_maps_to_humidity_sensor():
+    """CH_Clima_ControlloOnOffMisuraUmidita exposes humidity values."""
+    device = {
+        'object_id': '622',
+        'object_type': 'CH_Clima_ControlloOnOffMisuraUmidita',
+        'object_name': 'Deumidificatore',
+        'status': {
+            'on/off': {'status_value': '0'},
+            'enable': {'status_value': '1'},
+            'setpoint': {'status_value': '60.00'},
+            'dynamic_mode': {'status_value': '1'},
+            'value': {'status_value': '55.00'},
+        },
+    }
+
+    link = VimarLink('https', '192.168.1.1', 443, 'user', 'pass')
+    project = VimarProject(link)
+    project.parse_device_type(device)
+
+    assert device['device_type'] == 'sensor'
+    assert device['device_class'] == 'humidity'
+    assert device['icon'] == 'mdi:water-percent'
