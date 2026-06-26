@@ -30,6 +30,7 @@ try:
         DEVICE_TYPE_SCENES,
         DEVICE_TYPE_SENSORS,
         DEVICE_TYPE_SWITCHES,
+        VIMAR_HUMIDITY_OBJECT_TYPES,
     )
 except ImportError:
     # Standalone mode (e.g., examples/example.py) - define constants locally
@@ -41,6 +42,7 @@ except ImportError:
     DEVICE_TYPE_SCENES = "scene"
     DEVICE_TYPE_SENSORS = "sensor"
     DEVICE_TYPE_OTHERS = "other"
+    VIMAR_HUMIDITY_OBJECT_TYPES = ("CH_Clima_ControlloOnOffMisuraUmidita",)
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER_isDebug = _LOGGER.isEnabledFor(logging.DEBUG)
@@ -56,6 +58,7 @@ DEVICE_CLASS_WINDOW = "window"
 DEVICE_CLASS_POWER = "power"
 DEVICE_CLASS_TEMPERATURE = "temperature"
 DEVICE_CLASS_PRESSURE = "pressure"
+DEVICE_CLASS_HUMIDITY = "humidity"
 
 SSL_IGNORED = False
 
@@ -1122,6 +1125,11 @@ class VimarProject:
             device_type = DEVICE_TYPE_SENSORS
             device_class = DEVICE_CLASS_TEMPERATURE
             icon = "mdi:thermometer"
+        elif device["object_type"] in VIMAR_HUMIDITY_OBJECT_TYPES:
+            # see: https://github.com/h4de5/home-assistant-vimar/issues/51
+            device_type = DEVICE_TYPE_SENSORS
+            device_class = DEVICE_CLASS_HUMIDITY
+            icon = "mdi:water-percent"
         elif device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"]:
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
             device_type = DEVICE_TYPE_SENSORS

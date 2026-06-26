@@ -6,6 +6,7 @@ import logging
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
+    PERCENTAGE,
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
@@ -13,8 +14,14 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
-from .const import DEVICE_TYPE_SENSORS as CURR_PLATFORM
+from .const import (
+    DEVICE_TYPE_SENSORS,
+    VIMAR_HUMIDITY_OBJECT_TYPES,
+    VIMAR_HUMIDITY_SENSOR_STATUSES,
+)
 from .vimar_entity import VimarEntity, vimar_setup_entry
+
+CURR_PLATFORM = DEVICE_TYPE_SENSORS
 
 # SCAN_INTERVAL = timedelta(seconds=20)
 # MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=5)
@@ -49,8 +56,8 @@ class VimarSensor(VimarEntity, SensorEntity):
         # device_c['object_name'] += " " + measurement_name
 
         self._measurement_name = measurement_name
-        self._measurement_display_name = self._measurement_name.title().strip().replace("_", " ")
         VimarEntity.__init__(self, coordinator, device_id)
+        self._measurement_display_name = self._get_measurement_display_name()
         self._class_and_units = self.class_and_units()
         # this will override the name for all
         # self._device['object_name_' + self._measurement_name] = self._device['object_name'] + " " + measurement_name
@@ -69,6 +76,15 @@ class VimarSensor(VimarEntity, SensorEntity):
     def name(self):
         """Return the name of the device."""
         return super().name + " " + self._measurement_display_name
+
+    def _get_measurement_display_name(self):
+        """Return a user-friendly display name for the current measurement."""
+        if self._device["object_type"] in VIMAR_HUMIDITY_OBJECT_TYPES:
+            if self._measurement_name == "value":
+                return "Humidity"
+            if self._measurement_name == "setpoint":
+                return "Humidity Setpoint"
+        return self._measurement_name.title().strip().replace("_", " ")
 
     @property
     def unit_of_measurement(self):
@@ -89,8 +105,9 @@ class VimarSensor(VimarEntity, SensorEntity):
         class_and_unit = self.class_and_units()
         if class_and_unit[1] == SensorDeviceClass.ENERGY:
             return SensorStateClass.TOTAL_INCREASING
-        elif class_and_unit[1] == SensorDeviceClass.POWER and any(
-            x in self._measurement_name for x in ["totale"]
+        elif class_and_unit[1] == SensorDeviceClass.HUMIDITY or (
+            class_and_unit[1] == SensorDeviceClass.POWER
+            and any(x in self._measurement_name for x in ["totale"])
         ):
             return SensorStateClass.MEASUREMENT
         return ""
@@ -122,6 +139,11 @@ class VimarSensor(VimarEntity, SensorEntity):
         ):
             # see: https://github.com/h4de5/home-assistant-vimar/issues/20
             return [UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE]
+        elif self._device["object_type"] in VIMAR_HUMIDITY_OBJECT_TYPES or any(
+            x in self._measurement_name for x in ["humidity", "umidita"]
+        ):
+            # see: https://github.com/h4de5/home-assistant-vimar/issues/51
+            return [PERCENTAGE, SensorDeviceClass.HUMIDITY]
         elif self._device["object_type"] in ["CH_KNX_GENERIC_WINDSPEED"] or any(
             x in self._measurement_name for x in ["wind_speed"]
         ):
@@ -225,6 +247,11 @@ class VimarSensorContainer(VimarEntity):
         sensor_list = []
         if "status" in self._device and self._device["status"]:
             for status in self._device["status"]:
+                if (
+                    self._device["object_type"] in VIMAR_HUMIDITY_OBJECT_TYPES
+                    and status not in VIMAR_HUMIDITY_SENSOR_STATUSES
+                ):
+                    continue
                 # if status.find('_setpoint') != -1 or status.find('_output') != -1:
                 if any(x in status for x in ["_setpoint", "_output"]):
                     continue
