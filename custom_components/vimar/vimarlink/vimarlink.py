@@ -524,15 +524,13 @@ ORDER BY o3.ID;""" % (
 
         _LOGGER.debug("get_room_devices started - from %d to %d", start, start + limit)
 
-        select = """SELECT GROUP_CONCAT(r2.PARENTOBJ_ID) AS room_ids, o2.ID AS object_id,
+        select = """SELECT r2.PARENTOBJ_ID AS room_ids, o2.ID AS object_id,
 o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
-o3.ID AS status_id, o3.NAME AS status_name, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT_RELATION r2
 INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX"
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
 INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type = "BYMEOBJ" AND o3.NAME != ""
 WHERE r2.PARENTOBJ_ID IN (%s) AND r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
-GROUP BY o2.ID, o2.NAME, o2.VALUES_TYPE, o3.ID, o3.NAME, o3.CURRENT_VALUE
 LIMIT %d, %d;""" % (
             self._room_ids,
             start,
@@ -634,10 +632,10 @@ LIMIT %d, %d;""" % (
                             "status_range"
                         ]
 
-                if device["room_ids"] is not None and device["room_ids"] != "":
+                if device["room_ids"] is not None and str(device["room_ids"]) != "":
                     room_ids = []
                     room_names = []
-                    for roomId in device["room_ids"].split(","):
+                    for roomId in str(device["room_ids"]).split(","):
                         if (
                             roomId is not None
                             and roomId != ""
@@ -923,14 +921,13 @@ class VimarProject:
         devices_count = len(self._devices)
 
         # TODO - check which device states has changed and call device updates
-        self._devices, state_count = self._link.get_paged_results(
-            self._link.get_remote_devices, self._devices
-        )
+        self._devices, state_count = self._link.get_paged_results(self._link.get_remote_devices, self._devices)
 
         # for now we run parse device types and set classes after every update
         if devices_count != len(self._devices) or (forced is not None and forced is True):
             self._link.get_room_ids()
             self._link.get_paged_results(self._link.get_room_devices, self._devices)
+            self._devices, state_count = self._link.get_paged_results(self._link.get_remote_devices, self._devices)
             self.check_devices()
 
         return self._devices
