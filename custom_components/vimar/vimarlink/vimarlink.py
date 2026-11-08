@@ -921,13 +921,17 @@ class VimarProject:
         devices_count = len(self._devices)
 
         # TODO - check which device states has changed and call device updates
-        self._devices, state_count = self._link.get_paged_results(self._link.get_remote_devices, self._devices)
+        self._devices, state_count = self._link.get_paged_results(
+            self._link.get_remote_devices, self._devices
+        )
 
         # for now we run parse device types and set classes after every update
         if devices_count != len(self._devices) or (forced is not None and forced is True):
             self._link.get_room_ids()
             self._link.get_paged_results(self._link.get_room_devices, self._devices)
-            self._devices, state_count = self._link.get_paged_results(self._link.get_remote_devices, self._devices)
+            self._devices, state_count = self._link.get_paged_results(
+                self._link.get_remote_devices, self._devices
+            )
             self.check_devices()
 
         return self._devices
