@@ -167,6 +167,11 @@ class VimarLink:
     _certificate = None
     _timeout = 6
 
+    _last_get_room_devices_result = None
+    _last_get_remote_devices_result = None
+    _last_get_remote_devices_status_result = None
+    _fetch_only_status = False
+
     def __init__(
         self,
         schema=None,
@@ -524,8 +529,7 @@ ORDER BY o3.ID;""" % (
 
         _LOGGER.debug("get_room_devices started - from %d to %d", start, start + limit)
 
-        select = """SELECT r2.PARENTOBJ_ID AS room_ids, o2.ID AS object_id,
-o2.NAME AS object_name, o2.VALUES_TYPE as object_type,
+        select = """SELECT DISTINCT r2.PARENTOBJ_ID AS room_id, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type
 FROM DPADD_OBJECT_RELATION r2
 INNER JOIN DPADD_OBJECT o2 ON r2.CHILDOBJ_ID = o2.ID AND o2.type = "BYMEIDX"
 INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
@@ -565,15 +569,19 @@ LIMIT %d, %d;""" % (
 
         start, limit = self._sanitize_limits(start, limit)
 
-        select = """SELECT '' AS room_ids, o2.id AS object_id, o2.name AS object_name, o2.VALUES_TYPE AS object_type,
-o2.NAME AS object_name, o2.VALUES_TYPE AS object_type,
-o3.ID AS status_id, o3.NAME AS status_name, o3.OPTIONALP as status_range, o3.CURRENT_VALUE AS status_value
-FROM DPADD_OBJECT AS o2
-INNER JOIN (SELECT CLASSNAME,IS_EVENT,IS_EXECUTABLE FROM DPAD_WEB_PHPCLASS) AS D_WP ON o2.PHPCLASS=D_WP.CLASSNAME
-INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
-INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type IN ('BYMETVAL','BYMEOBJ') AND o3.NAME != ""
-WHERE o2.OPTIONALP NOT LIKE "%%restricted%%" AND o2.IS_VISIBLE=1 AND o2.OWNED_BY!="SYSTEM" AND o2.OPTIONALP LIKE "%%category=%%"
-LIMIT %d, %d;""" % (
+        columns = (
+            ""
+            if self._fetch_only_status
+            else """, o2.name AS object_name, o2.VALUES_TYPE AS object_type, o3.NAME AS status_name, o3.OPTIONALP as status_range"""
+        )
+
+        select = f"""SELECT o2.id AS object_id, o3.ID AS status_id, o3.CURRENT_VALUE AS status_value {columns}
+        FROM DPADD_OBJECT AS o2
+        INNER JOIN DPAD_WEB_PHPCLASS AS D_WP ON o2.PHPCLASS=D_WP.CLASSNAME
+        INNER JOIN DPADD_OBJECT_RELATION r3 ON o2.ID = r3.PARENTOBJ_ID AND r3.RELATION_WEB_TIPOLOGY = "BYME_IDXOBJ_RELATION"
+        INNER JOIN DPADD_OBJECT o3 ON r3.CHILDOBJ_ID = o3.ID AND o3.type IN ('BYMETVAL','BYMEOBJ') AND o3.NAME != ""
+        WHERE o2.IS_VISIBLE=1 AND o2.OWNED_BY!="SYSTEM" AND o2.OPTIONALP LIKE "%%category=%%" AND o2.OPTIONALP NOT LIKE "%%restricted%%"
+        LIMIT %d, %d;""" % (
             start,
             limit,
         )
@@ -597,12 +605,21 @@ LIMIT %d, %d;""" % (
             devices = {}
         payload = self._request_vimar_sql(select)
         if payload is not None:
+            if onlyUpdate:
+                self._last_get_room_devices_result = payload
+            elif self._fetch_only_status:
+                self._last_get_remote_devices_status_result = payload
+            else:
+                self._last_get_remote_devices_result = payload
             # there will be multible times the same device
             # each having a different status part (on/off + dimming etc.)
             for device in payload:
                 deviceItem: VimarDevice | None = None
                 if device["object_id"] not in devices:
                     if onlyUpdate:
+                        continue
+                    if "object_name" not in device:
+                        self._fetch_only_status = False
                         continue
                     deviceItem = {
                         "room_ids": [],
@@ -612,6 +629,7 @@ LIMIT %d, %d;""" % (
                         "object_name": device["object_name"],
                         "object_type": device["object_type"],
                         "status": {},
+                        "status_ids": {},
                         "device_type": "",
                         "device_class": "",
                         "device_friendly_name": "",
@@ -622,20 +640,26 @@ LIMIT %d, %d;""" % (
                     # if object_id is already in the device list, we only update the state
                     deviceItem = devices[device["object_id"]]
 
-                if device["status_name"] != "":
-                    deviceItem["status"][device["status_name"]] = {
+                #save cached data, now fetch only status_id
+                if "status_name" in device and device["status_name"] != "":
+                    deviceItem["status_ids"][device["status_id"]] = device["status_name"]                
+
+                if "status_id" in device and device["status_id"] in deviceItem["status_ids"]:
+                    status_name = deviceItem["status_ids"][device["status_id"]]
+                    deviceItem["status"][status_name] = {
                         "status_id": device["status_id"],
                         "status_value": device["status_value"],
                     }
                     if "status_range" in device:
-                        deviceItem["status"][device["status_name"]]["status_range"] = device[
+                        deviceItem["status"][status_name]["status_range"] = device[
                             "status_range"
                         ]
 
-                if device["room_ids"] is not None and str(device["room_ids"]) != "":
-                    room_ids = []
+                if "room_id" in device and device["room_id"] is not None and str(device["room_id"]) != "" and str(device["room_id"]) not in deviceItem["room_ids"]:
+                    room_ids = deviceItem["room_ids"]
+                    room_ids.append(str(device["room_id"]))
                     room_names = []
-                    for roomId in str(device["room_ids"]).split(","):
+                    for roomId in room_ids:
                         if (
                             roomId is not None
                             and roomId != ""
@@ -643,7 +667,7 @@ LIMIT %d, %d;""" % (
                             and self._rooms is not None
                         ):
                             room = self._rooms[roomId]
-                            room_ids.append(roomId)
+                            #room_ids.append(roomId)
                             room_names.append(room["name"])
                     deviceItem["room_ids"] = room_ids
                     deviceItem["room_names"] = room_names
@@ -920,19 +944,25 @@ class VimarProject:
         # DONE - only update the state - not the actual devices, so we do not need to parse device types again
         devices_count = len(self._devices)
 
+        if (forced is not None and forced is True):
+            self._link._fetch_only_status = False
+
         # TODO - check which device states has changed and call device updates
-        self._devices, state_count = self._link.get_paged_results(
-            self._link.get_remote_devices, self._devices
-        )
+        self._link.get_paged_results(self._link.get_remote_devices, self._devices)
 
         # for now we run parse device types and set classes after every update
         if devices_count != len(self._devices) or (forced is not None and forced is True):
+            #init , now not have group by
+            self._link._fetch_only_status = False
+            for device_id, device in self._devices.items():
+                device["room_ids"] = []
             self._link.get_room_ids()
             self._link.get_paged_results(self._link.get_room_devices, self._devices)
-            self._devices, state_count = self._link.get_paged_results(
-                self._link.get_remote_devices, self._devices
-            )
+            self._link.get_paged_results(self._link.get_remote_devices, self._devices)
             self.check_devices()
+        
+        if len(self._devices) > 0:
+            self._link._fetch_only_status = True
 
         return self._devices
 
