@@ -176,6 +176,16 @@ class VimarLink:
 
     _fetch_only_status = False
 
+    #during configuration , create a new token, than the current instance try to recreate a token, and is in a loop :)
+    _session_key = None
+    _sessions = {}
+    @classmethod
+    def set_session_id(cls, key: str, session_id: str):
+        cls._sessions[key] = session_id
+    @classmethod
+    def get_session_id(cls, key: str) -> str | None:
+        return cls._sessions.get(key, None)
+
     def __init__(
         self,
         schema=None,
@@ -190,8 +200,7 @@ class VimarLink:
         _LOGGER.info("Vimar link initialized")
 
         # TODO - change static variables to normal instance variables
-        # self._host = ''
-
+        # self._host = ''        
         if schema is not None:
             self._schema = schema
         if host is not None:
@@ -207,6 +216,12 @@ class VimarLink:
         if timeout is not None:
             self._timeout = timeout
             self._status_timeout = timeout * 0.5
+        self._session_key = "%s%s|%s|%s" % (
+            self._schema,
+            self._host,
+            self._username,
+            self._password,
+        )
 
     def install_certificate(self):
         """Download the CA certificate from the web server to be used for the next calls."""
@@ -330,6 +345,7 @@ class VimarLink:
                 if loginsession is not None and loginsession.text != "":
                     _LOGGER.debug("Got a new Vimar Session id: %s", loginsession.text)
                     self._session_id = loginsession.text
+                    self.set_session_id(self._session_key, loginsession.text)
                 else:
                     _LOGGER.warning("Missing Session id in login response: %s", result)
 
@@ -505,6 +521,10 @@ LIMIT %d, %d;"""
         if len(devices) == 0:
             _LOGGER.debug("get_remote_devices started")
         
+        shared_session_id = self.get_session_id(self._session_key)
+        if shared_session_id and shared_session_id != self._session_id:
+            self._session_id = shared_session_id
+            
         status = self.get_devices_status()
         if self._last_devices_status_cnt != len(status) or not self._fetch_only_status or len(devices) == 0:
             _LOGGER.debug(
@@ -708,9 +728,16 @@ LIMIT %d, %d;"""
                 % (err, exc_tb.tb_lineno if exc_tb is not None else 0, string, json.dumps(self.request_last_info))
             )
             # enforce relogin
-            _LOGGER.info("Start to relogin..")
-            self._session_id = None
-            self.login()
+            #if already logged from other class (from configuration for example), use the new session key
+            shared_session_id = self.get_session_id(self._session_key)
+            if shared_session_id and shared_session_id != self._session_id:
+                self._session_id = shared_session_id
+            else:
+                old_info = self.request_last_info
+                _LOGGER.info("Start to relogin..")
+                self._session_id = None
+                self.login()
+                self.request_last_info = old_info
             # raise VimarConnectionError(
             #     "Error parsing SQL: %s in line: %d - payload: %s" % (err, exc_tb.tb_lineno, string))
 
