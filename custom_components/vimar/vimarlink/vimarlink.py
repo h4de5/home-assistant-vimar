@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import time
+import json
 import logging
 import os
 import ssl
 import sys
-import json
+import time
 import xml.etree.ElementTree as xmlTree
 from collections.abc import Callable
 from typing import TypedDict
@@ -176,12 +176,14 @@ class VimarLink:
 
     _fetch_only_status = False
 
-    #during configuration , create a new token, than the current instance try to recreate a token, and is in a loop :)
+    # during configuration , create a new token, than the current instance try to recreate a token, and is in a loop :)
     _session_key = None
     _sessions = {}
+
     @classmethod
     def set_session_id(cls, key: str, session_id: str):
         cls._sessions[key] = session_id
+
     @classmethod
     def get_session_id(cls, key: str) -> str | None:
         return cls._sessions.get(key, None)
@@ -200,7 +202,7 @@ class VimarLink:
         _LOGGER.info("Vimar link initialized")
 
         # TODO - change static variables to normal instance variables
-        # self._host = ''        
+        # self._host = ''
         if schema is not None:
             self._schema = schema
         if host is not None:
@@ -236,8 +238,8 @@ class VimarLink:
                 self._host,
                 self._port,
             )
-            
-            options = { "source": "install_certificate" }
+
+            options = {"source": "install_certificate"}
             certificate_file = self._request(downloadPath, options=options)
             # get it back
             self._certificate = temp_certificate
@@ -293,8 +295,8 @@ class VimarLink:
             and os.path.isfile(self._certificate) is False
         ):
             self.install_certificate()
-        
-        options = { "source": "login" }
+
+        options = {"source": "login"}
         result = self._request(loginurl, options=options)
 
         if result is False and use_cert:  # if problem is of certificate, download it again
@@ -377,10 +379,12 @@ class VimarLink:
             "Expect": "",
         }
 
-        post = ("sessionid=%s&" "op=getjScriptEnvironment&" "context=runtime") % self._session_id        
-        
-        options = { "source": "check_session" }
-        return self._request_vimar(post, "vimarbyweb/modules/system/dpadaction.php", headers, options=options)
+        post = ("sessionid=%s&" "op=getjScriptEnvironment&" "context=runtime") % self._session_id
+
+        options = {"source": "check_session"}
+        return self._request_vimar(
+            post, "vimarbyweb/modules/system/dpadaction.php", headers, options=options
+        )
 
     def set_device_status(self, object_id, status, optionals="NO-OPTIONALS"):
         """Set a given status for one device."""
@@ -397,7 +401,7 @@ class VimarLink:
             "</service-runonelement></soapenv:Body></soapenv:Envelope>"
         ) % (status, optionals, self._session_id, object_id)
 
-        options = { "source": "set_device_status", "object_id": object_id, "new_status": status }
+        options = {"source": "set_device_status", "object_id": object_id, "new_status": status}
         response = self._request_vimar_soap(post, options=options)
         if response is not None and response is not False:
 
@@ -470,9 +474,7 @@ class VimarLink:
     #   'IS_WRITABLE' => string '1' (length=1)
     #   'IS_VISIBLE' => string '1' (length=1)
 
-    def get_devices_info(
-        self
-    ):
+    def get_devices_info(self):
         _LOGGER.debug("get_devices_info started")
         select = f"""SELECT r2.PARENTOBJ_ID AS room_id, oRoom.name as room_name, o2.ID AS object_id, o2.NAME AS object_name, o2.VALUES_TYPE as object_type, o2.OPTIONALP as object_optionalp, o3.Id as status_id, o3.NAME AS status_name, o3.OPTIONALP as status_range
 FROM DPADD_OBJECT_RELATION r2
@@ -483,7 +485,7 @@ INNER JOIN DPADD_OBJECT oRoom ON r2.PARENTOBJ_ID = oRoom.ID AND oRoom.type = "GR
 WHERE  r2.RELATION_WEB_TIPOLOGY = "GENERIC_RELATION"
 ORDER BY r2.PARENTOBJ_ID, o2.ID, o3.Id
 LIMIT %d, %d;"""
-        options = { "source": "get_devices_info" }
+        options = {"source": "get_devices_info"}
         payload = self._request_vimar_sql_paginated(select, options)
         if len(payload) == 0:
             raise VimarApiError("No results for get_devices_info. Query: %s", query)
@@ -491,25 +493,26 @@ LIMIT %d, %d;"""
         self._devices_update_date = self._devices_update_date + 1
         return payload
 
-    def get_devices_status(
-        self
-    ):
+    def get_devices_status(self):
         # get all data in about 0.2 s
         select = f"""SELECT o3.ID AS status_id, o3.CURRENT_VALUE AS status_value
 FROM DPADD_OBJECT o3 
 where o3.type IN ('BYMETVAL','BYMEOBJ') AND o3.NAME != ""
 ORDER BY o3.ID 
 LIMIT %d, %d;"""
-        options = { "source": "get_devices_status" }
+        options = {"source": "get_devices_status"}
         options["timeout"] = self._status_timeout if self._status_timeout > 0 else self._timeout / 2
-        options["retry_max_timeout"] = self._timeout if self._timeout > self._status_timeout else self._status_timeout
-        options["retry_max_count"] = max(3, int(options["retry_max_timeout"] / (options["timeout"] * 0.5)))
+        options["retry_max_timeout"] = (
+            self._timeout if self._timeout > self._status_timeout else self._status_timeout
+        )
+        options["retry_max_count"] = max(
+            3, int(options["retry_max_timeout"] / (options["timeout"] * 0.5))
+        )
         payload = self._request_vimar_sql_paginated(select, options)
         if len(payload) == 0:
             raise VimarApiError("No results for get_devices_info. Query: %s", query)
         self._last_devices_status = payload
         return payload
-    
 
     def get_remote_devices(
         self,
@@ -520,13 +523,17 @@ LIMIT %d, %d;"""
             devices = {}
         if len(devices) == 0:
             _LOGGER.debug("get_remote_devices started")
-        
+
         shared_session_id = self.get_session_id(self._session_key)
         if shared_session_id and shared_session_id != self._session_id:
             self._session_id = shared_session_id
-            
+
         status = self.get_devices_status()
-        if self._last_devices_status_cnt != len(status) or not self._fetch_only_status or len(devices) == 0:
+        if (
+            self._last_devices_status_cnt != len(status)
+            or not self._fetch_only_status
+            or len(devices) == 0
+        ):
             _LOGGER.debug(
                 "Device status check: last_devices_status_cnt=%s, status_len=%s, "
                 "fetch_only_status=%s, devices_len=%s",
@@ -540,19 +547,19 @@ LIMIT %d, %d;"""
             self._generate_device_list(devices_info, devices)
             self._devices_update_date = self._devices_update_date + 1
             self._last_devices_status_cnt = len(status)
-        
+
         for status_item in status:
             if status_item["status_id"] in self._devices_status_mapping:
                 status_mapping = self._devices_status_mapping[status_item["status_id"]]
                 deviceItem = devices[status_mapping["object_id"]]
-                deviceItem["status"][status_mapping["status_name"]]["status_value"] = status_item["status_value"]
-        
+                deviceItem["status"][status_mapping["status_name"]]["status_value"] = status_item[
+                    "status_value"
+                ]
+
         self._fetch_only_status = True
         return devices
 
-    def _generate_device_list(
-        self, devices_info, devices: dict[str, VimarDevice] | None = None
-    ):
+    def _generate_device_list(self, devices_info, devices: dict[str, VimarDevice] | None = None):
         """Generate device list from given sql statements."""
         if devices_info is not None:
             # there will be multible times the same device
@@ -561,8 +568,12 @@ LIMIT %d, %d;"""
                 deviceItem: VimarDevice | None = None
                 if device["object_id"] not in devices:
                     optionalp = device["object_optionalp"]
-                    #condition previus in query, now filter in memory
-                    if optionalp is None or "category=" not in optionalp or "restricted" in optionalp:
+                    # condition previus in query, now filter in memory
+                    if (
+                        optionalp is None
+                        or "category=" not in optionalp
+                        or "restricted" in optionalp
+                    ):
                         continue
                     deviceItem = {
                         "room_ids": [],
@@ -585,26 +596,25 @@ LIMIT %d, %d;"""
                 if "status_name" in device and device["status_name"] != "":
                     status_id = device["status_id"]
                     status_name = device["status_name"]
-                    #saving mapping for fast update only values
+                    # saving mapping for fast update only values
                     self._devices_status_mapping[status_id] = {
                         "status_name": status_name,
-                        "object_id": device["object_id"]
+                        "object_id": device["object_id"],
                     }
-                    deviceItem["status"][status_name] = {
-                        "status_id": status_id
-                    }
+                    deviceItem["status"][status_name] = {"status_id": status_id}
                     if "status_range" in device:
-                        deviceItem["status"][status_name]["status_range"] = device[
-                            "status_range"
-                        ]
+                        deviceItem["status"][status_name]["status_range"] = device["status_range"]
 
-                if device["room_name"] is not None and str(device["room_name"]) != "" and str(device["room_id"]) not in deviceItem["room_ids"]:
+                if (
+                    device["room_name"] is not None
+                    and str(device["room_name"]) != ""
+                    and str(device["room_id"]) not in deviceItem["room_ids"]
+                ):
                     deviceItem["room_ids"].append(str(device["room_id"]))
                     deviceItem["room_names"].append(str(device["room_name"]))
                     deviceItem["room_name"] = deviceItem["room_names"][0]
 
-
-    def _request_vimar_sql_paginated(self, select: str, options = None):
+    def _request_vimar_sql_paginated(self, select: str, options=None):
         """Execute SQL query with automatic pagination."""
         results = []
         limit = MAX_ROWS_PER_REQUEST
@@ -614,7 +624,11 @@ LIMIT %d, %d;"""
             query = select % (start, limit)
             payload = self._request_vimar_sql(query, options)
             if not payload:
-                raise VimarApiError("Error in Sql Paginated: %s - Request: %s", query, json.dumps(self.request_last_info))
+                raise VimarApiError(
+                    "Error in Sql Paginated: %s - Request: %s",
+                    query,
+                    json.dumps(self.request_last_info),
+                )
                 return None
             results.extend(payload)
             if len(payload) < limit:
@@ -622,7 +636,7 @@ LIMIT %d, %d;"""
             start += limit
         return results
 
-    def _request_vimar_sql(self, select, options = None):
+    def _request_vimar_sql(self, select, options=None):
         """Build sql request."""
         select = (
             select.replace("\r\n", " ")
@@ -667,10 +681,14 @@ LIMIT %d, %d;"""
 
                 return parsed_data
             else:
-                _LOGGER.warning("Empty payload from SQL. Request %s", json.dumps(self.request_last_info))
+                _LOGGER.warning(
+                    "Empty payload from SQL. Request %s", json.dumps(self.request_last_info)
+                )
                 return None
         elif response is None:
-            _LOGGER.warning("Unparseable response from SQL. Request %s", json.dumps(self.request_last_info))
+            _LOGGER.warning(
+                "Unparseable response from SQL. Request %s", json.dumps(self.request_last_info)
+            )
             _LOGGER.info("Errorous SQL: %s", select)
         return None
 
@@ -725,10 +743,15 @@ LIMIT %d, %d;"""
             _, _, exc_tb = sys.exc_info()
             _LOGGER.error(
                 "Error parsing SQL: %s in line: %d - payload: %s - request: %s"
-                % (err, exc_tb.tb_lineno if exc_tb is not None else 0, string, json.dumps(self.request_last_info))
+                % (
+                    err,
+                    exc_tb.tb_lineno if exc_tb is not None else 0,
+                    string,
+                    json.dumps(self.request_last_info),
+                )
             )
             # enforce relogin
-            #if already logged from other class (from configuration for example), use the new session key
+            # if already logged from other class (from configuration for example), use the new session key
             shared_session_id = self.get_session_id(self._session_key)
             if shared_session_id and shared_session_id != self._session_id:
                 self._session_id = shared_session_id
@@ -780,7 +803,9 @@ LIMIT %d, %d;"""
         try:
             root = xmlTree.fromstring(xml)
         except BaseException as err:
-            _LOGGER.error("Error parsing XML: %s - LastRequest %s", err, json.dumps(self.request_last_info))
+            _LOGGER.error(
+                "Error parsing XML: %s - LastRequest %s", err, json.dumps(self.request_last_info)
+            )
             _LOGGER.debug("Problematic XML: %s", str(xml))
 
         else:
@@ -797,7 +822,9 @@ LIMIT %d, %d;"""
         info = {}
         self.request_last_info = info
         timeout = options.get("timeout", self._timeout)
-        attempt_totals_count = options.get("retry_max_count", 3) if self._last_request_successful else 1
+        attempt_totals_count = (
+            options.get("retry_max_count", 3) if self._last_request_successful else 1
+        )
         attempt_totals_count = attempt_totals_count if attempt_totals_count > 0 else 1
         info["source"] = options.get("source", "")
         info["url"] = url
@@ -807,7 +834,7 @@ LIMIT %d, %d;"""
 
         first_request_start = time.perf_counter()
         for attempt in range(attempt_totals_count):
-            request_start = time.perf_counter()            
+            request_start = time.perf_counter()
             info["retry_attempt"] = attempt
             try:
                 self._last_request_successful = False
@@ -847,7 +874,14 @@ LIMIT %d, %d;"""
                 response.raise_for_status()
                 self._last_request_successful = True
                 if attempt > 0:
-                    _LOGGER.info("HTTP request success after retry. Total retry time %.2f s, Request executed in %.2f seconds. Attempt %d/%d. Options: %s", request_total_time, request_time, attempt + 1, attempt_totals_count, options_str)
+                    _LOGGER.info(
+                        "HTTP request success after retry. Total retry time %.2f s, Request executed in %.2f seconds. Attempt %d/%d. Options: %s",
+                        request_total_time,
+                        request_time,
+                        attempt + 1,
+                        attempt_totals_count,
+                        options_str,
+                    )
 
                 info["error"] = None
                 info["result"] = True
@@ -869,9 +903,25 @@ LIMIT %d, %d;"""
                     if retry_max_timeout > 0 and request_total_time > retry_max_timeout:
                         can_retry = False
                 if can_retry:
-                    _LOGGER.debug("HTTP timeout occurred in %.2f seconds (total %.2f) (attempt %d/%d).%s Retrying request... Error: %s - Options: %s", request_time, request_total_time, attempt + 1, attempt_totals_count, str(ex), options_str)
+                    _LOGGER.debug(
+                        "HTTP timeout occurred in %.2f seconds (total %.2f) (attempt %d/%d).%s Retrying request... Error: %s - Options: %s",
+                        request_time,
+                        request_total_time,
+                        attempt + 1,
+                        attempt_totals_count,
+                        str(ex),
+                        options_str,
+                    )
                     continue
-                _LOGGER.error("HTTP timeout after %.2f seconds (last request %.2f) (attempt %d/%d). Error: %s - Options: %s", request_total_time, request_time, attempt + 1, attempt_totals_count, str(ex), options_str)
+                _LOGGER.error(
+                    "HTTP timeout after %.2f seconds (last request %.2f) (attempt %d/%d). Error: %s - Options: %s",
+                    request_total_time,
+                    request_time,
+                    attempt + 1,
+                    attempt_totals_count,
+                    str(ex),
+                    options_str,
+                )
                 return False
             except BaseException as err:
                 self.request_last_exception = err
@@ -880,9 +930,9 @@ LIMIT %d, %d;"""
                 return False
             else:
                 _LOGGER.debug("HTTP Request to %s completed. Info: %s", url, json.dumps(info))
-                info["response"] = response.text                
+                info["response"] = response.text
                 return response.text
-        
+
         raise Exception("Request error: exitede from retry")
 
 
@@ -911,7 +961,7 @@ class VimarProject:
         if self._devices is None:
             self._devices = {}
         # DONE - only update the state - not the actual devices, so we do not need to parse device types again
-        if (forced is not None and forced is True):
+        if forced is not None and forced is True:
             self._link._fetch_only_status = False
 
         self._devices = self._link.get_remote_devices(self._devices)
