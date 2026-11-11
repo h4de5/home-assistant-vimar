@@ -45,6 +45,7 @@
           "title": "Set up VIMAR By-Me Hub (2)",
           "data": {
             "timeout": "Request Timeout (seconds)",
+            "status_timeout": "Request Timeout for only status (seconds)",
             "scan_interval": "Scan Interval (seconds)",
             "global_channel_id": "MediaPlayer Global Channel Id",
             "ignore": "Ignored platforms",

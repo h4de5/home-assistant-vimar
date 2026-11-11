@@ -25,6 +25,9 @@ DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT = 6
 DEFAULT_SCAN_INTERVAL = 8
 
+CONF_STATUS_TIMEOUT = "status_timeout"
+DEFAULT_STATUS_TIMEOUT = 4
+
 
 # Device overrides
 CONF_OVERRIDE = "device_override"
