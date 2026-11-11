@@ -16,11 +16,9 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     coordinator: VimarDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     data = { }
-    data["rooms"] = coordinator.vimarconnection._rooms
     data["devices"] = coordinator.vimarproject._devices
-    data["last_get_room_devices"] = coordinator.vimarconnection._last_get_room_devices_result 
-    data["last_get_remote_devices"] = coordinator.vimarconnection._last_get_remote_devices_result
-    data["last_get_remote_devices_status"] = coordinator.vimarconnection._last_get_remote_devices_status_result
+    data["last_devices_info"] = coordinator.vimarconnection._last_devices_info 
+    data["last_devices_status"] = coordinator.vimarconnection._last_devices_status
     json_str = json.dumps(serialize(data), default=str)
     #sensitive_values = { CONF_EMAIL, CONF_PASSWORD };
     #for key in sensitive_values:

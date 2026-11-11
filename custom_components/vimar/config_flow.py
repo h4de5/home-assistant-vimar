@@ -41,6 +41,8 @@ from .const import (
     DEFAULT_SECURE,
     DEFAULT_TIMEOUT,
     DEFAULT_VERIFY_SSL,
+    CONF_STATUS_TIMEOUT,
+    DEFAULT_STATUS_TIMEOUT,
     DOMAIN,
     PLATFORMS,
 )
@@ -332,6 +334,9 @@ def get_schema_options_two(config: dict | None = None) -> dict:
         vol.Required(
             CONF_TIMEOUT, description=get_vol_descr(config, CONF_TIMEOUT, DEFAULT_TIMEOUT)
         ): int,
+        vol.Required(
+            CONF_STATUS_TIMEOUT, description=get_vol_descr(config, CONF_STATUS_TIMEOUT, DEFAULT_STATUS_TIMEOUT)
+        ): vol.Coerce(float),
         vol.Required(
             CONF_SCAN_INTERVAL,
             description=get_vol_descr(config, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),

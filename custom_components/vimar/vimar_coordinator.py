@@ -32,6 +32,7 @@ from .const import (
     CONF_IGNORE_PLATFORM,
     CONF_OVERRIDE,
     CONF_SECURE,
+    CONF_STATUS_TIMEOUT,
     DEFAULT_CERTIFICATE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
@@ -96,6 +97,8 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
 
             async with async_timeout.timeout(self._timeout):
                 forced = not self._first_update_data_executed or not self._platforms_registered
+                if forced:
+                    _LOGGER.debug("Updating coordinator with forced..")
                 devices = await self.hass.async_add_executor_job(self.vimarproject.update, forced)
 
             if not devices or len(devices) == 0:
@@ -143,6 +146,8 @@ class VimarDataUpdateCoordinator(DataUpdateCoordinator):
 
         # initialize a new VimarLink object
         vimarconnection = VimarLink(schema, host, port, username, password, certificate, timeout)
+        if vimarconfig.get(CONF_STATUS_TIMEOUT, 0) > 0:
+            vimarconnection._status_timeout = vimarconfig.get(CONF_STATUS_TIMEOUT)
 
         device_customizer = VimarDeviceCustomizer(vimarconfig, device_overrides)
 
