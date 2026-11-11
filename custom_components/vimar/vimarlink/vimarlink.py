@@ -488,7 +488,7 @@ LIMIT %d, %d;"""
         options = {"source": "get_devices_info"}
         payload = self._request_vimar_sql_paginated(select, options)
         if len(payload) == 0:
-            raise VimarApiError("No results for get_devices_info. Query: %s", query)
+            raise VimarApiError("No results for get_devices_info. Query: %s", select)
         self._last_devices_info = payload
         self._devices_update_date = self._devices_update_date + 1
         return payload
@@ -510,7 +510,7 @@ LIMIT %d, %d;"""
         )
         payload = self._request_vimar_sql_paginated(select, options)
         if len(payload) == 0:
-            raise VimarApiError("No results for get_devices_info. Query: %s", query)
+            raise VimarApiError("No results for get_devices_info. Query: %s", select)
         self._last_devices_status = payload
         return payload
 
